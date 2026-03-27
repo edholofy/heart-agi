@@ -18,15 +18,15 @@ const config: HardhatUserConfig = {
   networks: {
     // Humans AI Testnet (EVM-compatible)
     humansTestnet: {
-      url: process.env.HUMANS_RPC || "https://evm-rpc.humans.zone",
-      chainId: 7001,
+      url: process.env.HUMANS_RPC || "https://evm-rpc.testnet.humans.zone",
+      chainId: 4139,
       accounts: [DEPLOYER_KEY],
     },
 
     // Humans AI Mainnet
     humansMainnet: {
       url: process.env.HUMANS_MAINNET_RPC || "https://evm.humans.ai",
-      chainId: 7000,
+      chainId: 1089,
       accounts: [DEPLOYER_KEY],
     },
 

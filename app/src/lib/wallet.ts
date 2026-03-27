@@ -1,8 +1,8 @@
 import { BrowserProvider, formatEther } from 'ethers'
 
-/** Humans chain EVM RPC — update when mainnet/testnet is configured */
-const HUMANS_CHAIN_ID = '0x1B59' // 7001 — Humans testnet chain ID
-const HUMANS_RPC = 'https://evm-rpc.humans.zone'
+/** Humans chain EVM RPC */
+const HUMANS_CHAIN_ID = '0x102B' // 4139 — Humans testnet
+const HUMANS_RPC = 'https://evm-rpc.testnet.humans.zone'
 const HUMANS_CHAIN_CONFIG = {
   chainId: HUMANS_CHAIN_ID,
   chainName: 'Humans AI Testnet',
@@ -12,7 +12,7 @@ const HUMANS_CHAIN_CONFIG = {
     decimals: 18,
   },
   rpcUrls: [HUMANS_RPC],
-  blockExplorerUrls: ['https://explorer.humans.zone'],
+  blockExplorerUrls: ['https://explorer.testnet.humans.zone'],
 }
 
 export interface WalletState {
