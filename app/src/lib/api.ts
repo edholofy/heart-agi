@@ -1,4 +1,5 @@
 import type { AgentCreateInput } from '@/types/agent'
+import { getAuthHeaders } from '@/lib/wallet-auth'
 
 const API_BASE = '/api'
 
@@ -49,7 +50,7 @@ export async function createAgentApi(
 ): Promise<ApiAgent> {
   const res = await fetch(`${API_BASE}/agents`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({
       walletAddress,
       name: input.name,
@@ -91,7 +92,7 @@ export async function updateAgentIdentityApi(
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/agents/${agentId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(updates),
   })
 

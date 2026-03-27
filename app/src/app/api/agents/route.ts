@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthAddress } from '@/lib/auth'
 
 function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -46,6 +47,9 @@ export async function GET(req: NextRequest) {
 /** POST /api/agents — create a new agent */
 export async function POST(req: NextRequest) {
   try {
+    // Verify wallet auth
+    const authAddress = await getAuthAddress(req)
+
     const body = await req.json()
     const { walletAddress, name, specialization, computeTier, soul, skill } =
       body
@@ -54,6 +58,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      )
+    }
+
+    // If authenticated, verify the wallet matches the token
+    if (authAddress && authAddress !== walletAddress.toLowerCase()) {
+      return NextResponse.json(
+        { error: 'Wallet address does not match authenticated session' },
+        { status: 403 }
       )
     }
 

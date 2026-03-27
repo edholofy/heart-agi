@@ -8,10 +8,16 @@ import {
   shortenAddress,
   switchToHumansChain,
 } from "@/lib/wallet"
+import {
+  authenticateWithWallet,
+  hasValidToken,
+  clearAuthToken,
+} from "@/lib/wallet-auth"
 
 export function WalletButton() {
   const wallet = useAppStore((s) => s.wallet)
   const setWallet = useAppStore((s) => s.setWallet)
+  const [authenticated, setAuthenticated] = useState(hasValidToken())
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -52,6 +58,19 @@ export function WalletButton() {
         connecting: false,
         error: null,
       })
+
+      // Authenticate with wallet signature
+      if (!hasValidToken()) {
+        try {
+          await authenticateWithWallet(result.address)
+          setAuthenticated(true)
+        } catch {
+          // Auth is optional — wallet still connected even without signature
+          console.warn('Wallet auth skipped')
+        }
+      } else {
+        setAuthenticated(true)
+      }
     } catch (err: unknown) {
       const error = err as Error
       setWallet({
@@ -97,6 +116,8 @@ export function WalletButton() {
       connecting: false,
       error: null,
     })
+    clearAuthToken()
+    setAuthenticated(false)
     setShowMenu(false)
     // Clear persisted wallet state
     try {
@@ -162,6 +183,9 @@ export function WalletButton() {
               </div>
               <div className="text-[10px] text-[rgba(255,255,255,0.3)] font-mono mt-1">
                 Chain ID: {wallet.chainId}
+              </div>
+              <div className={`text-[10px] font-mono mt-1 ${authenticated ? 'text-[#22c55e]' : 'text-[#f59e0b]'}`}>
+                {authenticated ? 'AUTHENTICATED' : 'NOT SIGNED'}
               </div>
             </div>
 
