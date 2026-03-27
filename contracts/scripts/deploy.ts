@@ -23,7 +23,7 @@ async function main() {
   console.log(`NEXT_PUBLIC_HUMAN_AGENT_CONTRACT=${address}`);
   console.log("");
   console.log("Verify on explorer:");
-  console.log(`https://explorer.humans.zone/address/${address}`);
+  console.log(`https://explorer.nodestake.top/humans/account/${address}`);
 }
 
 main().catch((error) => {

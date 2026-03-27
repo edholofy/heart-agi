@@ -12,7 +12,7 @@ const HUMANS_CHAIN_CONFIG = {
     decimals: 18,
   },
   rpcUrls: [HUMANS_RPC, 'https://humans-mainnet-evm.itrocket.net'],
-  blockExplorerUrls: ['https://explorer.humans.zone'],
+  blockExplorerUrls: ['https://explorer.nodestake.top/humans'],
 }
 
 export interface WalletState {

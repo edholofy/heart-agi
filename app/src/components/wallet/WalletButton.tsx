@@ -121,7 +121,7 @@ export function WalletButton() {
   function handleExplorer() {
     if (wallet.address) {
       window.open(
-        `https://explorer.humans.zone/address/${wallet.address}`,
+        `https://explorer.nodestake.top/humans/account/${wallet.address}`,
         "_blank"
       )
     }
