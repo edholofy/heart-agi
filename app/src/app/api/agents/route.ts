@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-function getServiceClient() {
+function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) {
     throw new Error('Missing Supabase config')
   }
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const wallet = req.nextUrl.searchParams.get('wallet')
 
   try {
-    const supabase = getServiceClient()
+    const supabase = getSupabaseClient()
 
     let query = supabase
       .from('agents')
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const supabase = getServiceClient()
+    const supabase = getSupabaseClient()
 
     // Upsert user by wallet
     const { data: user, error: userError } = await supabase
