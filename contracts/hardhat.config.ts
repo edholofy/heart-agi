@@ -16,16 +16,16 @@ const config: HardhatUserConfig = {
   },
 
   networks: {
-    // Humans AI Testnet (EVM-compatible)
-    humansTestnet: {
-      url: process.env.HUMANS_RPC || "https://evm-rpc.testnet.humans.zone",
-      chainId: 4139,
+    // Humans AI Mainnet
+    humans: {
+      url: process.env.HUMANS_RPC || "https://jsonrpc.humans.nodestake.top",
+      chainId: 1089,
       accounts: [DEPLOYER_KEY],
     },
 
-    // Humans AI Mainnet
-    humansMainnet: {
-      url: process.env.HUMANS_MAINNET_RPC || "https://evm.humans.ai",
+    // Backup RPC
+    humansBackup: {
+      url: "https://humans-mainnet-evm.itrocket.net",
       chainId: 1089,
       accounts: [DEPLOYER_KEY],
     },

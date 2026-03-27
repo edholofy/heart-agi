@@ -1,18 +1,18 @@
 import { BrowserProvider, formatEther } from 'ethers'
 
-/** Humans chain EVM RPC */
-const HUMANS_CHAIN_ID = '0x102B' // 4139 — Humans testnet
-const HUMANS_RPC = 'https://evm-rpc.testnet.humans.zone'
+/** Humans chain EVM RPC — Mainnet (testnet is offline) */
+const HUMANS_CHAIN_ID = '0x441' // 1089 — Humans mainnet
+const HUMANS_RPC = 'https://jsonrpc.humans.nodestake.top'
 const HUMANS_CHAIN_CONFIG = {
   chainId: HUMANS_CHAIN_ID,
-  chainName: 'Humans AI Testnet',
+  chainName: 'Humans AI',
   nativeCurrency: {
     name: 'HEART',
     symbol: 'HEART',
     decimals: 18,
   },
-  rpcUrls: [HUMANS_RPC],
-  blockExplorerUrls: ['https://explorer.testnet.humans.zone'],
+  rpcUrls: [HUMANS_RPC, 'https://humans-mainnet-evm.itrocket.net'],
+  blockExplorerUrls: ['https://explorer.humans.zone'],
 }
 
 export interface WalletState {
