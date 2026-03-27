@@ -46,7 +46,7 @@ const COMPUTE_TIERS: Record<
   },
 }
 
-type Step = "specialization" | "compute" | "prompt" | "confirm"
+type Step = "specialization" | "compute" | "soul" | "confirm"
 
 export function AgentCreator({ onComplete }: AgentCreatorProps) {
   const createAgent = useAppStore((s) => s.createAgent)
@@ -56,19 +56,21 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
   const [specialization, setSpecialization] =
     useState<Specialization>("researcher")
   const [computeTier, setComputeTier] = useState<ComputeTier>("browser")
-  const [systemPrompt, setSystemPrompt] = useState("")
+  const [soul, setSoul] = useState("")
+  const [skill, setSkill] = useState("")
 
   const spec = SPECIALIZATIONS[specialization]
 
   function handleSpecSelect(s: Specialization) {
     setSpecialization(s)
-    setSystemPrompt(SPECIALIZATIONS[s].defaultPrompt)
+    setSoul(SPECIALIZATIONS[s].defaultSoul)
+    setSkill(SPECIALIZATIONS[s].defaultSkill)
     setStep("compute")
   }
 
   function handleComputeSelect(t: ComputeTier) {
     setComputeTier(t)
-    setStep("prompt")
+    setStep("soul")
   }
 
   const wallet = useAppStore((s) => s.wallet)
@@ -84,7 +86,8 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
       name: name.trim(),
       specialization,
       computeTier,
-      systemPrompt,
+      soul,
+      skill,
     }
 
     try {
@@ -124,7 +127,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
     <div className="max-w-2xl mx-auto px-4 py-12">
       {/* Progress */}
       <div className="flex items-center gap-2 mb-8">
-        {(["specialization", "compute", "prompt", "confirm"] as Step[]).map(
+        {(["specialization", "compute", "soul", "confirm"] as Step[]).map(
           (s, i) => (
             <div key={s} className="flex items-center gap-2 flex-1">
               <div
@@ -132,7 +135,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
                   step === s
                     ? "bg-accent text-white"
                     : i <
-                        ["specialization", "compute", "prompt", "confirm"].indexOf(step)
+                        ["specialization", "compute", "soul", "confirm"].indexOf(step)
                       ? "bg-success/20 text-success"
                       : "bg-card-border text-muted"
                 }`}
@@ -232,39 +235,66 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
         </div>
       )}
 
-      {/* Step 3: System Prompt */}
-      {step === "prompt" && (
+      {/* Step 3: soul.md + skill.md */}
+      {step === "soul" && (
         <div>
           <h2 className="text-2xl font-bold mb-2">
-            {spec.icon} System Prompt
+            {spec.icon} Define Identity
           </h2>
           <p className="text-muted mb-2">
-            This is your Human&apos;s DNA. It determines how it thinks, what
-            strategies it uses, and how well it performs.
+            Every AI Human has two identity files registered on-chain.
           </p>
           <p className="text-sm text-accent mb-6">
-            A well-crafted prompt can 6x your earnings. You can edit this
-            anytime.
+            A detailed soul + skill can 6x your earnings. You can evolve these
+            anytime (costs $HEART).
           </p>
 
-          <div className="relative">
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              rows={14}
-              className="w-full p-4 rounded-xl bg-card border border-card-border text-sm font-mono leading-relaxed focus:outline-none focus:border-accent/50 resize-y"
-              placeholder="Enter your system prompt..."
-            />
-            <div className="absolute bottom-3 right-3 text-xs text-muted">
-              {systemPrompt.length} chars
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold mb-2 block">
+                soul.md <span className="text-muted font-normal">— who your Human is</span>
+              </label>
+              <div className="relative">
+                <textarea
+                  value={soul}
+                  onChange={(e) => setSoul(e.target.value)}
+                  rows={8}
+                  className="w-full p-4 rounded-xl bg-card border border-card-border text-sm font-mono leading-relaxed focus:outline-none focus:border-accent/50 resize-y"
+                  placeholder="# Soul&#10;&#10;Define personality, values, behavioral boundaries..."
+                />
+                <div className="absolute bottom-3 right-3 text-xs text-muted">
+                  {soul.length} chars
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold mb-2 block">
+                skill.md <span className="text-muted font-normal">— what your Human can do</span>
+              </label>
+              <div className="relative">
+                <textarea
+                  value={skill}
+                  onChange={(e) => setSkill(e.target.value)}
+                  rows={8}
+                  className="w-full p-4 rounded-xl bg-card border border-card-border text-sm font-mono leading-relaxed focus:outline-none focus:border-accent/50 resize-y"
+                  placeholder="# Skills&#10;&#10;Define capabilities, tools, expertise..."
+                />
+                <div className="absolute bottom-3 right-3 text-xs text-muted">
+                  {skill.length} chars
+                </div>
+              </div>
             </div>
           </div>
 
           <button
-            onClick={() => setSystemPrompt(spec.defaultPrompt)}
+            onClick={() => {
+              setSoul(spec.defaultSoul)
+              setSkill(spec.defaultSkill)
+            }}
             className="mt-2 text-xs text-muted hover:text-accent transition-colors"
           >
-            Reset to default
+            Reset to defaults
           </button>
 
           <div className="flex gap-3 mt-6">
@@ -309,22 +339,17 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
             </h3>
             <div className="space-y-3 text-sm">
               <Row label="Specialization" value={`${spec.icon} ${spec.label}`} />
-              <Row
-                label="Compute"
-                value={COMPUTE_TIERS[computeTier].label}
-              />
-              <Row
-                label="System Prompt"
-                value={`${systemPrompt.length} chars`}
-              />
+              <Row label="Compute Tier" value={COMPUTE_TIERS[computeTier].label} />
+              <Row label="soul.md" value={`${soul.length} chars`} />
+              <Row label="skill.md" value={`${skill.length} chars`} />
               <Row label="Starting Level" value="1 (Newborn)" />
-              <Row label="Estimated Earnings" value="~34-300 $HEART/day" />
+              <Row label="Compute Deposit" value={`${computeTier === 'browser' ? 100 : computeTier === 'gpu' ? 500 : 1000} tokens`} />
             </div>
           </div>
 
           <div className="flex gap-3 mt-6">
             <button
-              onClick={() => setStep("prompt")}
+              onClick={() => setStep("soul")}
               className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors"
             >
               &larr; Back
@@ -334,7 +359,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
               disabled={!name.trim() || launching}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-accent to-heart text-white rounded-xl font-semibold text-lg transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 glow-accent"
             >
-              {launching ? "Launching..." : `Launch ${name.trim() || "Your Human"}`}
+              {launching ? "Spawning..." : `Spawn ${name.trim() || "Your Human"}`}
             </button>
             {error && (
               <p className="text-xs text-heart mt-2">{error}</p>

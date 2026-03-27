@@ -13,11 +13,12 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
   const agents = useAppStore((s) => s.agents)
   const selectedId = useAppStore((s) => s.selectedAgentId)
   const selectAgent = useAppStore((s) => s.selectAgent)
-  const updateSystemPrompt = useAppStore((s) => s.updateSystemPrompt)
+  const updateSoul = useAppStore((s) => s.updateSoul)
+  const updateSkill = useAppStore((s) => s.updateSkill)
 
   const agent = agents.find((a) => a.id === selectedId) ?? agents[0]
 
-  // Real agent runtime with gossip
+  // Real agent runtime with gossip + compute metabolism
   const {
     liveFeed,
     isRunning,
@@ -29,7 +30,9 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
     agentId: agent?.id ?? '',
     agentName: agent?.name ?? '',
     specialization: agent?.specialization ?? 'researcher',
-    systemPrompt: agent?.systemPrompt ?? '',
+    soul: agent?.identity?.soul ?? '',
+    skill: agent?.identity?.skill ?? '',
+    computeBalance: agent?.compute?.balance ?? 100,
     autoStart: true,
   })
 
@@ -157,17 +160,35 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
             </div>
           </div>
 
-          {/* System Prompt Editor */}
+          {/* soul.md Editor */}
           <div className="p-6 rounded-xl bg-card border border-card-border">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">System Prompt (DNA)</h3>
-              <span className="text-xs text-accent">
-                Edit to improve earnings
+              <h3 className="font-semibold">soul.md</h3>
+              <span className="text-xs text-muted">
+                Identity &middot; Values &middot; Personality
               </span>
             </div>
-            <SystemPromptEditor
-              value={agent.systemPrompt}
-              onChange={(prompt) => updateSystemPrompt(agent.id, prompt)}
+            <IdentityEditor
+              value={agent.identity?.soul ?? ''}
+              onChange={(soul) => updateSoul(agent.id, soul)}
+              label="soul.md"
+              hint="Defines WHO your Human is. Values, personality, behavioral boundaries. Costs $HEART to evolve."
+            />
+          </div>
+
+          {/* skill.md Editor */}
+          <div className="p-6 rounded-xl bg-card border border-card-border">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">skill.md</h3>
+              <span className="text-xs text-muted">
+                Capabilities &middot; Tools &middot; Expertise
+              </span>
+            </div>
+            <IdentityEditor
+              value={agent.identity?.skill ?? ''}
+              onChange={(skill) => updateSkill(agent.id, skill)}
+              label="skill.md"
+              hint="Defines WHAT your Human can do. Capabilities grow through work and teaching."
             />
           </div>
         </div>
@@ -300,12 +321,16 @@ function FeedItem({ item }: { item: LiveEvent }) {
   )
 }
 
-function SystemPromptEditor({
+function IdentityEditor({
   value,
   onChange,
+  label,
+  hint,
 }: {
   value: string
   onChange: (v: string) => void
+  label: string
+  hint: string
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
@@ -318,8 +343,8 @@ function SystemPromptEditor({
   if (!editing) {
     return (
       <div>
-        <pre className="text-sm text-muted font-mono whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
-          {value}
+        <pre className="text-sm text-muted font-mono whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+          {value || `No ${label} defined yet.`}
         </pre>
         <button
           onClick={() => {
@@ -328,7 +353,7 @@ function SystemPromptEditor({
           }}
           className="mt-3 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors"
         >
-          Edit Prompt
+          Evolve {label}
         </button>
       </div>
     )
@@ -339,7 +364,7 @@ function SystemPromptEditor({
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        rows={12}
+        rows={10}
         className="w-full p-3 rounded-lg bg-background border border-card-border text-sm font-mono leading-relaxed focus:outline-none focus:border-accent/50 resize-y"
         autoFocus
       />
@@ -348,7 +373,7 @@ function SystemPromptEditor({
           onClick={handleSave}
           className="px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent-dim transition-colors"
         >
-          Save Changes
+          Save Evolution
         </button>
         <button
           onClick={() => setEditing(false)}
@@ -357,10 +382,7 @@ function SystemPromptEditor({
           Cancel
         </button>
       </div>
-      <p className="text-xs text-muted mt-2">
-        Tip: Be specific about strategies, priorities, and constraints. A
-        detailed prompt earns 3-6x more than a generic one.
-      </p>
+      <p className="text-xs text-muted mt-2">{hint}</p>
     </div>
   )
 }

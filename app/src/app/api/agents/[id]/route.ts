@@ -45,7 +45,10 @@ export async function PATCH(
     const body = await req.json()
     const updates: Record<string, unknown> = {}
 
-    if (body.systemPrompt !== undefined) updates.system_prompt = body.systemPrompt
+    if (body.soul !== undefined || body.skill !== undefined) {
+      // Combine soul + skill into system_prompt field for DB compatibility
+      updates.system_prompt = [body.soul ?? '', '---', body.skill ?? ''].join('\n')
+    }
     if (body.status !== undefined) updates.status = body.status
     if (body.computeTier !== undefined) updates.compute_tier = body.computeTier
     if (body.name !== undefined) updates.name = body.name

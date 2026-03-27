@@ -53,7 +53,8 @@ export async function createAgentApi(
       name: input.name,
       specialization: input.specialization,
       computeTier: input.computeTier,
-      systemPrompt: input.systemPrompt,
+      soul: input.soul,
+      skill: input.skill,
     }),
   })
 
@@ -81,15 +82,15 @@ export async function fetchAgents(walletAddress?: string): Promise<ApiAgent[]> {
   return data.agents
 }
 
-/** Update an agent's system prompt */
-export async function updateAgentPromptApi(
+/** Update an agent's soul.md or skill.md */
+export async function updateAgentIdentityApi(
   agentId: string,
-  systemPrompt: string
+  updates: { soul?: string; skill?: string }
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/agents/${agentId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemPrompt }),
+    body: JSON.stringify(updates),
   })
 
   if (!res.ok) {

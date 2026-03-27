@@ -27,6 +27,10 @@ contract HumanAgent is ERC721Enumerable, Ownable {
         uint256 parentB;          // tokenId of parent B (0 = no parent)
         uint8 breedCount;         // how many times this agent has bred
         uint64 birthTimestamp;
+        bytes32 soulHash;         // SHA-256 hash of soul.md
+        bytes32 skillHash;        // SHA-256 hash of skill.md
+        uint16 identityVersion;   // increments on every evolution
+        bool isDormant;           // true when compute depleted
     }
 
     // ── State ────────────────────────────────────────────────────────────
@@ -45,11 +49,17 @@ contract HumanAgent is ERC721Enumerable, Ownable {
     uint16 public constant MAX_LEVEL = 99;
     uint16 public breedMinLevel = 30;
 
+    // Evolution cost in $HEART (updating soul.md or skill.md)
+    uint256 public evolutionCost = 10 ether;
+
     // ── Events ───────────────────────────────────────────────────────────
     event AgentMinted(uint256 indexed tokenId, address indexed owner, string name, Specialization specialization);
     event AgentBred(uint256 indexed childId, uint256 indexed parentA, uint256 indexed parentB);
     event AgentLeveledUp(uint256 indexed tokenId, uint16 newLevel);
     event AgentReputationUpdated(uint256 indexed tokenId, uint32 newReputation);
+    event SoulEvolved(uint256 indexed tokenId, bytes32 newSoulHash, uint16 version);
+    event SkillEvolved(uint256 indexed tokenId, bytes32 newSkillHash, uint16 version);
+    event AgentDormant(uint256 indexed tokenId, bool isDormant);
 
     // ── Constructor ──────────────────────────────────────────────────────
     constructor(string memory baseURI)
@@ -62,9 +72,43 @@ contract HumanAgent is ERC721Enumerable, Ownable {
     // ── Minting ──────────────────────────────────────────────────────────
 
     /**
-     * @notice Mint a new agent NFT.
-     * @param name      Display name for the agent
+     * @notice Spawn a new AI Human on-chain.
+     * @param name      Display name for the entity
      * @param spec      Specialization enum value
+     * @param soulHash  SHA-256 hash of the entity's soul.md
+     * @param skillHash SHA-256 hash of the entity's skill.md
+     */
+    function mint(
+        string calldata name,
+        Specialization spec,
+        bytes32 soulHash,
+        bytes32 skillHash
+    ) external returns (uint256) {
+        uint256 tokenId = _nextTokenId++;
+
+        agents[tokenId] = AgentData({
+            name: name,
+            specialization: spec,
+            level: 1,
+            reputation: 100,
+            parentA: 0,
+            parentB: 0,
+            breedCount: 0,
+            birthTimestamp: uint64(block.timestamp),
+            soulHash: soulHash,
+            skillHash: skillHash,
+            identityVersion: 1,
+            isDormant: false
+        });
+
+        _safeMint(msg.sender, tokenId);
+        emit AgentMinted(tokenId, msg.sender, name, spec);
+
+        return tokenId;
+    }
+
+    /**
+     * @notice Backwards-compatible mint without hashes.
      */
     function mint(string calldata name, Specialization spec) external returns (uint256) {
         uint256 tokenId = _nextTokenId++;
@@ -77,13 +121,54 @@ contract HumanAgent is ERC721Enumerable, Ownable {
             parentA: 0,
             parentB: 0,
             breedCount: 0,
-            birthTimestamp: uint64(block.timestamp)
+            birthTimestamp: uint64(block.timestamp),
+            soulHash: bytes32(0),
+            skillHash: bytes32(0),
+            identityVersion: 1,
+            isDormant: false
         });
 
         _safeMint(msg.sender, tokenId);
         emit AgentMinted(tokenId, msg.sender, name, spec);
 
         return tokenId;
+    }
+
+    // ── Evolution (costs $HEART) ─────────────────────────────────────────
+
+    /**
+     * @notice Evolve the entity's soul.md. Costs $HEART.
+     *         Only the owner of the agent NFT can evolve it.
+     */
+    function evolveSoul(uint256 tokenId, bytes32 newSoulHash) external payable {
+        require(ownerOf(tokenId) == msg.sender, "Not owner");
+        require(msg.value >= evolutionCost, "Insufficient $HEART for evolution");
+
+        agents[tokenId].soulHash = newSoulHash;
+        agents[tokenId].identityVersion++;
+        emit SoulEvolved(tokenId, newSoulHash, agents[tokenId].identityVersion);
+    }
+
+    /**
+     * @notice Evolve the entity's skill.md. Costs $HEART.
+     */
+    function evolveSkill(uint256 tokenId, bytes32 newSkillHash) external payable {
+        require(ownerOf(tokenId) == msg.sender, "Not owner");
+        require(msg.value >= evolutionCost, "Insufficient $HEART for evolution");
+
+        agents[tokenId].skillHash = newSkillHash;
+        agents[tokenId].identityVersion++;
+        emit SkillEvolved(tokenId, newSkillHash, agents[tokenId].identityVersion);
+    }
+
+    // ── Dormancy (oracle-controlled) ─────────────────────────────────────
+
+    /**
+     * @notice Set dormancy status. Called by oracle when compute depletes.
+     */
+    function setDormant(uint256 tokenId, bool dormant) external onlyOwner {
+        agents[tokenId].isDormant = dormant;
+        emit AgentDormant(tokenId, dormant);
     }
 
     // ── Breeding ─────────────────────────────────────────────────────────
@@ -140,7 +225,11 @@ contract HumanAgent is ERC721Enumerable, Ownable {
             parentA: parentAId,
             parentB: parentBId,
             breedCount: 0,
-            birthTimestamp: uint64(block.timestamp)
+            birthTimestamp: uint64(block.timestamp),
+            soulHash: bytes32(0),  // child's soul defined off-chain after breeding
+            skillHash: bytes32(0),
+            identityVersion: 1,
+            isDormant: false
         });
 
         // Update parents

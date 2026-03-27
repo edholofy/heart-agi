@@ -21,7 +21,12 @@ interface UseAgentRuntimeOptions {
   agentId: string
   agentName: string
   specialization: string
-  systemPrompt: string
+  /** soul.md — identity */
+  soul: string
+  /** skill.md — capabilities */
+  skill: string
+  /** Initial compute token balance */
+  computeBalance: number
   autoStart?: boolean
 }
 
@@ -67,10 +72,12 @@ export function useAgentRuntime(options: UseAgentRuntimeOptions) {
       agentId: options.agentId,
       agentName: options.agentName,
       specialization: options.specialization,
-      systemPrompt: options.systemPrompt,
+      soul: options.soul,
+      skill: options.skill,
+      computeBalance: options.computeBalance,
       supabaseUrl: url,
       supabaseKey: key,
-      tickIntervalMs: 12000 + Math.random() * 8000, // 12-20s, randomized to prevent sync
+      tickIntervalMs: 12000 + Math.random() * 8000,
     }
 
     const runtime = new AgentRuntime(config)

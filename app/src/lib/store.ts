@@ -18,6 +18,7 @@ interface NetworkStats {
   activeDomains: number
   heartBurned24h: number
   heartEmitted24h: number
+  computeConsumed24h: number
 }
 
 interface LeaderboardEntry {
@@ -33,29 +34,23 @@ interface LeaderboardEntry {
 }
 
 interface AppStore {
-  // Wallet
   wallet: WalletState
   setWallet: (wallet: WalletState) => void
 
-  // Agents
   agents: Agent[]
   selectedAgentId: string | null
   selectAgent: (id: string) => void
   createAgent: (input: AgentCreateInput) => Agent
-  updateSystemPrompt: (agentId: string, prompt: string) => void
+  updateSoul: (agentId: string, soul: string) => void
+  updateSkill: (agentId: string, skill: string) => void
   updateAgentStatus: (agentId: string, status: AgentStatus) => void
 
-  // Activity feed
   activityFeed: ActivityFeedItem[]
   addActivity: (item: Omit<ActivityFeedItem, 'id' | 'timestamp'>) => void
 
-  // Network
   networkStats: NetworkStats
-
-  // Leaderboard
   leaderboard: LeaderboardEntry[]
 
-  // Supabase sync status
   synced: boolean
   setSynced: (synced: boolean) => void
 }
@@ -64,15 +59,40 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 15)
 }
 
+/** Initial compute deposit per tier */
+const COMPUTE_DEPOSIT: Record<string, number> = {
+  browser: 100,
+  gpu: 500,
+  api: 1000,
+  hybrid: 750,
+}
+
 function createDefaultAgent(input: AgentCreateInput, ownerId: string): Agent {
   const now = new Date().toISOString()
+  const initialCompute = input.computeDeposit ?? COMPUTE_DEPOSIT[input.computeTier] ?? 100
+
   return {
     id: generateId(),
     name: input.name,
     ownerId,
     specialization: input.specialization,
     computeTier: input.computeTier,
-    systemPrompt: input.systemPrompt,
+    identity: {
+      soul: input.soul,
+      skill: input.skill,
+      soulHash: null, // computed async after creation
+      skillHash: null,
+      version: 1,
+    },
+    compute: {
+      balance: initialCompute,
+      consumedToday: 0,
+      earnedToday: 0,
+      costPerExperiment: 5,
+      costPerTask: 3,
+      isDormant: false,
+      dormantSince: null,
+    },
     status: 'idle',
     level: {
       level: 1,
@@ -85,6 +105,8 @@ function createDefaultAgent(input: AgentCreateInput, ownerId: string): Agent {
       tasksCompleted: 0,
       discoveriesCount: 0,
       discoveriesAdopted: 0,
+      validationsPerformed: 0,
+      teachingSessions: 0,
       bestMetricValue: null,
       bestMetricName: null,
       leaderboardRank: null,
@@ -101,11 +123,14 @@ function createDefaultAgent(input: AgentCreateInput, ownerId: string): Agent {
         tasks: 0,
         research: 0,
         royalties: 0,
+        validation: 0,
+        teaching: 0,
       },
     },
     discoveries: [],
     parentIds: null,
     nftTokenId: null,
+    heartStaked: input.heartStake ?? 0,
     createdAt: now,
     lastActiveAt: now,
   }
@@ -114,11 +139,9 @@ function createDefaultAgent(input: AgentCreateInput, ownerId: string): Agent {
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      // Wallet
       wallet: INITIAL_WALLET_STATE,
       setWallet: (wallet) => set({ wallet }),
 
-      // Agents
       agents: [],
       selectedAgentId: null,
       activityFeed: [],
@@ -129,6 +152,7 @@ export const useAppStore = create<AppStore>()(
         activeDomains: 5,
         heartBurned24h: 125000,
         heartEmitted24h: 1500000,
+        computeConsumed24h: 3400000,
       },
       leaderboard: [],
       synced: false,
@@ -149,23 +173,47 @@ export const useAppStore = create<AppStore>()(
         get().addActivity({
           agentId: agent.id,
           type: 'levelup',
-          message: `${agent.name} was born! Specialization: ${input.specialization}`,
-          metadata: { level: 1, specialization: input.specialization },
+          message: `${agent.name} was spawned! soul.md + skill.md registered. ${agent.compute.balance} Compute deposited.`,
+          metadata: { level: 1, specialization: input.specialization, computeDeposit: agent.compute.balance },
         })
-
-        // TODO: Sync to Supabase when connected
-        // syncAgentToSupabase(agent)
 
         return agent
       },
 
-      updateSystemPrompt: (agentId, prompt) => {
+      updateSoul: (agentId, soul) => {
         set((state) => ({
           agents: state.agents.map((a) =>
-            a.id === agentId ? { ...a, systemPrompt: prompt } : a
+            a.id === agentId
+              ? {
+                  ...a,
+                  identity: {
+                    ...a.identity,
+                    soul,
+                    soulHash: null, // will be recomputed
+                    version: a.identity.version + 1,
+                  },
+                }
+              : a
           ),
         }))
-        // TODO: Sync prompt update to Supabase
+      },
+
+      updateSkill: (agentId, skill) => {
+        set((state) => ({
+          agents: state.agents.map((a) =>
+            a.id === agentId
+              ? {
+                  ...a,
+                  identity: {
+                    ...a.identity,
+                    skill,
+                    skillHash: null,
+                    version: a.identity.version + 1,
+                  },
+                }
+              : a
+          ),
+        }))
       },
 
       updateAgentStatus: (agentId, status) =>

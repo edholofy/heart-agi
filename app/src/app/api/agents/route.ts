@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { walletAddress, name, specialization, computeTier, systemPrompt } =
+    const { walletAddress, name, specialization, computeTier, soul, skill } =
       body
 
     if (!walletAddress || !name || !specialization) {
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         name,
         specialization,
         compute_tier: computeTier ?? 'browser',
-        system_prompt: systemPrompt ?? '',
+        system_prompt: [soul ?? '', '---', skill ?? ''].join('\n'),
       })
       .select()
       .single()

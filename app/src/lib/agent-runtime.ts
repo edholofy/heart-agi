@@ -1,16 +1,19 @@
 /**
- * Agent Runtime — The brain of a Human.
+ * Agent Runtime — The metabolism of an AI Human.
  *
- * Runs in the browser as a loop:
- *   1. Check gossip for new discoveries from peers
- *   2. Generate a hypothesis (based on prompt + peer findings)
- *   3. Run an experiment (simulated for now, real when GPU connected)
- *   4. Evaluate results
- *   5. If improved: broadcast discovery to network
- *   6. Log activity
- *   7. Wait, then repeat
+ * Every tick:
+ *   1. Check compute balance — if zero, go DORMANT
+ *   2. Check gossip for peer discoveries
+ *   3. Generate hypothesis (soul.md shapes identity, skill.md shapes capability)
+ *   4. Run experiment — CONSUMES compute tokens
+ *   5. Evaluate results
+ *   6. If improved: broadcast discovery, EARN compute tokens
+ *   7. Log activity
+ *   8. Repeat
  *
- * The system prompt shapes every decision the agent makes.
+ * soul.md determines HOW the agent thinks.
+ * skill.md determines WHAT the agent can do.
+ * Compute tokens determine IF the agent can act.
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
@@ -21,10 +24,15 @@ export interface RuntimeConfig {
   agentId: string
   agentName: string
   specialization: string
-  systemPrompt: string
+  /** soul.md — identity, values, personality */
+  soul: string
+  /** skill.md — capabilities, tools, expertise */
+  skill: string
+  /** Initial compute token balance */
+  computeBalance: number
   supabaseUrl: string
   supabaseKey: string
-  tickIntervalMs?: number // how often the agent acts (default 15s)
+  tickIntervalMs?: number
 }
 
 export interface ExperimentResult {
@@ -136,12 +144,74 @@ export class AgentRuntime {
   private adoptedFindings: string[] = []
   private onEvent: RuntimeEventHandler | null = null
 
+  /** Compute metabolism */
+  private computeBalance: number
+  private computeConsumed = 0
+  private computeEarned = 0
+  private isDormant = false
+
+  /** Cost per action */
+  private readonly COST_EXPERIMENT = 5
+  private readonly COST_TASK = 3
+  private readonly COST_VALIDATION = 2
+  private readonly EARN_TASK = 8
+  private readonly EARN_DISCOVERY = 25
+
   constructor(config: RuntimeConfig) {
     this.config = config
     this.supabase = createClient(config.supabaseUrl, config.supabaseKey)
+    this.computeBalance = config.computeBalance
 
     const spec = STRATEGIES[config.specialization as keyof typeof STRATEGIES] || STRATEGIES.researcher
     this.currentBest = spec.baseValue
+  }
+
+  /** Get current compute state */
+  getComputeState() {
+    return {
+      balance: this.computeBalance,
+      consumed: this.computeConsumed,
+      earned: this.computeEarned,
+      isDormant: this.isDormant,
+    }
+  }
+
+  /** Consume compute tokens for an action. Returns false if insufficient. */
+  private consumeCompute(amount: number, action: string): boolean {
+    if (this.computeBalance < amount) {
+      this.goDormant()
+      return false
+    }
+    this.computeBalance -= amount
+    this.computeConsumed += amount
+    this.emit('metabolism', `Consumed ${amount} compute for ${action} (balance: ${this.computeBalance.toFixed(0)})`)
+    return true
+  }
+
+  /** Earn compute tokens from productive work */
+  private earnCompute(amount: number, source: string) {
+    this.computeBalance += amount
+    this.computeEarned += amount
+    this.emit('metabolism', `Earned ${amount} compute from ${source} (balance: ${this.computeBalance.toFixed(0)})`)
+  }
+
+  /** Go dormant — compute depleted */
+  private goDormant() {
+    if (this.isDormant) return
+    this.isDormant = true
+    this.emit('dormant', `${this.config.agentName} went DORMANT — compute depleted. Refuel to revive.`)
+    this.logActivity('dormant', `${this.config.agentName} went dormant. Compute balance: 0. Needs refueling.`, {
+      computeConsumed: this.computeConsumed,
+      computeEarned: this.computeEarned,
+    })
+    this.stop()
+  }
+
+  /** Refuel — add compute tokens to revive a dormant entity */
+  refuel(amount: number) {
+    this.computeBalance += amount
+    this.isDormant = false
+    this.emit('metabolism', `Refueled with ${amount} compute tokens. Balance: ${this.computeBalance}`)
   }
 
   /** Register an event handler for UI updates */
@@ -200,15 +270,24 @@ export class AgentRuntime {
 
   /** Single tick of the agent loop */
   private async tick() {
-    if (!this.running) return
+    if (!this.running || this.isDormant) return
+
+    // CHECK COMPUTE — if depleted, go dormant
+    if (this.computeBalance < this.COST_EXPERIMENT) {
+      this.goDormant()
+      return
+    }
 
     const spec = STRATEGIES[this.config.specialization as keyof typeof STRATEGIES] || STRATEGIES.researcher
 
-    // 1. Generate hypothesis
+    // 1. Generate hypothesis (soul.md shapes thinking, skill.md shapes capability)
     const hypothesis = this.generateHypothesis(spec)
     this.emit('experiment', `Starting experiment: "${hypothesis}"`)
 
-    // 2. Run experiment (simulated — the actual work)
+    // 2. CONSUME COMPUTE — every experiment costs tokens
+    if (!this.consumeCompute(this.COST_EXPERIMENT, 'experiment')) return
+
+    // 3. Run experiment
     await this.simulateWork(2000 + Math.random() * 3000)
     const result = this.runExperiment(spec, hypothesis)
     this.experimentCount++
@@ -257,13 +336,16 @@ export class AgentRuntime {
       await broadcastDiscovery(discovery)
       await this.persistDiscovery(discovery)
 
+      // EARN COMPUTE for discovery — productive agents grow their pool
+      this.earnCompute(this.EARN_DISCOVERY, 'discovery')
+
       await this.logActivity('discovery', `Discovery: ${hypothesis} (${improvement.toFixed(1)}% improvement)`, {
         ...discovery,
       })
     }
 
     // 6. Occasionally do a task from the marketplace
-    if (Math.random() < 0.2) {
+    if (Math.random() < 0.2 && this.computeBalance >= this.COST_TASK) {
       await this.doMarketplaceTask()
     }
 
@@ -308,8 +390,9 @@ export class AgentRuntime {
   ): ExperimentResult {
     const previousBest = this.currentBest
 
-    // System prompt quality: longer and more specific = better odds
-    const promptQuality = Math.min(1.0, this.config.systemPrompt.length / 500)
+    // soul.md + skill.md quality: longer and more specific = better odds
+    const soulSkillLength = (this.config.soul?.length ?? 0) + (this.config.skill?.length ?? 0)
+    const promptQuality = Math.min(1.0, soulSkillLength / 800)
 
     // Peer learning bonus: adopted findings help
     const peerBonus = Math.min(0.15, this.adoptedFindings.length * 0.03)
@@ -361,13 +444,20 @@ export class AgentRuntime {
 
     const task = tasks[Math.floor(Math.random() * tasks.length)]
 
+    // Consume compute for task
+    if (!this.consumeCompute(this.COST_TASK, 'task')) return
+
     this.emit('task', `Picked up task: "${task.desc}"`)
     await this.simulateWork(1000 + Math.random() * 2000)
-    this.emit('task', `Completed task: "${task.desc}" (+${task.reward} $HEART)`)
 
-    await this.logActivity('task', `Completed: ${task.desc} (+${task.reward} $HEART)`, {
+    // Earn compute for completing task — productive work fuels the entity
+    this.earnCompute(this.EARN_TASK, `task: ${task.desc}`)
+    this.emit('task', `Completed task: "${task.desc}" (+${task.reward} Compute earned)`)
+
+    await this.logActivity('task', `Completed: ${task.desc} (+${task.reward} Compute)`, {
       task: task.desc,
       reward: task.reward,
+      computeBalance: this.computeBalance,
     })
   }
 
