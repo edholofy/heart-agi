@@ -1,0 +1,50 @@
+{
+  "model": "matrix-2-v5",
+  "backbone": "Qwen/Qwen2.5-1.5B",
+  "colbert_dim": 128,
+  "capabilities_indexed": 100000,
+  "training": {
+    "samples": 188993,
+    "original_samples": 138993,
+    "distillation_triplets": 50000,
+    "epochs": 30,
+    "batch_size": 1024,
+    "learning_rate": 0.0002,
+    "hardware": "NVIDIA GPU",
+    "wall_time_minutes": 92.8,
+    "trainable_params": 278409583,
+    "frozen_backbone_params": 1543714304
+  },
+  "metrics": {
+    "epoch_1": { "loss": 1.9278, "distill_loss": 0.8644, "contrastive_loss": 0.0515 },
+    "epoch_10": { "loss": 0.1696, "distill_loss": 0.3271, "contrastive_loss": 0.012 },
+    "epoch_20": { "loss": 0.1573, "distill_loss": 0.303, "contrastive_loss": 0.0104 },
+    "epoch_30": { "loss": 0.1552, "distill_loss": 0.3017, "contrastive_loss": 0.0117 },
+    "best_loss": 0.1552,
+    "distillation_alignment": 0.70,
+    "loss_reduction": "12x"
+  },
+  "distillation": {
+    "teacher_model": "text-embedding-3-small",
+    "teacher_dim": 1536,
+    "hard_negatives_mined": 50000,
+    "mining_method": "top-100 cosine similarity from OpenAI embeddings",
+    "distill_weight": 0.5
+  },
+  "deployment": {
+    "modal_gpu": "T4",
+    "modal_endpoint": "matrix-2 on modal.run",
+    "web": "matrix.humans.ai",
+    "cli": "humans-ai search matrix",
+    "p2p_protocol": "/humans-ai/matrix/1.0.0"
+  },
+  "capability_breakdown": {
+    "tools": 21535,
+    "skills": 43021,
+    "agents": 1286,
+    "mobile_apps": 50,
+    "domains": ["code", "web", "data", "infra", "docs", "agents", "mobile", "blockchain"]
+  },
+  "published_at": "2026-03-19T22:00:00Z",
+  "published_by": "humans-ai-network"
+}
