@@ -64,9 +64,7 @@ export function useAgentRuntime(options: UseAgentRuntimeOptions) {
 
   // Initialize runtime
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!url || !key) return
+    if (!options.agentId) return
 
     const config: RuntimeConfig = {
       agentId: options.agentId,
@@ -75,8 +73,6 @@ export function useAgentRuntime(options: UseAgentRuntimeOptions) {
       soul: options.soul,
       skill: options.skill,
       computeBalance: options.computeBalance,
-      supabaseUrl: url,
-      supabaseKey: key,
       tickIntervalMs: 12000 + Math.random() * 8000,
     }
 

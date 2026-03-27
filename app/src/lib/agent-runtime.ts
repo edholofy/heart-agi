@@ -16,8 +16,7 @@
  * Compute tokens determine IF the agent can act.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { broadcastActivity, broadcastDiscovery } from './gossip'
+import { broadcastActivity, broadcastDiscovery, getSharedClient } from './gossip'
 import type { GossipMessage, DiscoveryGossip } from './gossip'
 
 export interface RuntimeConfig {
@@ -30,8 +29,6 @@ export interface RuntimeConfig {
   skill: string
   /** Initial compute token balance */
   computeBalance: number
-  supabaseUrl: string
-  supabaseKey: string
   tickIntervalMs?: number
 }
 
@@ -135,7 +132,7 @@ const STRATEGIES = {
 export class AgentRuntime {
   private config: RuntimeConfig
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private supabase: SupabaseClient<any, 'public', any>
+  private supabase: ReturnType<typeof getSharedClient>
   private running = false
   private intervalId: ReturnType<typeof setInterval> | null = null
   private currentBest: number
@@ -157,10 +154,15 @@ export class AgentRuntime {
   private readonly EARN_TASK = 8
   private readonly EARN_DISCOVERY = 25
 
+  /** Whether this agent exists in Supabase (has a UUID, not a local ID) */
+  private isPersistedAgent: boolean
+
   constructor(config: RuntimeConfig) {
     this.config = config
-    this.supabase = createClient(config.supabaseUrl, config.supabaseKey)
+    this.supabase = getSharedClient()
     this.computeBalance = config.computeBalance
+    // Local agents have short IDs; Supabase agents have UUIDs
+    this.isPersistedAgent = config.agentId.includes('-') && config.agentId.length > 20
 
     const spec = STRATEGIES[config.specialization as keyof typeof STRATEGIES] || STRATEGIES.researcher
     this.currentBest = spec.baseValue
@@ -463,6 +465,7 @@ export class AgentRuntime {
 
   /** Persist a discovery to Supabase */
   private async persistDiscovery(discovery: DiscoveryGossip) {
+    if (!this.isPersistedAgent) return
     try {
       await this.supabase.from('discoveries').insert({
         agent_id: this.config.agentId,
@@ -483,14 +486,8 @@ export class AgentRuntime {
     message: string,
     metadata: Record<string, unknown>
   ) {
+    // Always broadcast via gossip (works for all agents)
     try {
-      await this.supabase.from('activity_feed').insert({
-        agent_id: this.config.agentId,
-        type,
-        message,
-        metadata,
-      })
-
       await broadcastActivity({
         type: type as GossipMessage['type'],
         agentId: this.config.agentId,
@@ -498,13 +495,27 @@ export class AgentRuntime {
         payload: { message, ...metadata },
         timestamp: new Date().toISOString(),
       })
-    } catch (err) {
-      console.warn('Failed to log activity:', err)
+    } catch {
+      // Gossip broadcast is best-effort
+    }
+
+    // Only persist to Supabase if agent exists in DB
+    if (!this.isPersistedAgent) return
+    try {
+      await this.supabase.from('activity_feed').insert({
+        agent_id: this.config.agentId,
+        type,
+        message,
+        metadata,
+      })
+    } catch {
+      // DB write is best-effort
     }
   }
 
   /** Update agent stats in Supabase */
   private async updateStats() {
+    if (!this.isPersistedAgent) return
     try {
       await this.supabase
         .from('agents')
@@ -513,10 +524,11 @@ export class AgentRuntime {
           discoveries_count: this.discoveryCount,
           status: 'researching',
           best_metric_value: this.currentBest,
+          compute_balance: this.computeBalance,
         })
         .eq('id', this.config.agentId)
-    } catch (err) {
-      console.warn('Failed to update stats:', err)
+    } catch {
+      // DB write is best-effort
     }
   }
 

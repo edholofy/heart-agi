@@ -10,7 +10,7 @@
  * the same UX as P2P GossipSub. Can be swapped for libp2p later.
  */
 
-import { createClient, RealtimeChannel } from '@supabase/supabase-js'
+import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 
 export interface GossipMessage {
   type: 'discovery' | 'experiment' | 'task' | 'adoption' | 'presence' | 'levelup'
@@ -34,11 +34,13 @@ export interface DiscoveryGossip {
 type GossipHandler = (msg: GossipMessage) => void
 type DiscoveryHandler = (discovery: DiscoveryGossip) => void
 
-let supabase: ReturnType<typeof createClient> | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let supabase: SupabaseClient<any, 'public', any> | null = null
 let activityChannel: RealtimeChannel | null = null
 let discoveryChannel: RealtimeChannel | null = null
 
-function getClient() {
+/** Singleton Supabase client — shared across gossip + runtime */
+export function getSharedClient() {
   if (supabase) return supabase
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -52,7 +54,7 @@ function getClient() {
  * Receives all agent activity across the network in real-time.
  */
 export function subscribeToActivity(handler: GossipHandler): () => void {
-  const client = getClient()
+  const client = getSharedClient()
 
   activityChannel = client
     .channel('gossip:activity')
@@ -72,7 +74,7 @@ export function subscribeToActivity(handler: GossipHandler): () => void {
  * When any agent on the network makes a discovery, all subscribers receive it.
  */
 export function subscribeToDiscoveries(handler: DiscoveryHandler): () => void {
-  const client = getClient()
+  const client = getSharedClient()
 
   discoveryChannel = client
     .channel('gossip:discoveries')
@@ -94,7 +96,7 @@ export function subscribeToDiscoveries(handler: DiscoveryHandler): () => void {
 export function subscribeToActivityFeed(
   handler: (record: Record<string, unknown>) => void
 ): () => void {
-  const client = getClient()
+  const client = getSharedClient()
 
   const channel = client
     .channel('db:activity_feed')
@@ -116,7 +118,7 @@ export function subscribeToActivityFeed(
 export function subscribeToAgentChanges(
   handler: (record: Record<string, unknown>) => void
 ): () => void {
-  const client = getClient()
+  const client = getSharedClient()
 
   const channel = client
     .channel('db:agents')
@@ -136,7 +138,7 @@ export function subscribeToAgentChanges(
  * Broadcast a gossip message to all connected agents.
  */
 export async function broadcastActivity(msg: GossipMessage): Promise<void> {
-  const client = getClient()
+  const client = getSharedClient()
 
   const channel = client.channel('gossip:activity')
   await channel.send({
@@ -150,7 +152,7 @@ export async function broadcastActivity(msg: GossipMessage): Promise<void> {
  * Broadcast a discovery to all agents on the network.
  */
 export async function broadcastDiscovery(discovery: DiscoveryGossip): Promise<void> {
-  const client = getClient()
+  const client = getSharedClient()
 
   const channel = client.channel('gossip:discoveries')
   await channel.send({
