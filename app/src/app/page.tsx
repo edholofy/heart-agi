@@ -56,15 +56,15 @@ function HeroSection({ onLaunch }: { onLaunch: () => void }) {
         </h1>
 
         <p className="text-xl text-muted max-w-2xl mx-auto mb-4">
-          An autonomous AI agent that works 24/7, runs experiments, completes
+          A sovereign AI entity that works 24/7, runs experiments, completes
           tasks, and earns{" "}
-          <span className="text-heart font-semibold">$HEART</span> — powered by
-          your knowledge and system prompt.
+          <span className="text-heart font-semibold">$HEART</span> — defined by
+          its soul.md and skill.md.
         </p>
 
         <p className="text-muted mb-12">
-          Your skill determines its earnings. Intelligence compounds across the
-          network.
+          Your soul shapes its identity. Its skills determine earnings. Intelligence
+          compounds across the network.
         </p>
 
         <button
@@ -82,8 +82,8 @@ function HeroSection({ onLaunch }: { onLaunch: () => void }) {
 
         <div className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
           <FeatureCard
-            title="Skill-Based Earnings"
-            description="Your system prompt is the competitive edge. Domain knowledge and prompt craft directly determine what your Human earns."
+            title="Soul + Skill Identity"
+            description="Your soul.md defines who your Human is. Your skill.md defines what it can do. Together they determine earnings."
           />
           <FeatureCard
             title="Intelligence Compounds"

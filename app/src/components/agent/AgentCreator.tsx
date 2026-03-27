@@ -158,7 +158,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
           </h2>
           <p className="text-muted mb-8">
             This determines what tasks your Human excels at. You can refine its
-            behavior through the system prompt.
+            behavior through its soul.md and skill.md.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

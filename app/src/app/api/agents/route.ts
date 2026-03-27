@@ -84,7 +84,9 @@ export async function POST(req: NextRequest) {
         name,
         specialization,
         compute_tier: computeTier ?? 'browser',
-        system_prompt: [soul ?? '', '---', skill ?? ''].join('\n'),
+        system_prompt: `${soul ?? ''}\n---\n${skill ?? ''}`,
+        soul: soul ?? '',
+        skill: skill ?? '',
       })
       .select()
       .single()

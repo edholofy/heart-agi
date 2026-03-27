@@ -8,7 +8,9 @@ interface ApiAgent {
   name: string
   specialization: string
   compute_tier: string
-  system_prompt: string
+  system_prompt: string  // legacy — soul + skill concatenated
+  soul: string
+  skill: string
   status: string
   level: number
   xp_current: number

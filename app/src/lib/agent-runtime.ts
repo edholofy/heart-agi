@@ -353,7 +353,7 @@ export class AgentRuntime {
     await this.updateStats()
   }
 
-  /** Generate a hypothesis influenced by system prompt and adopted findings */
+  /** Generate a hypothesis influenced by soul.md + skill.md and adopted findings */
   private generateHypothesis(spec: { hypotheses: string[]; metric: string; direction: string; baseValue: number }): string {
     const templates = spec.hypotheses
     const template = templates[Math.floor(Math.random() * templates.length)]
@@ -380,7 +380,7 @@ export class AgentRuntime {
    * Run an experiment — simulates the actual ML/analysis work.
    *
    * The probability of improvement depends on:
-   * - System prompt quality (longer, more specific = better)
+   * - soul.md + skill.md quality (longer, more specific = better)
    * - Number of adopted findings (learning from peers)
    * - Random chance (some experiments just work)
    */

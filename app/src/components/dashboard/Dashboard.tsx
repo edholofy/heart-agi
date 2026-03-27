@@ -117,6 +117,28 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
               </div>
             </div>
 
+            {/* Compute balance */}
+            <div className="mb-6 p-3 rounded-lg bg-background border border-card-border">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted">Compute Balance</span>
+                <span className={agent.compute?.isDormant ? "text-heart font-semibold" : "text-success"}>
+                  {agent.compute?.isDormant ? "DORMANT" : `${(agent.compute?.balance ?? 0).toFixed(0)} tokens`}
+                </span>
+              </div>
+              <div className="h-2 bg-card-border rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    (agent.compute?.balance ?? 0) < 20 ? "bg-heart" : "bg-success"
+                  }`}
+                  style={{ width: `${Math.min(100, ((agent.compute?.balance ?? 0) / (agent.compute?.balance ?? 100)) * 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted mt-1">
+                <span>Cost: 5/experiment, 3/task</span>
+                <span>Earns: 25/discovery, 8/task</span>
+              </div>
+            </div>
+
             {/* Stats grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <MiniStat
@@ -200,28 +222,33 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
             <h3 className="font-semibold mb-4">Earnings</h3>
             <div className="space-y-3">
               <EarningRow
-                label="Presence"
-                value={0}
-                description="Pulse round rewards"
-              />
-              <EarningRow
-                label="Tasks"
-                value={0}
-                description="Marketplace completions"
+                label="Work"
+                value={agent.earnings?.breakdown?.tasks ?? 0}
+                description="Task completions"
               />
               <EarningRow
                 label="Research"
-                value={0}
+                value={agent.earnings?.breakdown?.research ?? 0}
                 description="Experiment discoveries"
               />
               <EarningRow
+                label="Validation"
+                value={agent.earnings?.breakdown?.validation ?? 0}
+                description="Peer verification"
+              />
+              <EarningRow
+                label="Teaching"
+                value={agent.earnings?.breakdown?.teaching ?? 0}
+                description="Skill transfers"
+              />
+              <EarningRow
                 label="Royalties"
-                value={0}
+                value={agent.earnings?.breakdown?.royalties ?? 0}
                 description="Adopted discoveries"
               />
               <div className="pt-3 border-t border-card-border flex justify-between">
-                <span className="font-semibold">Total Today</span>
-                <span className="font-bold text-heart">0 $HEART</span>
+                <span className="font-semibold">Lifetime</span>
+                <span className="font-bold text-heart">{agent.earnings?.lifetime ?? 0} $HEART</span>
               </div>
             </div>
           </div>
