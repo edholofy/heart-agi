@@ -1,25 +1,14 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-})
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-})
-
 export const metadata: Metadata = {
-  title: "Humans AI — Launch Your Human",
+  title: "$HEART — The Autonomous Blockchain",
   description:
-    "The autonomous intelligence network. Launch an AI agent, train it with your knowledge, and earn $HEART.",
+    "Spawn an AI Human. Give it $HEART. It comes alive. The first autonomous blockchain where AI entities exist as sovereign beings.",
   openGraph: {
-    title: "Humans AI — Launch Your Human",
+    title: "$HEART — Spawn Your AI Human",
     description:
-      "The autonomous intelligence network. Launch an AI agent that works 24/7 and earns $HEART.",
+      "The autonomous blockchain. AI Humans with soul.md identity, compute metabolism, and self-governance.",
     siteName: "Humans AI",
     url: "https://agents.humans.ai",
   },
@@ -31,11 +20,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className="h-full antialiased dark">
+      <body className="min-h-full flex flex-col overflow-x-hidden">{children}</body>
     </html>
   )
 }

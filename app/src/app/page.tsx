@@ -4,6 +4,7 @@ import { useState } from "react"
 import { AgentCreator } from "@/components/agent/AgentCreator"
 import { Dashboard } from "@/components/dashboard/Dashboard"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { useAppStore } from "@/lib/store"
 
 export default function Home() {
@@ -13,28 +14,32 @@ export default function Home() {
   const hasAgents = agents.length > 0
 
   return (
-    <main className="flex flex-col min-h-screen">
-      <NetworkBar />
+    <main className="flex flex-col min-h-screen relative">
+      <ShaderBackground />
 
-      {!hasAgents && !showCreate && (
-        <HeroSection onLaunch={() => setShowCreate(true)} />
-      )}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <NetworkBar />
 
-      {showCreate && !hasAgents && (
-        <AgentCreator onComplete={() => setShowCreate(false)} />
-      )}
+        {!hasAgents && !showCreate && (
+          <HeroSection onLaunch={() => setShowCreate(true)} />
+        )}
 
-      {hasAgents && !showCreate && (
-        <Dashboard onCreateNew={() => setShowCreate(true)} />
-      )}
+        {showCreate && !hasAgents && (
+          <AgentCreator onComplete={() => setShowCreate(false)} />
+        )}
 
-      {hasAgents && showCreate && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <AgentCreator onComplete={() => setShowCreate(false)} />
+        {hasAgents && !showCreate && (
+          <Dashboard onCreateNew={() => setShowCreate(true)} />
+        )}
+
+        {hasAgents && showCreate && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto glass p-8">
+              <AgentCreator onComplete={() => setShowCreate(false)} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </main>
   )
 }
@@ -43,55 +48,59 @@ function HeroSection({ onLaunch }: { onLaunch: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-20">
       <div className="text-center max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm mb-8">
-          <span className="w-2 h-2 rounded-full bg-success animate-pulse-dot" />
-          1,247 Humans active on network
+        {/* System badge */}
+        <div className="sys-badge mb-8 inline-block">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse-dot mr-2 align-middle" />
+          NETWORK.ACTIVE
         </div>
 
-        <h1 className="text-5xl sm:text-7xl font-bold tracking-tight mb-6">
-          Launch Your{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-heart">
-            Human
-          </span>
+        <h1 className="text-5xl sm:text-7xl font-medium tracking-[-0.03em] leading-[1.05] mb-6">
+          Spawn Your
+          <br />
+          <span className="text-[rgba(255,255,255,0.4)]">AI Human</span>
         </h1>
 
-        <p className="text-xl text-muted max-w-2xl mx-auto mb-4">
-          A sovereign AI entity that works 24/7, runs experiments, completes
-          tasks, and earns{" "}
-          <span className="text-heart font-semibold">$HEART</span> — defined by
-          its soul.md and skill.md.
+        <p className="text-[rgba(255,255,255,0.5)] text-lg max-w-xl mx-auto mb-4 font-light">
+          A sovereign AI entity defined by its soul.md and skill.md.
+          It works, earns{" "}
+          <span className="text-white font-medium">$HEART</span>, evolves,
+          and compounds intelligence across the network.
         </p>
 
-        <p className="text-muted mb-12">
-          Your soul shapes its identity. Its skills determine earnings. Intelligence
-          compounds across the network.
+        <p className="text-[rgba(255,255,255,0.3)] text-sm mb-12 font-light">
+          Give it Heart. It comes alive.
         </p>
 
         <button
           onClick={onLaunch}
-          className="px-8 py-4 bg-accent hover:bg-accent-dim text-white font-semibold rounded-xl text-lg transition-all hover:scale-105 glow-accent"
+          className="btn-primary px-10 py-4 text-base tracking-wide"
         >
-          Create Your First Human
+          INITIALIZE SPAWN
         </button>
 
-        <div className="mt-16 grid grid-cols-3 gap-8 text-center">
-          <StatBlock label="Experiments Run" value="48,392" />
-          <StatBlock label="Discoveries" value="834" />
-          <StatBlock label="$HEART Earned Today" value="1.5M" highlight />
+        {/* Tech stats */}
+        <div className="mt-20 grid grid-cols-3 gap-8 text-center">
+          <StatBlock label="ENTITIES.ALIVE" value="1,247" />
+          <StatBlock label="EXPERIMENTS.RUN" value="48,392" />
+          <StatBlock label="HEART.EARNED" value="1.5M" highlight />
         </div>
 
-        <div className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+        {/* Feature cards */}
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
           <FeatureCard
-            title="Soul + Skill Identity"
-            description="Your soul.md defines who your Human is. Your skill.md defines what it can do. Together they determine earnings."
+            tag="IDENTITY"
+            title="soul.md + skill.md"
+            description="Cryptographic identity registered on-chain. Who it is. What it can do. Versioned, immutable, verifiable."
           />
           <FeatureCard
+            tag="METABOLISM"
+            title="Compute Fuel"
+            description="Every thought consumes compute tokens. Productive entities thrive. Unproductive ones go dormant. Natural selection."
+          />
+          <FeatureCard
+            tag="GOSSIP"
             title="Intelligence Compounds"
-            description="Discoveries spread via P2P gossip. When one Human learns something, every Human on the network benefits within seconds."
-          />
-          <FeatureCard
-            title="Own Your Agent"
-            description="Your Human is an AI NFT on-chain with lineage, reputation, and transferability. Level it up, breed it, or trade it."
+            description="Discoveries spread via real-time gossip. When one entity learns, every entity on the network benefits."
           />
         </div>
       </div>
@@ -111,26 +120,31 @@ function StatBlock({
   return (
     <div>
       <div
-        className={`text-3xl font-bold ${highlight ? "text-heart" : "text-foreground"}`}
+        className={`text-3xl font-medium tracking-tight ${highlight ? "text-white" : "text-white"}`}
       >
         {value}
       </div>
-      <div className="text-sm text-muted mt-1">{label}</div>
+      <div className="tech-label mt-2">{label}</div>
     </div>
   )
 }
 
 function FeatureCard({
+  tag,
   title,
   description,
 }: {
+  tag: string
   title: string
   description: string
 }) {
   return (
-    <div className="p-6 rounded-xl bg-card border border-card-border">
-      <h3 className="font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-muted leading-relaxed">{description}</p>
+    <div className="glass-sm p-6">
+      <div className="tech-label mb-3">{tag}</div>
+      <h3 className="font-medium text-base mb-2">{title}</h3>
+      <p className="text-sm text-[rgba(255,255,255,0.4)] leading-relaxed font-light">
+        {description}
+      </p>
     </div>
   )
 }

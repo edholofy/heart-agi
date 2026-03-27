@@ -20,7 +20,7 @@ export function WalletButton() {
         chainId: null,
         connected: false,
         connecting: false,
-        error: "Install MetaMask to connect",
+        error: "Install MetaMask",
       })
       return
     }
@@ -42,7 +42,7 @@ export function WalletButton() {
       setWallet({
         ...wallet,
         connecting: false,
-        error: error.message || "Failed to connect",
+        error: error.message || "Failed",
       })
     }
   }
@@ -50,7 +50,6 @@ export function WalletButton() {
   async function handleSwitchChain() {
     try {
       await switchToHumansChain()
-      // Reconnect to get updated chain info
       const result = await connectWallet()
       setWallet({
         address: result.address,
@@ -62,29 +61,22 @@ export function WalletButton() {
       })
     } catch (err: unknown) {
       const error = err as Error
-      setWallet({
-        ...wallet,
-        error: error.message || "Failed to switch chain",
-      })
+      setWallet({ ...wallet, error: error.message })
     }
   }
 
   if (wallet.connected && wallet.address) {
     return (
-      <div className="flex items-center gap-3">
-        {/* Balance */}
-        <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-heart/10 border border-heart/20">
-          <span className="text-heart text-sm font-semibold">
+      <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-1.5 btn-secondary px-3 py-1.5 text-xs font-mono">
+          <span className="text-white font-medium">
             {Number(wallet.balance).toFixed(2)}
           </span>
-          <span className="text-heart/60 text-xs">$HEART</span>
+          <span className="text-[rgba(255,255,255,0.4)]">HEART</span>
         </div>
-
-        {/* Address */}
         <button
           onClick={handleSwitchChain}
-          className="px-3 py-1.5 rounded-lg bg-card border border-card-border text-sm font-mono text-muted hover:text-foreground transition-colors"
-          title="Click to switch to Humans chain"
+          className="btn-secondary px-3 py-1.5 text-xs font-mono text-[rgba(255,255,255,0.5)]"
         >
           {shortenAddress(wallet.address)}
         </button>
@@ -93,19 +85,12 @@ export function WalletButton() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {wallet.error && (
-        <span className="text-xs text-heart hidden sm:block">
-          {wallet.error}
-        </span>
-      )}
-      <button
-        onClick={handleConnect}
-        disabled={wallet.connecting}
-        className="px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-dim text-white text-sm font-medium transition-colors disabled:opacity-50"
-      >
-        {wallet.connecting ? "Connecting..." : "Connect Wallet"}
-      </button>
-    </div>
+    <button
+      onClick={handleConnect}
+      disabled={wallet.connecting}
+      className="btn-secondary px-4 py-2 text-xs font-medium tracking-wide disabled:opacity-50"
+    >
+      {wallet.connecting ? "CONNECTING..." : "CONNECT"}
+    </button>
   )
 }
