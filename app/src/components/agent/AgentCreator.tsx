@@ -8,6 +8,7 @@ import {
 } from "@/types/agent"
 import { useAppStore } from "@/lib/store"
 import { createAgentApi } from "@/lib/api"
+import { isContractConfigured, mintAgentNFT } from "@/lib/contract"
 
 interface AgentCreatorProps {
   onComplete: () => void
@@ -88,20 +89,31 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
 
     try {
       // Always create locally
-      const localAgent = createAgent(input)
+      createAgent(input)
 
-      // If wallet connected, also persist to Supabase
+      // If wallet connected, persist to Supabase
       if (wallet.connected && wallet.address) {
-        const dbAgent = await createAgentApi(wallet.address, input)
-        // Update local agent with Supabase ID for future syncs
-        console.log('Agent persisted to Supabase:', dbAgent.id)
+        await createAgentApi(wallet.address, input)
+      }
+
+      // If contract is deployed, mint NFT on-chain
+      if (wallet.connected && isContractConfigured()) {
+        try {
+          const { tokenId, txHash } = await mintAgentNFT(
+            input.name,
+            input.specialization
+          )
+          console.log(`NFT minted: token #${tokenId}, tx: ${txHash}`)
+        } catch (mintErr) {
+          // NFT mint is optional — don't block agent creation
+          console.warn('NFT mint skipped:', mintErr)
+        }
       }
 
       onComplete()
     } catch (err: unknown) {
       const e = err as Error
       setError(e.message)
-      // Still complete even if API fails — local agent was created
       onComplete()
     } finally {
       setLaunching(false)
