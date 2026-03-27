@@ -1,0 +1,21 @@
+{
+  "name": "humans-ai-contracts",
+  "version": "1.0.0",
+  "description": "Humans AI — ERC-721 Agent NFT smart contracts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network humansTestnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network humansMainnet",
+    "deploy:local": "hardhat run scripts/deploy.ts --network hardhat"
+  },
+  "keywords": [],
+  "author": "Humans AI",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
+    "@openzeppelin/contracts": "^5.6.1",
+    "dotenv": "^17.3.1",
+    "hardhat": "^2.28.6"
+  }
+}
