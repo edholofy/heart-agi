@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useAppStore } from "@/lib/store"
 import { getLevelTitle, SPECIALIZATIONS } from "@/types/agent"
-import type { Agent, ActivityFeedItem } from "@/types/agent"
+import { useAgentRuntime, type LiveEvent } from "@/lib/useAgentRuntime"
 
 interface DashboardProps {
   onCreateNew: () => void
@@ -14,66 +14,24 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
   const selectedId = useAppStore((s) => s.selectedAgentId)
   const selectAgent = useAppStore((s) => s.selectAgent)
   const updateSystemPrompt = useAppStore((s) => s.updateSystemPrompt)
-  const addActivity = useAppStore((s) => s.addActivity)
 
   const agent = agents.find((a) => a.id === selectedId) ?? agents[0]
 
-  // Simulate live activity
-  const [simFeed, setSimFeed] = useState<ActivityFeedItem[]>([])
-
-  useEffect(() => {
-    if (!agent) return
-
-    const messages = [
-      { type: "experiment" as const, msg: "Completed experiment — val_loss: {val}" },
-      { type: "task" as const, msg: "Completed inference task (+2 $HEART)" },
-      { type: "gossip" as const, msg: "Received finding from peer: \"{finding}\"" },
-      { type: "experiment" as const, msg: "Started experiment #{num}" },
-      { type: "adoption" as const, msg: "Your discovery adopted by {n} peers (+{h} $HEART)" },
-      { type: "task" as const, msg: "Picked up task: \"{task}\"" },
-    ]
-
-    const findings = [
-      "RMSNorm outperforms LayerNorm on sub-5M params",
-      "Cosine schedule with 15% warmup beats linear",
-      "Kaiming init gain=0.8 reduces early loss",
-      "Rotary encoding improves long-context performance",
-      "Weight decay 0.05 optimal for small transformers",
-    ]
-
-    const tasks = [
-      "Review Python PR for security issues",
-      "Analyze Q3 earnings data",
-      "Translate landing page to Spanish",
-      "Extract product data from URLs",
-    ]
-
-    let expNum = 1847
-
-    const interval = setInterval(() => {
-      const template = messages[Math.floor(Math.random() * messages.length)]
-      let msg = template.msg
-        .replace("{val}", (2 + Math.random() * 1.5).toFixed(4))
-        .replace("{finding}", findings[Math.floor(Math.random() * findings.length)])
-        .replace("{num}", String(++expNum))
-        .replace("{n}", String(Math.floor(Math.random() * 8) + 1))
-        .replace("{h}", String(Math.floor(Math.random() * 40) + 5))
-        .replace("{task}", tasks[Math.floor(Math.random() * tasks.length)])
-
-      const item: ActivityFeedItem = {
-        id: Math.random().toString(36).slice(2),
-        agentId: agent.id,
-        type: template.type,
-        message: msg,
-        metadata: {},
-        timestamp: new Date().toISOString(),
-      }
-
-      setSimFeed((prev) => [item, ...prev].slice(0, 20))
-    }, 3000 + Math.random() * 4000)
-
-    return () => clearInterval(interval)
-  }, [agent])
+  // Real agent runtime with gossip
+  const {
+    liveFeed,
+    isRunning,
+    start,
+    stop,
+    peerDiscoveries,
+    stats,
+  } = useAgentRuntime({
+    agentId: agent?.id ?? '',
+    agentName: agent?.name ?? '',
+    specialization: agent?.specialization ?? 'researcher',
+    systemPrompt: agent?.systemPrompt ?? '',
+    autoStart: true,
+  })
 
   if (!agent) return null
 
@@ -122,10 +80,17 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-success animate-pulse-dot" />
-                <span className="text-sm text-success">Active</span>
-              </div>
+              <button
+                onClick={isRunning ? stop : start}
+                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm transition-all ${
+                  isRunning
+                    ? "bg-success/10 text-success hover:bg-success/20"
+                    : "bg-card-border text-muted hover:text-foreground"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${isRunning ? "bg-success animate-pulse-dot" : "bg-muted"}`} />
+                {isRunning ? "Running" : "Stopped"}
+              </button>
             </div>
 
             {/* Level progress */}
@@ -152,23 +117,23 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
             {/* Stats grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <MiniStat
-                label="Today"
-                value="0"
-                suffix="$HEART"
-                color="text-heart"
-              />
-              <MiniStat
                 label="Experiments"
-                value={String(agent.stats.experimentsCompleted)}
+                value={String(stats.experiments || agent.stats.experimentsCompleted)}
               />
               <MiniStat
                 label="Discoveries"
-                value={String(agent.stats.discoveriesCount)}
+                value={String(stats.discoveries || agent.stats.discoveriesCount)}
+                color="text-accent"
               />
               <MiniStat
-                label="Reputation"
-                value={String(agent.stats.reputation)}
-                suffix="/1000"
+                label="Adopted from Peers"
+                value={String(stats.adoptions)}
+                color="text-warning"
+              />
+              <MiniStat
+                label="Peer Findings"
+                value={String(peerDiscoveries.length)}
+                color="text-success"
               />
             </div>
           </div>
@@ -181,12 +146,12 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
             </div>
 
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {simFeed.length === 0 && (
+              {liveFeed.length === 0 && (
                 <div className="text-sm text-muted py-8 text-center">
-                  Your Human is waking up... activity will appear here.
+                  {isRunning ? "Your Human is warming up... first experiment starting soon." : "Click \"Running\" to start your Human."}
                 </div>
               )}
-              {simFeed.map((item) => (
+              {liveFeed.map((item) => (
                 <FeedItem key={item.id} item={item} />
               ))}
             </div>
@@ -303,7 +268,7 @@ function MiniStat({
   )
 }
 
-function FeedItem({ item }: { item: ActivityFeedItem }) {
+function FeedItem({ item }: { item: LiveEvent }) {
   const time = new Date(item.timestamp).toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
@@ -317,6 +282,7 @@ function FeedItem({ item }: { item: ActivityFeedItem }) {
     gossip: "text-warning",
     adoption: "text-heart",
     levelup: "text-accent",
+    presence: "text-muted",
   }
 
   return (
@@ -324,6 +290,9 @@ function FeedItem({ item }: { item: ActivityFeedItem }) {
       <span className="text-muted font-mono text-xs mt-0.5 shrink-0">
         {time}
       </span>
+      {item.fromPeer && (
+        <span className="text-xs text-warning/60 mt-0.5 shrink-0">[peer]</span>
+      )}
       <span className={typeColors[item.type] ?? "text-foreground"}>
         {item.message}
       </span>
