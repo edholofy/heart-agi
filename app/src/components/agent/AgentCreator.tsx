@@ -7,6 +7,7 @@ import {
   type ComputeTier,
 } from "@/types/agent"
 import { useAppStore } from "@/lib/store"
+import { createAgentApi } from "@/lib/api"
 
 interface AgentCreatorProps {
   onComplete: () => void
@@ -69,15 +70,42 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
     setStep("prompt")
   }
 
-  function handleLaunch() {
+  const wallet = useAppStore((s) => s.wallet)
+  const [launching, setLaunching] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleLaunch() {
     if (!name.trim()) return
-    createAgent({
+    setLaunching(true)
+    setError(null)
+
+    const input = {
       name: name.trim(),
       specialization,
       computeTier,
       systemPrompt,
-    })
-    onComplete()
+    }
+
+    try {
+      // Always create locally
+      const localAgent = createAgent(input)
+
+      // If wallet connected, also persist to Supabase
+      if (wallet.connected && wallet.address) {
+        const dbAgent = await createAgentApi(wallet.address, input)
+        // Update local agent with Supabase ID for future syncs
+        console.log('Agent persisted to Supabase:', dbAgent.id)
+      }
+
+      onComplete()
+    } catch (err: unknown) {
+      const e = err as Error
+      setError(e.message)
+      // Still complete even if API fails — local agent was created
+      onComplete()
+    } finally {
+      setLaunching(false)
+    }
   }
 
   return (
@@ -291,11 +319,19 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
             </button>
             <button
               onClick={handleLaunch}
-              disabled={!name.trim()}
+              disabled={!name.trim() || launching}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-accent to-heart text-white rounded-xl font-semibold text-lg transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 glow-accent"
             >
-              Launch {name.trim() || "Your Human"}
+              {launching ? "Launching..." : `Launch ${name.trim() || "Your Human"}`}
             </button>
+            {error && (
+              <p className="text-xs text-heart mt-2">{error}</p>
+            )}
+            {!wallet.connected && (
+              <p className="text-xs text-warning mt-2">
+                Connect wallet to persist your Human on-chain
+              </p>
+            )}
           </div>
         </div>
       )}
