@@ -1,6 +1,7 @@
 "use client"
 
 import { useAppStore } from "@/lib/store"
+import { WalletButton } from "@/components/wallet/WalletButton"
 
 export function NetworkBar() {
   const stats = useAppStore((s) => s.networkStats)
@@ -18,7 +19,7 @@ export function NetworkBar() {
           </span>
         </div>
 
-        <div className="flex items-center gap-6 text-xs text-muted">
+        <div className="flex items-center gap-4 text-xs text-muted">
           <div className="hidden sm:flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-dot" />
             <span>{stats.totalAgents.toLocaleString()} agents</span>
@@ -26,15 +27,13 @@ export function NetworkBar() {
           <div className="hidden md:block">
             {stats.totalExperiments.toLocaleString()} experiments
           </div>
-          <div className="hidden md:block">
-            {stats.totalDiscoveries.toLocaleString()} discoveries
-          </div>
-          <div className="flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1">
             <span className="text-heart font-medium">
               {(stats.heartEmitted24h / 1_000_000).toFixed(1)}M
             </span>
             <span>$HEART/day</span>
           </div>
+          <WalletButton />
         </div>
       </div>
     </header>
