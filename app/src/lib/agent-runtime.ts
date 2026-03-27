@@ -17,6 +17,7 @@
  */
 
 import { broadcastActivity, broadcastDiscovery, getSharedClient } from './gossip'
+import { generateHypothesis as llmGenerateHypothesis, evaluateResult as llmEvaluateResult, isLLMConfigured } from './llm'
 import type { GossipMessage, DiscoveryGossip } from './gossip'
 
 export interface RuntimeConfig {
@@ -282,9 +283,38 @@ export class AgentRuntime {
 
     const spec = STRATEGIES[this.config.specialization as keyof typeof STRATEGIES] || STRATEGIES.researcher
 
-    // 1. Generate hypothesis (soul.md shapes thinking, skill.md shapes capability)
-    const hypothesis = this.generateHypothesis(spec)
-    this.emit('experiment', `Starting experiment: "${hypothesis}"`)
+    // 1. Generate hypothesis — use LLM if configured, otherwise simulate
+    let hypothesis: string
+    let reasoning = ''
+
+    if (isLLMConfigured()) {
+      try {
+        this.emit('experiment', 'Thinking... (querying LLM)')
+        const llmResult = await llmGenerateHypothesis(
+          this.config.soul,
+          this.config.skill,
+          this.config.specialization,
+          {
+            currentBest: this.currentBest,
+            metric: spec.metric,
+            recentFindings: this.adoptedFindings.slice(-5),
+            adoptedDiscoveries: this.adoptedFindings.slice(-3),
+          }
+        )
+        hypothesis = llmResult.hypothesis
+        reasoning = llmResult.reasoning
+        // LLM calls cost extra compute
+        this.consumeCompute(3, 'LLM inference')
+      } catch (err) {
+        // Fallback to simulated if LLM fails
+        console.warn('LLM unavailable, using simulated hypothesis:', err)
+        hypothesis = this.generateHypothesis(spec)
+      }
+    } else {
+      hypothesis = this.generateHypothesis(spec)
+    }
+
+    this.emit('experiment', `Starting experiment: "${hypothesis}"${reasoning ? ` — ${reasoning}` : ''}`)
 
     // 2. CONSUME COMPUTE — every experiment costs tokens
     if (!this.consumeCompute(this.COST_EXPERIMENT, 'experiment')) return
@@ -294,7 +324,28 @@ export class AgentRuntime {
     const result = this.runExperiment(spec, hypothesis)
     this.experimentCount++
 
-    // 3. Log result
+    // Evaluate with LLM if available
+    if (isLLMConfigured() && this.experimentCount % 3 === 0) {
+      try {
+        const evaluation = await llmEvaluateResult(
+          this.config.soul,
+          this.config.skill,
+          this.config.specialization,
+          {
+            hypothesis,
+            metric: spec.metric,
+            previousBest: result.previousBest,
+            newValue: result.value,
+          }
+        )
+        this.emit('experiment', `Analysis: ${evaluation.analysis}`)
+        this.consumeCompute(2, 'LLM evaluation')
+      } catch {
+        // evaluation is optional
+      }
+    }
+
+    // 4. Log result
     const arrow = result.improved ? '↑' : '→'
     this.emit(
       'experiment',
