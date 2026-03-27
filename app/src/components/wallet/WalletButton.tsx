@@ -14,13 +14,15 @@ export function WalletButton() {
 
   async function handleConnect() {
     if (!hasWalletProvider()) {
+      // Open MetaMask install page
+      window.open('https://metamask.io/download/', '_blank')
       setWallet({
         address: null,
         balance: null,
         chainId: null,
         connected: false,
         connecting: false,
-        error: "Install MetaMask",
+        error: "No wallet detected — install MetaMask",
       })
       return
     }
@@ -85,12 +87,19 @@ export function WalletButton() {
   }
 
   return (
-    <button
-      onClick={handleConnect}
-      disabled={wallet.connecting}
-      className="btn-secondary px-4 py-2 text-xs font-medium tracking-wide disabled:opacity-50"
-    >
-      {wallet.connecting ? "CONNECTING..." : "CONNECT"}
-    </button>
+    <div className="flex items-center gap-2">
+      {wallet.error && (
+        <span className="text-[10px] text-[#ef4444] hidden sm:block max-w-[140px] truncate">
+          {wallet.error}
+        </span>
+      )}
+      <button
+        onClick={handleConnect}
+        disabled={wallet.connecting}
+        className="btn-secondary px-4 py-2 text-xs font-medium tracking-wide disabled:opacity-50"
+      >
+        {wallet.connecting ? "CONNECTING..." : "CONNECT"}
+      </button>
+    </div>
   )
 }
