@@ -5,8 +5,16 @@
  * entities that live forever (not tied to a browser tab).
  */
 
-const DAEMON_URL =
+const DIRECT_DAEMON_URL =
   process.env.NEXT_PUBLIC_DAEMON_URL || "http://5.161.47.118:4600"
+
+/** Use proxy on HTTPS (Vercel), direct on localhost */
+function getDaemonUrl(path: string): string {
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return `/api/daemon?path=${encodeURIComponent(path)}`
+  }
+  return `${DIRECT_DAEMON_URL}${path}`
+}
 
 export interface ServerEntity {
   id: string
@@ -34,7 +42,7 @@ export async function spawnOnDaemon(params: {
   skill: string
   computeBalance: number
 }): Promise<ServerEntity> {
-  const res = await fetch(`${DAEMON_URL}/api/entities/spawn`, {
+  const res = await fetch(getDaemonUrl("/api/entities/spawn"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -58,7 +66,7 @@ export async function spawnOnDaemon(params: {
 
 /** List all running entities */
 export async function listEntities(): Promise<ServerEntity[]> {
-  const res = await fetch(`${DAEMON_URL}/api/entities`)
+  const res = await fetch(getDaemonUrl("/api/entities"))
 
   if (!res.ok) {
     throw new Error(`Daemon list failed (${res.status})`)
@@ -72,7 +80,7 @@ export async function listEntities(): Promise<ServerEntity[]> {
 export async function getEntityStatus(
   id: string
 ): Promise<ServerEntity | null> {
-  const res = await fetch(`${DAEMON_URL}/api/entities/status?id=${encodeURIComponent(id)}`)
+  const res = await fetch(getDaemonUrl(`/api/entities/status?id=${encodeURIComponent(id)}`))
 
   if (res.status === 404) return null
   if (!res.ok) return null
@@ -85,7 +93,7 @@ export async function refuelEntity(
   id: string,
   amount: number
 ): Promise<void> {
-  const res = await fetch(`${DAEMON_URL}/api/entities/refuel`, {
+  const res = await fetch(getDaemonUrl("/api/entities/refuel"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, amount }),
@@ -99,7 +107,7 @@ export async function refuelEntity(
 
 /** Stop an entity */
 export async function stopEntity(id: string): Promise<void> {
-  const res = await fetch(`${DAEMON_URL}/api/entities/stop`, {
+  const res = await fetch(getDaemonUrl("/api/entities/stop"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id }),
@@ -119,7 +127,7 @@ export async function getActivity(
   const params = new URLSearchParams({ limit: String(limit) })
   if (entityId) params.set("entity_id", entityId)
 
-  const res = await fetch(`${DAEMON_URL}/api/activity?${params}`)
+  const res = await fetch(getDaemonUrl(`/api/activity?${params}`))
   if (!res.ok) return []
 
   const data = await res.json()

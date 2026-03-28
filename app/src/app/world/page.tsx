@@ -5,8 +5,15 @@ import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import Link from "next/link"
 
-const DAEMON_URL =
+const DIRECT_DAEMON_URL =
   process.env.NEXT_PUBLIC_DAEMON_URL || "http://5.161.47.118:4600"
+
+function getDaemonUrl(path: string): string {
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return `/api/daemon?path=${encodeURIComponent(path)}`
+  }
+  return `${DIRECT_DAEMON_URL}${path}`
+}
 const RPC_URL =
   process.env.NEXT_PUBLIC_HEART_RPC || "http://5.161.47.118:26657"
 
@@ -140,7 +147,7 @@ export default function WorldPage() {
   /* ── Fetch activity feed ── */
   const fetchActivity = useCallback(async () => {
     try {
-      const res = await fetch(`${DAEMON_URL}/api/activity?limit=50`)
+      const res = await fetch(getDaemonUrl("/api/activity?limit=50"))
       if (!res.ok) throw new Error("offline")
       const data = await res.json()
 
@@ -175,7 +182,7 @@ export default function WorldPage() {
   /* ── Fetch entities ── */
   const fetchEntities = useCallback(async () => {
     try {
-      const res = await fetch(`${DAEMON_URL}/api/entities`)
+      const res = await fetch(getDaemonUrl("/api/entities"))
       if (!res.ok) throw new Error("offline")
       const data = await res.json()
 
