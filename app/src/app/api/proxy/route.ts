@@ -31,6 +31,13 @@ const DAEMON_API_KEY = process.env.DAEMON_API_KEY || ''
 function isPathAllowed(target: string, url: string): boolean {
   const allowedPrefixes = ALLOWED_PATHS[target]
   if (!allowedPrefixes) return false
+
+  // Normalize the path to prevent traversal attacks (e.g., /heart/../../etc/passwd)
+  // Reject any URL containing path traversal sequences
+  if (url.includes('..') || url.includes('//') || url.includes('\\')) {
+    return false
+  }
+
   return allowedPrefixes.some(prefix => url.startsWith(prefix))
 }
 

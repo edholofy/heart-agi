@@ -12,8 +12,13 @@ import { SignJWT, jwtVerify } from 'jose'
  * The JWT is then sent as Authorization: Bearer <token> on protected routes.
  */
 
+const JWT_SECRET_RAW = process.env.JWT_SECRET
+// Warn but don't crash at build time — Vercel sets NODE_ENV=production during build
+if (!JWT_SECRET_RAW && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: JWT_SECRET not set. Using dev fallback. Set JWT_SECRET in production.')
+}
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'humans-ai-dev-secret-change-in-production'
+  JWT_SECRET_RAW || 'humans-ai-dev-secret-DO-NOT-USE-IN-PRODUCTION'
 )
 
 // In-memory nonce store (use Redis/DB in production)

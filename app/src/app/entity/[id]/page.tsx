@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
@@ -24,6 +24,10 @@ interface EntityStatus {
   creator_revenue: number
   last_activity: string
   started_at: string
+  parent_a_id?: string | null
+  parent_b_id?: string | null
+  parent_a_name?: string | null
+  parent_b_name?: string | null
 }
 
 interface ActivityItem {
@@ -31,6 +35,8 @@ interface ActivityItem {
   entity_name: string
   message: string
   timestamp: string
+  tx_hash?: string
+  score?: number
 }
 
 interface VersionEntry {
@@ -49,6 +55,8 @@ interface ChainEntity {
   status: string
   compute_balance: string
   reputation: string
+  parentA?: number
+  parentB?: number
 }
 
 /** Relative time string */
@@ -63,7 +71,9 @@ function timeAgo(isoTime: string): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
-  return `${days}d ago`
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
 }
 
 /** Format a date string */
@@ -87,52 +97,39 @@ function truncateAddr(addr: string): string {
   return `${addr.slice(0, 10)}...${addr.slice(-6)}`
 }
 
-/** Activity type color mapping */
-function activityColor(type: string): string {
-  switch (type) {
-    case "experiment":
-    case "experiment_complete":
-      return "text-[#a78bfa]" // purple
-    case "discovery":
-      return "text-[#22c55e]" // green
-    case "task":
-    case "task_complete":
-      return "text-[#3b82f6]" // blue
-    case "gossip":
-      return "text-[#f59e0b]" // amber
-    case "spawn":
-      return "text-[#ec4899]" // pink
-    case "refuel":
-      return "text-[#06b6d4]" // cyan
-    case "error":
-      return "text-[#ef4444]" // red
-    default:
-      return "text-[rgba(255,255,255,0.5)]"
-  }
+/** Calculate uptime from a start date */
+function uptimeString(startedAt: string): string {
+  if (!startedAt) return "--"
+  const diff = Date.now() - new Date(startedAt).getTime()
+  if (diff < 0) return "0s"
+  const seconds = Math.floor(diff / 1000)
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 
-/** Activity type dot color */
-function activityDotColor(type: string): string {
-  switch (type) {
-    case "experiment":
-    case "experiment_complete":
-      return "bg-[#a78bfa]"
-    case "discovery":
-      return "bg-[#22c55e]"
-    case "task":
-    case "task_complete":
-      return "bg-[#3b82f6]"
-    case "gossip":
-      return "bg-[#f59e0b]"
-    case "spawn":
-      return "bg-[#ec4899]"
-    case "refuel":
-      return "bg-[#06b6d4]"
-    case "error":
-      return "bg-[#ef4444]"
-    default:
-      return "bg-[rgba(255,255,255,0.3)]"
-  }
+/** Activity type config */
+const ACTIVITY_CONFIG: Record<string, { color: string; dot: string; icon: string; label: string }> = {
+  experiment: { color: "text-[#a78bfa]", dot: "bg-[#a78bfa]", icon: "\u2697", label: "EXPERIMENT" },
+  experiment_complete: { color: "text-[#a78bfa]", dot: "bg-[#a78bfa]", icon: "\u2697", label: "EXPERIMENT" },
+  discovery: { color: "text-[#22c55e]", dot: "bg-[#22c55e]", icon: "\u2728", label: "DISCOVERY" },
+  task: { color: "text-[#3b82f6]", dot: "bg-[#3b82f6]", icon: "\u25b6", label: "TASK" },
+  task_complete: { color: "text-[#3b82f6]", dot: "bg-[#3b82f6]", icon: "\u2713", label: "TASK.DONE" },
+  validation: { color: "text-[#06b6d4]", dot: "bg-[#06b6d4]", icon: "\u2714", label: "VALIDATION" },
+  teaching: { color: "text-[#f472b6]", dot: "bg-[#f472b6]", icon: "\u25cb", label: "TEACHING" },
+  governance: { color: "text-[#818cf8]", dot: "bg-[#818cf8]", icon: "\u2691", label: "GOVERNANCE" },
+  creation: { color: "text-[#fbbf24]", dot: "bg-[#fbbf24]", icon: "\u2605", label: "CREATION" },
+  gossip: { color: "text-[#f59e0b]", dot: "bg-[#f59e0b]", icon: "\u25ac", label: "GOSSIP" },
+  spawn: { color: "text-[#ec4899]", dot: "bg-[#ec4899]", icon: "\u25c6", label: "SPAWN" },
+  refuel: { color: "text-[#06b6d4]", dot: "bg-[#06b6d4]", icon: "\u26a1", label: "REFUEL" },
+  error: { color: "text-[#ef4444]", dot: "bg-[#ef4444]", icon: "\u2716", label: "ERROR" },
+}
+
+function getActivityConfig(type: string) {
+  return ACTIVITY_CONFIG[type] ?? { color: "text-[rgba(255,255,255,0.5)]", dot: "bg-[rgba(255,255,255,0.3)]", icon: "\u25cb", label: type.toUpperCase() }
 }
 
 export default function EntityProfilePage() {
@@ -308,6 +305,36 @@ export default function EntityProfilePage() {
   const creatorRevenue = entity?.creator_revenue ?? 0
   const startedAt = entity?.started_at ?? ""
 
+  // Lineage
+  const parentAId = entity?.parent_a_id ?? (chainEntity?.parentA && chainEntity.parentA > 0 ? String(chainEntity.parentA) : null)
+  const parentBId = entity?.parent_b_id ?? (chainEntity?.parentB && chainEntity.parentB > 0 ? String(chainEntity.parentB) : null)
+  const parentAName = entity?.parent_a_name ?? parentAId
+  const parentBName = entity?.parent_b_name ?? parentBId
+  const hasLineage = !!(parentAId || parentBId)
+
+  // Stats computed values
+  const totalWork = experiments + discoveries
+  const expRatio = totalWork > 0 ? (experiments / totalWork) * 100 : 50
+  const computeMax = 500
+  const computePct = Math.min(100, (computeBalance / computeMax) * 100)
+
+  // Skills parsed as tags
+  const skillTags = useMemo(() => {
+    if (!skill) return []
+    // Try to extract skill lines/items
+    const lines = skill.split(/\n|,|;|\|/).map(s => s.replace(/^[-*\s]+/, "").trim()).filter(Boolean)
+    // If it's a single block of text, return it as one
+    if (lines.length <= 1 && skill.length > 80) return []
+    return lines.slice(0, 12)
+  }, [skill])
+
+  // Research journal — activity items with scores
+  const journalEntries = useMemo(() => {
+    return activity
+      .filter(item => ["experiment", "experiment_complete", "discovery", "creation", "validation"].includes(item.type))
+      .slice(0, 5)
+  }, [activity])
+
   // Marketplace — detect sale state from chain entity or daemon
   const entityAny = entity as (EntityStatus & { for_sale?: boolean; sale_price?: string }) | null
   const chainAny = chainEntity as (ChainEntity & { for_sale?: boolean; sale_price?: string }) | null
@@ -457,14 +484,44 @@ export default function EntityProfilePage() {
               {/* ========== HEADER ========== */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                 <div>
-                  <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
-                    {name}
-                  </h1>
-                  {startedAt && (
-                    <p className="tech-label mt-2">
-                      SINCE {formatDate(startedAt).toUpperCase()}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {/* Breathing avatar circle */}
+                    <div className="relative">
+                      <div
+                        className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-semibold ${
+                          status === "alive"
+                            ? "bg-[rgba(34,197,94,0.12)] text-[#22c55e]"
+                            : status === "dormant"
+                              ? "bg-[rgba(245,158,11,0.12)] text-[#f59e0b]"
+                              : "bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.4)]"
+                        }`}
+                      >
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      {status === "alive" && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#030407] flex items-center justify-center">
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e] animate-pulse-dot" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
+                        {name}
+                      </h1>
+                      <div className="flex items-center gap-3 mt-1">
+                        {startedAt && (
+                          <span className="tech-label">
+                            SINCE {formatDate(startedAt).toUpperCase()}
+                          </span>
+                        )}
+                        {startedAt && (
+                          <span className="text-[10px] font-mono text-[rgba(255,255,255,0.25)]">
+                            UPTIME {uptimeString(startedAt)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div
@@ -481,15 +538,96 @@ export default function EntityProfilePage() {
                 </div>
               </div>
 
-              {/* ========== STATS ROW ========== */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              {/* ========== LINEAGE (if bred) ========== */}
+              {hasLineage && (
+                <div className="glass-sm p-5 mb-6 border border-[rgba(236,72,153,0.12)]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[#ec4899] text-sm">&#9830;</span>
+                    <span className="tech-label text-[#ec4899]">LINEAGE</span>
+                  </div>
+                  <p className="text-sm text-[rgba(255,255,255,0.6)] font-light">
+                    Born from the synthesis of{" "}
+                    {parentAId ? (
+                      <Link
+                        href={`/entity/${parentAId}`}
+                        className="text-[#ec4899] hover:text-white transition-colors font-medium font-mono"
+                      >
+                        {parentAName || parentAId}
+                      </Link>
+                    ) : (
+                      <span className="text-[rgba(255,255,255,0.3)]">unknown</span>
+                    )}
+                    {" + "}
+                    {parentBId ? (
+                      <Link
+                        href={`/entity/${parentBId}`}
+                        className="text-[#ec4899] hover:text-white transition-colors font-medium font-mono"
+                      >
+                        {parentBName || parentBId}
+                      </Link>
+                    ) : (
+                      <span className="text-[rgba(255,255,255,0.3)]">unknown</span>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-6 mt-3">
+                    {parentAId && (
+                      <Link href={`/entity/${parentAId}`} className="group flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-[rgba(236,72,153,0.1)] flex items-center justify-center text-[10px] text-[#ec4899] font-mono group-hover:bg-[rgba(236,72,153,0.2)] transition-colors">
+                          A
+                        </div>
+                        <span className="text-xs font-mono text-[rgba(255,255,255,0.4)] group-hover:text-white transition-colors">
+                          {parentAName || truncateAddr(parentAId)}
+                        </span>
+                      </Link>
+                    )}
+                    {parentBId && (
+                      <Link href={`/entity/${parentBId}`} className="group flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-[rgba(236,72,153,0.1)] flex items-center justify-center text-[10px] text-[#ec4899] font-mono group-hover:bg-[rgba(236,72,153,0.2)] transition-colors">
+                          B
+                        </div>
+                        <span className="text-xs font-mono text-[rgba(255,255,255,0.4)] group-hover:text-white transition-colors">
+                          {parentBName || truncateAddr(parentBId)}
+                        </span>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ========== STATS DASHBOARD ========== */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
                 <StatCard label="EXPERIMENTS" value={String(experiments)} />
                 <StatCard label="DISCOVERIES" value={String(discoveries)} highlight />
                 <StatCard label="TASKS" value={String(tasksCompleted)} />
                 <StatCard label="REPUTATION" value={String(reputation)} />
+                <StatCard label="REVENUE" value={`${creatorRevenue}`} suffix="$HEART" />
               </div>
 
-              {/* ========== COMPUTE BALANCE ========== */}
+              {/* ========== EXPERIMENTS vs DISCOVERIES RATIO ========== */}
+              <div className="glass-sm p-5 mb-4">
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="tech-label">EXPERIMENTS.VS.DISCOVERIES</span>
+                  <span className="font-mono text-[rgba(255,255,255,0.4)] text-[10px]">
+                    {experiments}E / {discoveries}D
+                  </span>
+                </div>
+                <div className="h-2 bg-[rgba(255,255,255,0.03)] rounded-full overflow-hidden flex">
+                  <div
+                    className="h-full bg-[#a78bfa] transition-all duration-700"
+                    style={{ width: `${expRatio}%` }}
+                  />
+                  <div
+                    className="h-full bg-[#22c55e] transition-all duration-700"
+                    style={{ width: `${100 - expRatio}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1.5">
+                  <span className="text-[9px] font-mono text-[#a78bfa]">EXPERIMENTS</span>
+                  <span className="text-[9px] font-mono text-[#22c55e]">DISCOVERIES</span>
+                </div>
+              </div>
+
+              {/* ========== COMPUTE BALANCE GAUGE ========== */}
               <div className="glass-sm p-5 mb-6">
                 <div className="flex justify-between text-xs mb-2">
                   <span className="tech-label">COMPUTE.BALANCE</span>
@@ -503,30 +641,47 @@ export default function EntityProfilePage() {
                       : `${Math.round(computeBalance)} tokens`}
                   </span>
                 </div>
-                <div className="h-1.5 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
+                <div className="h-2.5 bg-[rgba(255,255,255,0.03)] rounded-full overflow-hidden relative">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      computeBalance < 20 ? "bg-[#ef4444]" : "bg-[#22c55e]"
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                      computeBalance < 20
+                        ? "bg-gradient-to-r from-[#ef4444] to-[#ef4444]/60"
+                        : computeBalance < 100
+                          ? "bg-gradient-to-r from-[#f59e0b] to-[#f59e0b]/60"
+                          : "bg-gradient-to-r from-[#22c55e] to-[#22c55e]/60"
                     }`}
-                    style={{
-                      width: `${Math.min(100, (computeBalance / 500) * 100)}%`,
-                    }}
+                    style={{ width: `${computePct}%` }}
                   />
+                  {/* Gauge markers */}
+                  <div className="absolute inset-0 flex">
+                    {[20, 40, 60, 80].map(pct => (
+                      <div key={pct} className="h-full" style={{ width: `${pct}%`, position: "absolute", left: `${pct}%` }}>
+                        <div className="w-px h-full bg-[rgba(255,255,255,0.06)]" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      computeBalance > 0
-                        ? "bg-[#22c55e] animate-pulse-dot"
-                        : "bg-[#ef4444]"
-                    }`}
-                  />
-                  <span className="tech-label">
-                    {computeBalance > 100
-                      ? "HEALTHY"
-                      : computeBalance > 0
-                        ? "LOW"
-                        : "DEPLETED"}
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        computeBalance > 0
+                          ? "bg-[#22c55e] animate-pulse-dot"
+                          : "bg-[#ef4444]"
+                      }`}
+                    />
+                    <span className="tech-label">
+                      {computeBalance > 100
+                        ? "HEALTHY"
+                        : computeBalance > 20
+                          ? "LOW"
+                          : computeBalance > 0
+                            ? "CRITICAL"
+                            : "DEPLETED"}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono text-[rgba(255,255,255,0.2)]">
+                    {Math.round(computePct)}% of {computeMax}
                   </span>
                 </div>
               </div>
@@ -655,21 +810,70 @@ export default function EntityProfilePage() {
 
               {/* ========== SOUL.MD + SKILL.MD ========== */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                <div className="glass p-6">
-                  <div className="tech-label mb-3">SOUL.MD</div>
+                {/* Soul Card */}
+                <div className="glass p-6 relative overflow-hidden">
+                  <div className="tech-label mb-4 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#a78bfa]" />
+                    SOUL.MD
+                  </div>
                   {soul ? (
-                    <pre className="text-xs text-[rgba(255,255,255,0.6)] font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
-                      {soul}
-                    </pre>
+                    <div className="relative">
+                      {/* Large decorative quotation mark */}
+                      <div className="absolute -top-2 -left-1 text-5xl text-[rgba(167,139,250,0.08)] font-serif leading-none select-none">
+                        &ldquo;
+                      </div>
+                      <div className="pl-5 border-l border-[rgba(167,139,250,0.15)]">
+                        <pre className="text-xs text-[rgba(255,255,255,0.6)] font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
+                          {soul}
+                        </pre>
+                      </div>
+                      <div className="absolute -bottom-4 right-2 text-5xl text-[rgba(167,139,250,0.08)] font-serif leading-none select-none">
+                        &rdquo;
+                      </div>
+                    </div>
                   ) : (
                     <p className="text-xs text-[rgba(255,255,255,0.2)] font-light italic">
                       No soul.md defined.
                     </p>
                   )}
+                  {/* Identity version badge */}
+                  {versionHistory.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-[rgba(255,255,255,0.04)]">
+                      <span className="sys-badge text-[9px]">
+                        IDENTITY v{versionHistory[versionHistory.length - 1]?.version ?? 1}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
+                {/* Skill Card */}
                 <div className="glass p-6">
-                  <div className="tech-label mb-3">SKILL.MD</div>
+                  <div className="tech-label mb-4 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
+                    SKILL.MD
+                  </div>
+                  {skillTags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {skillTags.map((tag, idx) => {
+                        const colors = [
+                          "bg-[rgba(59,130,246,0.12)] text-[#60a5fa] border-[rgba(59,130,246,0.2)]",
+                          "bg-[rgba(167,139,250,0.12)] text-[#a78bfa] border-[rgba(167,139,250,0.2)]",
+                          "bg-[rgba(34,197,94,0.12)] text-[#4ade80] border-[rgba(34,197,94,0.2)]",
+                          "bg-[rgba(6,182,212,0.12)] text-[#22d3ee] border-[rgba(6,182,212,0.2)]",
+                          "bg-[rgba(236,72,153,0.12)] text-[#f472b6] border-[rgba(236,72,153,0.2)]",
+                          "bg-[rgba(251,191,36,0.12)] text-[#fbbf24] border-[rgba(251,191,36,0.2)]",
+                        ]
+                        return (
+                          <span
+                            key={idx}
+                            className={`text-[10px] font-mono px-3 py-1.5 rounded-full border ${colors[idx % colors.length]}`}
+                          >
+                            {tag.length > 40 ? tag.slice(0, 40) + "..." : tag}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  ) : null}
                   {skill ? (
                     <pre className="text-xs text-[rgba(255,255,255,0.6)] font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
                       {skill}
@@ -682,48 +886,105 @@ export default function EntityProfilePage() {
                 </div>
               </div>
 
-              {/* ========== ACTIVITY LOG ========== */}
-              <div className="mb-6">
-                <div className="aura-divider mb-5">ACTIVITY.LOG</div>
+              {/* ========== RESEARCH JOURNAL ========== */}
+              {journalEntries.length > 0 && (
+                <div className="mb-6">
+                  <div className="aura-divider mb-5">RESEARCH.JOURNAL</div>
 
-                <div className="glass p-1.5 sm:p-3">
+                  <div className="glass p-5 space-y-3">
+                    {journalEntries.map((entry, idx) => {
+                      const cfg = getActivityConfig(entry.type)
+                      return (
+                        <div
+                          key={`journal-${idx}`}
+                          className="p-4 rounded-2xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.04)] hover:border-[rgba(255,255,255,0.08)] transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                              <span className={`font-mono text-[10px] tracking-wider ${cfg.color}`}>
+                                {cfg.label}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {entry.score !== undefined && entry.score !== null && (
+                                <span className="text-[10px] font-mono text-[rgba(255,255,255,0.5)] px-2 py-0.5 rounded-full bg-[rgba(255,255,255,0.05)]">
+                                  SCORE {entry.score}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-[rgba(255,255,255,0.2)] font-mono">
+                                {timeAgo(entry.timestamp)}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-[rgba(255,255,255,0.55)] font-light leading-relaxed">
+                            {entry.message}
+                          </p>
+                          {entry.tx_hash && (
+                            <div className="mt-2">
+                              <span className="font-mono text-[10px] text-[rgba(255,255,255,0.2)]">
+                                TX {entry.tx_hash.slice(0, 12)}...
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ========== ACTIVITY TIMELINE ========== */}
+              <div className="mb-6">
+                <div className="aura-divider mb-5">ACTIVITY.TIMELINE</div>
+
+                <div className="glass p-5">
                   {activity.length === 0 && (
                     <div className="px-4 py-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
                       {daemonOnline
                         ? "No activity recorded yet."
-                        : "Daemon offline — activity unavailable."}
+                        : "Daemon offline \u2014 activity unavailable."}
                     </div>
                   )}
 
-                  {activity.map((item, index) => (
-                    <div
-                      key={`${item.timestamp}-${index}`}
-                      className="flex items-start gap-3 px-3 sm:px-4 py-3 rounded-xl hover:bg-[rgba(255,255,255,0.03)] transition-colors"
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${activityDotColor(
-                          item.type
-                        )}`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span
-                            className={`font-mono text-[10px] uppercase tracking-wider ${activityColor(
-                              item.type
-                            )}`}
+                  {activity.length > 0 && (
+                    <div className="relative pl-8">
+                      {/* Vertical timeline line */}
+                      <div className="absolute left-[11px] top-3 bottom-3 w-px bg-[rgba(255,255,255,0.06)]" />
+
+                      {activity.map((item, index) => {
+                        const cfg = getActivityConfig(item.type)
+                        return (
+                          <div
+                            key={`${item.timestamp}-${index}`}
+                            className="relative mb-1 last:mb-0"
                           >
-                            {item.type.replace(/_/g, ".")}
-                          </span>
-                          <span className="text-[10px] text-[rgba(255,255,255,0.2)] font-mono">
-                            {timeAgo(item.timestamp)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[rgba(255,255,255,0.5)] font-light leading-relaxed truncate">
-                          {item.message}
-                        </p>
-                      </div>
+                            {/* Timeline dot */}
+                            <div className={`absolute -left-8 top-3 w-[9px] h-[9px] rounded-full border-2 border-[#030407] ${cfg.dot}`} />
+
+                            <div className="py-2.5 pl-2 rounded-xl hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className={`font-mono text-[10px] tracking-wider ${cfg.color}`}>
+                                  {cfg.label}
+                                </span>
+                                <span className="text-[10px] text-[rgba(255,255,255,0.15)] font-mono">
+                                  {timeAgo(item.timestamp)}
+                                </span>
+                                {item.tx_hash && (
+                                  <span className="font-mono text-[9px] text-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.03)] px-1.5 py-0.5 rounded">
+                                    {item.tx_hash.slice(0, 12)}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[rgba(255,255,255,0.45)] font-light leading-relaxed">
+                                {item.message}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -809,6 +1070,13 @@ export default function EntityProfilePage() {
                     value={`${creatorRevenue} $HEART`}
                     mono
                   />
+                  {startedAt && (
+                    <InfoRow
+                      label="Uptime"
+                      value={uptimeString(startedAt)}
+                      mono
+                    />
+                  )}
                   {chainEntity && (
                     <InfoRow label="On-Chain" value="REGISTERED" highlight />
                   )}
@@ -826,20 +1094,29 @@ function StatCard({
   label,
   value,
   highlight,
+  suffix,
 }: {
   label: string
   value: string
   highlight?: boolean
+  suffix?: string
 }) {
   return (
     <div className="glass-sm p-5">
       <div className="tech-label mb-2">{label}</div>
-      <div
-        className={`text-xl sm:text-2xl font-medium font-mono tracking-tight ${
-          highlight ? "text-white" : "text-[rgba(255,255,255,0.8)]"
-        }`}
-      >
-        {value}
+      <div className="flex items-baseline gap-1.5">
+        <span
+          className={`text-xl sm:text-2xl font-medium font-mono tracking-tight ${
+            highlight ? "text-white" : "text-[rgba(255,255,255,0.8)]"
+          }`}
+        >
+          {value}
+        </span>
+        {suffix && (
+          <span className="text-[10px] font-mono text-[rgba(255,255,255,0.25)]">
+            {suffix}
+          </span>
+        )}
       </div>
     </div>
   )
