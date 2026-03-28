@@ -8,8 +8,6 @@
  * OpenRouter gives us 400+ models through one OpenAI-compatible API.
  */
 
-const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
-
 /** Model tiers — cheaper models for lower compute tiers */
 const MODELS: Record<string, string> = {
   browser: 'google/gemini-2.0-flash-lite-001',       // cheapest, fast
@@ -42,33 +40,27 @@ export interface LLMResponse {
 }
 
 /**
- * Send a request to OpenRouter.
+ * Send a request to the LLM via the server-side /api/llm proxy.
+ * The API key is never exposed to the browser.
  * The soul.md becomes the system prompt.
  * Returns the LLM response with token/cost tracking.
  */
 export async function chat(req: LLMRequest): Promise<LLMResponse> {
-  const apiKey = getApiKey()
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY not configured')
-  }
-
   const model = MODELS[req.computeTier] || MODELS.browser
   const systemPrompt = `${req.soul}\n\n---\n\n${req.skill}`
 
-  const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: req.userMessage },
+  ]
+
+  // Always route through the server-side API route (keeps key server-only)
+  const response = await fetch('/api/llm', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://agents.humans.ai',
-      'X-Title': '$HEART Autonomous Blockchain',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: req.userMessage },
-      ],
+      messages,
       max_tokens: req.maxTokens ?? 500,
       temperature: 0.7,
     }),
@@ -184,20 +176,19 @@ NEXT: [what to try next based on this result]`,
   }
 }
 
-/** Get the API key — server-side env or client-side fallback */
-function getApiKey(): string | null {
-  // Server-side
-  if (typeof process !== 'undefined' && process.env?.OPENROUTER_API_KEY) {
-    return process.env.OPENROUTER_API_KEY
-  }
-  // Client-side (passed through Next.js public env)
-  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_OPENROUTER_API_KEY) {
-    return process.env.NEXT_PUBLIC_OPENROUTER_API_KEY
-  }
-  return null
-}
-
-/** Check if LLM is configured */
+/**
+ * Check if LLM is configured.
+ *
+ * On the server, checks the env var directly.
+ * On the client, always returns true — the /api/llm route will
+ * return 503 if OPENROUTER_API_KEY is not set, and the error
+ * will surface at call time rather than blocking the UI.
+ */
 export function isLLMConfigured(): boolean {
-  return getApiKey() !== null
+  // Server-side: check the env var directly
+  if (typeof window === 'undefined') {
+    return !!process.env.OPENROUTER_API_KEY
+  }
+  // Client-side: assume configured (the API route handles the check)
+  return true
 }

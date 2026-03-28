@@ -6,8 +6,8 @@
  * Drop-in alternative to useAgentRuntime. Uses OpenRouter for actual
  * LLM inference instead of simulated Math.random() results.
  *
- * Falls back to the simulated runtime if NEXT_PUBLIC_OPENROUTER_API_KEY
- * is not set.
+ * Falls back to the simulated runtime if OPENROUTER_API_KEY is not set
+ * on the server.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -197,7 +197,7 @@ export function useRealRuntime(options: UseRealRuntimeOptions) {
     if (!isLLMConfigured()) {
       addEvent({
         type: 'error',
-        message: 'Cannot start: NEXT_PUBLIC_OPENROUTER_API_KEY not set. Configure it in .env.local',
+        message: 'Cannot start: OPENROUTER_API_KEY not set on server. Configure it in .env.local',
       })
       return
     }

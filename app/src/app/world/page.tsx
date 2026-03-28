@@ -131,6 +131,7 @@ export default function WorldPage() {
   })
   const [daemonOnline, setDaemonOnline] = useState(true)
   const [newIds, setNewIds] = useState<Set<string>>(new Set())
+  const [initialLoading, setInitialLoading] = useState(true)
   const isFirstLoad = useRef(true)
 
   /* ── Fetch activity feed ── */
@@ -147,6 +148,7 @@ export default function WorldPage() {
       setActivities((prev) => {
         if (isFirstLoad.current) {
           isFirstLoad.current = false
+          setInitialLoading(false)
           return entries
         }
 
@@ -165,6 +167,7 @@ export default function WorldPage() {
       setDaemonOnline(true)
     } catch {
       setDaemonOnline(false)
+      setInitialLoading(false)
     }
   }, [])
 
@@ -287,7 +290,13 @@ export default function WorldPage() {
               <div className="aura-divider mb-5">LIVE.FEED</div>
 
               <div className="space-y-2">
-                {activities.length === 0 && daemonOnline && (
+                {initialLoading && activities.length === 0 && daemonOnline && (
+                  <div className="text-center py-12 text-[rgba(255,255,255,0.3)]">
+                    Loading feed...
+                  </div>
+                )}
+
+                {!initialLoading && activities.length === 0 && daemonOnline && (
                   <div className="glass-sm p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
                     Waiting for activity...
                   </div>

@@ -148,6 +148,17 @@ export async function getBalance(address: string): Promise<string> {
 /*  Signing client                                                     */
 /* ------------------------------------------------------------------ */
 
+/** Cached signing client — cleared after use via `clearSigningClient()`. */
+let cachedSigningClient: SigningStargateClient | null = null
+
+/** Clear the cached signing client to free the signer from memory. */
+export function clearSigningClient(): void {
+  if (cachedSigningClient) {
+    cachedSigningClient.disconnect()
+  }
+  cachedSigningClient = null
+}
+
 /**
  * Build a `SigningStargateClient` from the stored mnemonic.
  * This is the main entry point for broadcasting transactions.
@@ -174,6 +185,8 @@ export async function getSigningClient(): Promise<{
     getChainRPC(),
     wallet
   )
+
+  cachedSigningClient = client
 
   return { client, address: account.address }
 }

@@ -12,7 +12,7 @@
  * from the proto files in heart/proto/heart/…/tx.proto.
  */
 
-import { getSigningClient, DENOM } from "@/lib/cosmos-wallet"
+import { getSigningClient, clearSigningClient, DENOM } from "@/lib/cosmos-wallet"
 import { coin } from "@cosmjs/stargate"
 
 /* ------------------------------------------------------------------ */
@@ -46,6 +46,16 @@ function encodeUint64(fieldNumber: number, value: number | bigint): number[] {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Input validation                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Validate that a field is non-empty and within length limits. */
+function validateInput(field: string, value: string, maxLength: number) {
+  if (!value || value.trim().length === 0) throw new Error(`${field} is required`)
+  if (value.length > maxLength) throw new Error(`${field} exceeds max length of ${maxLength}`)
+}
+
+/* ------------------------------------------------------------------ */
 /*  Default tx fee & gas                                               */
 /* ------------------------------------------------------------------ */
 
@@ -66,6 +76,7 @@ const DEFAULT_FEE = {
  *   2: soulHash (string)
  */
 export async function registerSoul(soulHash: string): Promise<string> {
+  validateInput("soulHash", soulHash, 200)
   const { client, address } = await getSigningClient()
 
   const value = Uint8Array.from([
@@ -95,6 +106,7 @@ export async function registerSoul(soulHash: string): Promise<string> {
  *   2: skillHash (string)
  */
 export async function registerSkill(skillHash: string): Promise<string> {
+  validateInput("skillHash", skillHash, 200)
   const { client, address } = await getSigningClient()
 
   const value = Uint8Array.from([
@@ -136,6 +148,10 @@ export async function spawnEntity(
   soulHash: string,
   skillHash: string
 ): Promise<string> {
+  validateInput("name", name, 100)
+  validateInput("specialization", specialization, 50)
+  validateInput("soulHash", soulHash, 200)
+  validateInput("skillHash", skillHash, 200)
   const { client, address } = await getSigningClient()
 
   const value = Uint8Array.from([
@@ -176,6 +192,9 @@ export async function postTask(
   reward: number,
   specialization: string
 ): Promise<string> {
+  validateInput("title", title, 200)
+  validateInput("description", description, 2000)
+  validateInput("specialization", specialization, 50)
   const { client, address } = await getSigningClient()
 
   const value = Uint8Array.from([
@@ -333,6 +352,10 @@ export async function submitResearch(
   recommendation: string,
   entityId: string
 ): Promise<string> {
+  validateInput("title", title, 200)
+  validateInput("findings", findings, 5000)
+  validateInput("recommendation", recommendation, 2000)
+  validateInput("entityId", entityId, 200)
   const { client, address } = await getSigningClient()
 
   const value = Uint8Array.from([

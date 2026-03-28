@@ -233,6 +233,10 @@ export function WalletButton() {
                 <div className="bg-[rgba(0,0,0,0.3)] rounded-lg p-2 text-xs font-mono text-white break-all leading-relaxed select-all">
                   {wallet.mnemonic}
                 </div>
+                <div className="text-[10px] text-[#f59e0b] mt-2 p-2 rounded-lg bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.15)]">
+                  This is a TESTNET wallet stored in your browser. Do NOT use
+                  for real funds. For mainnet, use a hardware wallet.
+                </div>
                 <div className="text-[10px] text-[#ef4444] mt-2">
                   Write this down. You will NOT see it again after closing this
                   menu.

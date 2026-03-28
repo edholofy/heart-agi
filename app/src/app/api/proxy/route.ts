@@ -18,6 +18,31 @@ const TARGETS: Record<string, string> = {
   faucet: process.env.FAUCET_INTERNAL_URL || 'http://5.161.47.118:4500',
 }
 
+/** Allowed path prefixes per target — prevents open proxy abuse */
+const ALLOWED_PATHS: Record<string, string[]> = {
+  rpc: ['/status', '/net_info', '/blockchain', '/block', '/validators', '/abci_query', '/tx'],
+  rest: ['/heart/', '/cosmos/'],
+  daemon: ['/api/'],
+  faucet: ['/api/faucet'],
+}
+
+const DAEMON_API_KEY = process.env.DAEMON_API_KEY || ''
+
+function isPathAllowed(target: string, url: string): boolean {
+  const allowedPrefixes = ALLOWED_PATHS[target]
+  if (!allowedPrefixes) return false
+  return allowedPrefixes.some(prefix => url.startsWith(prefix))
+}
+
+/** Build headers for the upstream request, including daemon API key if needed */
+function buildUpstreamHeaders(target: string, base: Record<string, string> = {}): Record<string, string> {
+  const headers = { ...base }
+  if (target === 'daemon' && DAEMON_API_KEY) {
+    headers['X-API-Key'] = DAEMON_API_KEY
+  }
+  return headers
+}
+
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get('url') || '/status'
   const target = req.nextUrl.searchParams.get('target') || 'rpc'
@@ -27,16 +52,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid target' }, { status: 400 })
   }
 
+  if (!isPathAllowed(target, url)) {
+    return NextResponse.json({ error: 'Path not allowed' }, { status: 403 })
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
   try {
     const res = await fetch(`${base}${url}`, {
-      headers: { 'Accept': 'application/json' },
+      headers: buildUpstreamHeaders(target, { 'Accept': 'application/json' }),
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
     const data = await res.text()
     return new NextResponse(data, {
       status: res.status,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
     })
-  } catch {
+  } catch (err) {
+    clearTimeout(timeout)
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return NextResponse.json({ error: 'Request timeout' }, { status: 504 })
+    }
     return NextResponse.json({ error: 'Target unreachable' }, { status: 502 })
   }
 }
@@ -50,19 +87,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid target' }, { status: 400 })
   }
 
+  if (!isPathAllowed(target, url)) {
+    return NextResponse.json({ error: 'Path not allowed' }, { status: 403 })
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
   try {
     const body = await req.text()
     const res = await fetch(`${base}${url}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildUpstreamHeaders(target, { 'Content-Type': 'application/json' }),
       body,
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
     const data = await res.text()
     return new NextResponse(data, {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
     })
-  } catch {
+  } catch (err) {
+    clearTimeout(timeout)
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return NextResponse.json({ error: 'Request timeout' }, { status: 504 })
+    }
     return NextResponse.json({ error: 'Target unreachable' }, { status: 502 })
   }
 }

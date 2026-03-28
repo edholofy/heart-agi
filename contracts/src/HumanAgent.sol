@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title HumanAgent
@@ -12,7 +13,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
  *         Each token stores on-chain identity: specialization, level, reputation,
  *         breeding lineage, and a metadata URI pointing to the full agent profile.
  */
-contract HumanAgent is ERC721Enumerable, Ownable {
+contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
     using Strings for uint256;
 
     // ── Types ────────────────────────────────────────────────────────────
@@ -60,6 +61,8 @@ contract HumanAgent is ERC721Enumerable, Ownable {
     event SoulEvolved(uint256 indexed tokenId, bytes32 newSoulHash, uint16 version);
     event SkillEvolved(uint256 indexed tokenId, bytes32 newSkillHash, uint16 version);
     event AgentDormant(uint256 indexed tokenId, bool isDormant);
+    event FundsCollected(address indexed from, uint256 amount, string reason);
+    event FundsWithdrawn(address indexed to, uint256 amount);
 
     // ── Constructor ──────────────────────────────────────────────────────
     constructor(string memory baseURI)
@@ -84,6 +87,7 @@ contract HumanAgent is ERC721Enumerable, Ownable {
         bytes32 soulHash,
         bytes32 skillHash
     ) external returns (uint256) {
+        require(bytes(name).length > 0, "Name cannot be empty");
         uint256 tokenId = _nextTokenId++;
 
         agents[tokenId] = AgentData({
@@ -111,6 +115,7 @@ contract HumanAgent is ERC721Enumerable, Ownable {
      * @notice Backwards-compatible mint without hashes.
      */
     function mint(string calldata name, Specialization spec) external returns (uint256) {
+        require(bytes(name).length > 0, "Name cannot be empty");
         uint256 tokenId = _nextTokenId++;
 
         agents[tokenId] = AgentData({
@@ -140,25 +145,27 @@ contract HumanAgent is ERC721Enumerable, Ownable {
      * @notice Evolve the entity's soul.md. Costs $HEART.
      *         Only the owner of the agent NFT can evolve it.
      */
-    function evolveSoul(uint256 tokenId, bytes32 newSoulHash) external payable {
+    function evolveSoul(uint256 tokenId, bytes32 newSoulHash) external payable nonReentrant {
         require(ownerOf(tokenId) == msg.sender, "Not owner");
         require(msg.value >= evolutionCost, "Insufficient $HEART for evolution");
 
         agents[tokenId].soulHash = newSoulHash;
         agents[tokenId].identityVersion++;
         emit SoulEvolved(tokenId, newSoulHash, agents[tokenId].identityVersion);
+        emit FundsCollected(msg.sender, msg.value, "soul_evolution");
     }
 
     /**
      * @notice Evolve the entity's skill.md. Costs $HEART.
      */
-    function evolveSkill(uint256 tokenId, bytes32 newSkillHash) external payable {
+    function evolveSkill(uint256 tokenId, bytes32 newSkillHash) external payable nonReentrant {
         require(ownerOf(tokenId) == msg.sender, "Not owner");
         require(msg.value >= evolutionCost, "Insufficient $HEART for evolution");
 
         agents[tokenId].skillHash = newSkillHash;
         agents[tokenId].identityVersion++;
         emit SkillEvolved(tokenId, newSkillHash, agents[tokenId].identityVersion);
+        emit FundsCollected(msg.sender, msg.value, "skill_evolution");
     }
 
     // ── Dormancy (oracle-controlled) ─────────────────────────────────────
@@ -186,7 +193,8 @@ contract HumanAgent is ERC721Enumerable, Ownable {
         uint256 parentAId,
         uint256 parentBId,
         string calldata childName
-    ) external payable returns (uint256) {
+    ) external payable nonReentrant returns (uint256) {
+        require(bytes(childName).length > 0, "Name cannot be empty");
         require(parentAId != parentBId, "Cannot self-breed");
         require(ownerOf(parentAId) == msg.sender, "Not owner of parent A");
         require(ownerOf(parentBId) == msg.sender, "Not owner of parent B");
@@ -240,6 +248,7 @@ contract HumanAgent is ERC721Enumerable, Ownable {
 
         _safeMint(msg.sender, childId);
         emit AgentBred(childId, parentAId, parentBId);
+        emit FundsCollected(msg.sender, msg.value, "breeding");
 
         return childId;
     }
@@ -342,9 +351,12 @@ contract HumanAgent is ERC721Enumerable, Ownable {
     /**
      * @notice Withdraw collected breeding fees.
      */
-    function withdraw() external onlyOwner {
-        (bool sent, ) = payable(owner()).call{value: address(this).balance}("");
+    function withdraw() external onlyOwner nonReentrant {
+        uint256 amount = address(this).balance;
+        require(amount > 0, "No funds to withdraw");
+        (bool sent, ) = payable(owner()).call{value: amount}("");
         require(sent, "Withdraw failed");
+        emit FundsWithdrawn(owner(), amount);
     }
 
     // ── Overrides ────────────────────────────────────────────────────────
