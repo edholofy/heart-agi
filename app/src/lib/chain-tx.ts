@@ -294,6 +294,106 @@ export async function voteProposal(
 }
 
 /* ------------------------------------------------------------------ */
+/*  /heart.existence  marketplace messages                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * List an entity for sale on the marketplace.
+ *
+ * Proto: heart.existence.MsgListEntityForSale
+ *   1: creator  (string)
+ *   2: entityId (string)
+ *   3: price    (string)  — amount in uheart
+ */
+export async function listEntityForSale(
+  entityId: string,
+  price: string
+): Promise<string> {
+  validateInput("entityId", entityId, 200)
+  validateInput("price", price, 50)
+  const { client, address } = await getSigningClient()
+
+  const value = Uint8Array.from([
+    ...encodeString(1, address),
+    ...encodeString(2, entityId),
+    ...encodeString(3, price),
+  ])
+
+  const msg = {
+    typeUrl: "/heart.existence.MsgListEntityForSale",
+    value,
+  }
+
+  const result = await client.signAndBroadcast(address, [msg], DEFAULT_FEE)
+
+  if (result.code !== 0) {
+    throw new Error(`listEntityForSale failed (code ${result.code}): ${result.rawLog}`)
+  }
+
+  return result.transactionHash
+}
+
+/**
+ * Buy an entity listed for sale on the marketplace.
+ *
+ * Proto: heart.existence.MsgBuyEntity
+ *   1: creator  (string)
+ *   2: entityId (string)
+ */
+export async function buyEntity(entityId: string): Promise<string> {
+  validateInput("entityId", entityId, 200)
+  const { client, address } = await getSigningClient()
+
+  const value = Uint8Array.from([
+    ...encodeString(1, address),
+    ...encodeString(2, entityId),
+  ])
+
+  const msg = {
+    typeUrl: "/heart.existence.MsgBuyEntity",
+    value,
+  }
+
+  const result = await client.signAndBroadcast(address, [msg], DEFAULT_FEE)
+
+  if (result.code !== 0) {
+    throw new Error(`buyEntity failed (code ${result.code}): ${result.rawLog}`)
+  }
+
+  return result.transactionHash
+}
+
+/**
+ * Delist an entity from the marketplace (cancel sale).
+ *
+ * Proto: heart.existence.MsgDelistEntity
+ *   1: creator  (string)
+ *   2: entityId (string)
+ */
+export async function delistEntity(entityId: string): Promise<string> {
+  validateInput("entityId", entityId, 200)
+  const { client, address } = await getSigningClient()
+
+  const value = Uint8Array.from([
+    ...encodeString(1, address),
+    ...encodeString(2, entityId),
+  ])
+
+  const msg = {
+    typeUrl: "/heart.existence.MsgDelistEntity",
+    value,
+  }
+
+  const result = await client.signAndBroadcast(address, [msg], DEFAULT_FEE)
+
+  if (result.code !== 0) {
+    throw new Error(`delistEntity failed (code ${result.code}): ${result.rawLog}`)
+  }
+
+  return result.transactionHash
+}
+
+/* ------------------------------------------------------------------ */
 /*  /heart.compute  messages                                           */
 /* ------------------------------------------------------------------ */
 

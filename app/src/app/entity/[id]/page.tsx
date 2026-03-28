@@ -5,6 +5,8 @@ import { useParams } from "next/navigation"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
+import { listEntityForSale, buyEntity, delistEntity } from "@/lib/chain-tx"
+import { useAppStore } from "@/lib/store"
 import Link from "next/link"
 
 interface EntityStatus {
@@ -136,6 +138,7 @@ function activityDotColor(type: string): string {
 export default function EntityProfilePage() {
   const params = useParams()
   const id = params?.id as string
+  const wallet = useAppStore((s) => s.wallet)
 
   const [entity, setEntity] = useState<EntityStatus | null>(null)
   const [chainEntity, setChainEntity] = useState<ChainEntity | null>(null)
@@ -145,6 +148,13 @@ export default function EntityProfilePage() {
   const [daemonOnline, setDaemonOnline] = useState(true)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+
+  // Marketplace state
+  const [showListModal, setShowListModal] = useState(false)
+  const [listPrice, setListPrice] = useState("")
+  const [txBusy, setTxBusy] = useState(false)
+  const [txError, setTxError] = useState("")
+  const [txSuccess, setTxSuccess] = useState("")
 
   const fetchDaemonStatus = useCallback(async () => {
     try {
@@ -297,6 +307,67 @@ export default function EntityProfilePage() {
   const reputation = entity?.reputation ?? Number(chainEntity?.reputation ?? 0)
   const creatorRevenue = entity?.creator_revenue ?? 0
   const startedAt = entity?.started_at ?? ""
+
+  // Marketplace — detect sale state from chain entity or daemon
+  const entityAny = entity as (EntityStatus & { for_sale?: boolean; sale_price?: string }) | null
+  const chainAny = chainEntity as (ChainEntity & { for_sale?: boolean; sale_price?: string }) | null
+  const isForSale = entityAny?.for_sale === true || chainAny?.for_sale === true
+  const salePrice = entityAny?.sale_price ?? chainAny?.sale_price ?? ""
+  const isOwner = wallet.address && ownerAddress === wallet.address
+
+  const handleList = async () => {
+    if (!listPrice.trim() || isNaN(Number(listPrice)) || Number(listPrice) <= 0) {
+      setTxError("Enter a valid price in $HEART.")
+      return
+    }
+    try {
+      setTxBusy(true)
+      setTxError("")
+      setTxSuccess("")
+      const txHash = await listEntityForSale(id, listPrice.trim())
+      setTxSuccess(`Listed for sale! TX: ${txHash.slice(0, 16)}...`)
+      setShowListModal(false)
+      setListPrice("")
+      fetchDaemonStatus()
+      fetchChainEntity()
+    } catch (err) {
+      setTxError(err instanceof Error ? err.message : "List failed")
+    } finally {
+      setTxBusy(false)
+    }
+  }
+
+  const handleDelist = async () => {
+    try {
+      setTxBusy(true)
+      setTxError("")
+      setTxSuccess("")
+      const txHash = await delistEntity(id)
+      setTxSuccess(`Delisted! TX: ${txHash.slice(0, 16)}...`)
+      fetchDaemonStatus()
+      fetchChainEntity()
+    } catch (err) {
+      setTxError(err instanceof Error ? err.message : "Delist failed")
+    } finally {
+      setTxBusy(false)
+    }
+  }
+
+  const handleBuy = async () => {
+    try {
+      setTxBusy(true)
+      setTxError("")
+      setTxSuccess("")
+      const txHash = await buyEntity(id)
+      setTxSuccess(`Purchased! TX: ${txHash.slice(0, 16)}...`)
+      fetchDaemonStatus()
+      fetchChainEntity()
+    } catch (err) {
+      setTxError(err instanceof Error ? err.message : "Buy failed")
+    } finally {
+      setTxBusy(false)
+    }
+  }
 
   const statusColor: Record<string, string> = {
     alive: "text-[#22c55e]",
@@ -459,6 +530,128 @@ export default function EntityProfilePage() {
                   </span>
                 </div>
               </div>
+
+              {/* ========== MARKETPLACE ========== */}
+              <div className="glass-sm p-5 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="tech-label">MARKETPLACE</span>
+                  {isForSale && (
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-mono tracking-wider px-2.5 py-1 rounded-full bg-[rgba(245,158,11,0.12)] text-[#f59e0b]">
+                      FOR SALE
+                    </span>
+                  )}
+                </div>
+
+                {/* Sale price banner */}
+                {isForSale && salePrice && (
+                  <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.15)] mb-3">
+                    <span className="text-xs font-mono tracking-wider text-[rgba(255,255,255,0.4)]">LISTED PRICE</span>
+                    <span className="text-lg font-mono font-medium text-[#f59e0b]">{salePrice} $HEART</span>
+                  </div>
+                )}
+
+                {/* TX feedback */}
+                {txError && (
+                  <div className="glass-sm p-2.5 bg-[rgba(239,68,68,0.08)] text-xs flex items-center gap-2 mb-3">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444] shrink-0" />
+                    <span className="text-[#ef4444] font-light">{txError}</span>
+                  </div>
+                )}
+                {txSuccess && (
+                  <div className="glass-sm p-2.5 bg-[rgba(34,197,94,0.08)] text-xs flex items-center gap-2 mb-3">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0" />
+                    <span className="text-[#22c55e] font-light">{txSuccess}</span>
+                  </div>
+                )}
+
+                {/* Owner: list or delist */}
+                {isOwner && !isForSale && (
+                  <button
+                    onClick={() => setShowListModal(true)}
+                    disabled={txBusy}
+                    className="w-full text-center px-4 py-2.5 text-[11px] tracking-wider font-mono rounded-lg bg-[rgba(245,158,11,0.1)] text-[#f59e0b] hover:bg-[rgba(245,158,11,0.18)] transition-colors disabled:opacity-40"
+                  >
+                    {txBusy ? "PROCESSING..." : "LIST FOR SALE"}
+                  </button>
+                )}
+                {isOwner && isForSale && (
+                  <button
+                    onClick={handleDelist}
+                    disabled={txBusy}
+                    className="w-full text-center px-4 py-2.5 text-[11px] tracking-wider font-mono rounded-lg bg-[rgba(239,68,68,0.1)] text-[#ef4444] hover:bg-[rgba(239,68,68,0.18)] transition-colors disabled:opacity-40"
+                  >
+                    {txBusy ? "PROCESSING..." : "DELIST FROM SALE"}
+                  </button>
+                )}
+
+                {/* Buyer: buy */}
+                {!isOwner && isForSale && wallet.address && (
+                  <button
+                    onClick={handleBuy}
+                    disabled={txBusy}
+                    className="w-full text-center px-4 py-2.5 text-[11px] tracking-wider font-mono rounded-lg bg-[rgba(34,197,94,0.1)] text-[#22c55e] hover:bg-[rgba(34,197,94,0.18)] transition-colors disabled:opacity-40"
+                  >
+                    {txBusy ? "PROCESSING..." : `BUY FOR ${salePrice} $HEART`}
+                  </button>
+                )}
+
+                {/* Not for sale and not owner */}
+                {!isOwner && !isForSale && (
+                  <p className="text-xs text-[rgba(255,255,255,0.25)] font-light">
+                    This entity is not currently listed for sale.
+                  </p>
+                )}
+
+                {/* No wallet connected */}
+                {!wallet.address && isForSale && (
+                  <p className="text-xs text-[rgba(255,255,255,0.35)] font-light mt-2">
+                    Connect your wallet to purchase this entity.
+                  </p>
+                )}
+              </div>
+
+              {/* List For Sale Modal */}
+              {showListModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowListModal(false)}>
+                  <div className="glass p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                    <h3 className="text-lg font-medium mb-1">List Entity For Sale</h3>
+                    <p className="text-xs text-[rgba(255,255,255,0.4)] font-light mb-4">
+                      Set a price in $HEART for <span className="text-white font-medium">{name}</span>.
+                    </p>
+                    <label className="tech-label text-[9px] mb-1.5 block">PRICE ($HEART)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={listPrice}
+                      onChange={(e) => setListPrice(e.target.value)}
+                      placeholder="e.g. 1000"
+                      className="glass-input w-full px-4 py-2.5 text-sm mb-4"
+                      autoFocus
+                    />
+                    {txError && (
+                      <div className="glass-sm p-2 bg-[rgba(239,68,68,0.08)] text-[10px] flex items-center gap-2 mb-3">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444] shrink-0" />
+                        <span className="text-[#ef4444] font-light">{txError}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setShowListModal(false); setTxError("") }}
+                        className="btn-secondary flex-1 px-4 py-2.5 text-[10px] tracking-wider"
+                      >
+                        CANCEL
+                      </button>
+                      <button
+                        onClick={handleList}
+                        disabled={txBusy}
+                        className="flex-1 px-4 py-2.5 text-[10px] tracking-wider font-mono rounded-lg bg-[rgba(245,158,11,0.15)] text-[#f59e0b] hover:bg-[rgba(245,158,11,0.25)] transition-colors disabled:opacity-40"
+                      >
+                        {txBusy ? "SIGNING..." : "CONFIRM LIST"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* ========== SOUL.MD + SKILL.MD ========== */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
