@@ -14,60 +14,68 @@ interface AgentCreatorProps {
   onComplete: () => void
 }
 
-type Step = "specialization" | "soul" | "confirm"
+type Step = "define" | "fund" | "spawn"
+
+const STEP_LABELS: Record<Step, string> = {
+  define: "DEFINE",
+  fund: "FUND",
+  spawn: "SPAWN",
+}
 
 export function AgentCreator({ onComplete }: AgentCreatorProps) {
   const createAgent = useAppStore((s) => s.createAgent)
   const wallet = useAppStore((s) => s.wallet)
 
-  const [step, setStep] = useState<Step>("specialization")
+  const [step, setStep] = useState<Step>("define")
   const [name, setName] = useState("")
   const [specialization, setSpecialization] = useState<Specialization>("researcher")
   const [computeDeposit, setComputeDeposit] = useState(500)
   const [soul, setSoul] = useState("")
   const [skill, setSkill] = useState("")
-  const [launching, setLaunching] = useState(false)
-  const [launchStatus, setLaunchStatus] = useState("")
+  const [templateSelected, setTemplateSelected] = useState(false)
+  const [spawning, setSpawning] = useState(false)
+  const [spawnStatus, setSpawnStatus] = useState("")
   const [error, setError] = useState("")
 
   const spec = SPECIALIZATIONS[specialization]
 
-  function handleSpecSelect(s: Specialization) {
+  function handleTemplateSelect(s: Specialization) {
     setSpecialization(s)
     setSoul(SPECIALIZATIONS[s].defaultSoul)
     setSkill(SPECIALIZATIONS[s].defaultSkill)
-    setStep("soul")
+    setTemplateSelected(true)
   }
 
-  async function handleLaunch() {
+  async function handleSpawn() {
     if (!name.trim()) return
     setError("")
-    setLaunchStatus("")
+    setSpawnStatus("")
 
     if (!wallet.connected) {
       setError("Create a wallet first to spawn on-chain")
       return
     }
 
-    setLaunching(true)
+    setSpawning(true)
 
     const input = { name: name.trim(), specialization, computeTier: "api" as const, soul, skill, computeDeposit }
 
     try {
       // 1. Hash the soul and skill
+      setSpawnStatus("Hashing identity...")
       const soulHash = await hashIdentityFile(soul)
       const skillHash = await hashIdentityFile(skill)
 
       // 2. Register soul on-chain
-      setLaunchStatus("Registering soul.md on-chain...")
+      setSpawnStatus("Registering soul.md on-chain...")
       await registerSoul(`sha256:${soulHash}`)
 
       // 3. Register skill on-chain
-      setLaunchStatus("Registering skill.md on-chain...")
+      setSpawnStatus("Registering skill.md on-chain...")
       await registerSkill(`sha256:${skillHash}`)
 
       // 4. Spawn entity on-chain (requires 100 HEART stake)
-      setLaunchStatus("Spawning entity on-chain (staking 100 HEART)...")
+      setSpawnStatus("Staking 100 HEART...")
       const spawnTx = await spawnEntity(
         name.trim(),
         specialization,
@@ -79,7 +87,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
       const localAgent = createAgent(input)
 
       // 6. Spawn on the server daemon (entity runs autonomously)
-      setLaunchStatus("Starting entity on server daemon...")
+      setSpawnStatus("Starting autonomous process...")
       try {
         await spawnOnDaemon({
           id: localAgent.id,
@@ -89,10 +97,10 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
           skill,
           computeBalance: computeDeposit,
         })
-        setLaunchStatus(`Entity spawned and running! TX: ${spawnTx.slice(0, 12)}...`)
+        setSpawnStatus("Entity is ALIVE")
       } catch (daemonErr) {
         console.error("Daemon spawn failed:", daemonErr)
-        setLaunchStatus(`On-chain OK (TX: ${spawnTx.slice(0, 12)}...) — daemon offline, will start when available`)
+        setSpawnStatus(`On-chain OK (TX: ${spawnTx.slice(0, 12)}...) — daemon offline, will start when available`)
       }
 
       setTimeout(() => onComplete(), 2000)
@@ -118,30 +126,38 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
 
       onComplete()
     } finally {
-      setLaunching(false)
+      setSpawning(false)
     }
   }
+
+  const steps: Step[] = ["define", "fund", "spawn"]
 
   return (
     <div className="max-w-xl mx-auto px-4 py-12">
       {/* Progress pills */}
       <div className="flex items-center gap-2 mb-10">
-        {(["specialization", "soul", "confirm"] as Step[]).map((s, i) => {
-          const steps: Step[] = ["specialization", "soul", "confirm"]
+        {steps.map((s, i) => {
           const active = step === s
           const done = steps.indexOf(step) > i
           return (
             <div key={s} className="flex items-center gap-2 flex-1">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono transition-all ${
-                  active
-                    ? "bg-white text-black"
-                    : done
-                      ? "bg-[rgba(255,255,255,0.15)] text-white"
-                      : "bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.3)]"
-                }`}
-              >
-                {i + 1}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono transition-all ${
+                    active
+                      ? "bg-white text-black"
+                      : done
+                        ? "bg-[rgba(255,255,255,0.15)] text-white"
+                        : "bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.3)]"
+                  }`}
+                >
+                  {i + 1}
+                </div>
+                <span className={`text-xs font-mono tracking-wider ${
+                  active ? "text-white" : done ? "text-[rgba(255,255,255,0.5)]" : "text-[rgba(255,255,255,0.2)]"
+                }`}>
+                  {STEP_LABELS[s]}
+                </span>
               </div>
               {i < 2 && <div className="flex-1 h-px bg-[rgba(255,255,255,0.05)]" />}
             </div>
@@ -149,52 +165,46 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
         })}
       </div>
 
-      {/* Step 1: Specialization */}
-      {step === "specialization" && (
+      {/* Step 1: DEFINE — Template + soul.md + skill.md */}
+      {step === "define" && (
         <div>
-          <div className="sys-badge mb-4">STEP.01</div>
-          <h2 className="text-2xl font-medium tracking-tight mb-2">
-            Choose a Template
-          </h2>
-          <p className="text-[rgba(255,255,255,0.4)] text-sm mb-8 font-light">
-            Pick a starting template for soul.md + skill.md. You can edit freely in the next step.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(Object.entries(SPECIALIZATIONS) as [Specialization, typeof spec][]).map(([key, val]) => (
-              <button
-                key={key}
-                onClick={() => handleSpecSelect(key)}
-                className="glass-sm p-4 text-left transition-all hover:bg-[rgba(255,255,255,0.06)] group"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{val.icon}</span>
-                  <div>
-                    <div className="font-medium text-sm group-hover:text-white transition-colors">
-                      {val.label}
-                    </div>
-                    <div className="text-xs text-[rgba(255,255,255,0.35)] mt-1 font-light">
-                      {val.description}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: soul.md + skill.md */}
-      {step === "soul" && (
-        <div>
-          <div className="sys-badge mb-4">STEP.02</div>
+          <div className="sys-badge mb-4">DEFINE</div>
           <h2 className="text-2xl font-medium tracking-tight mb-2">
             Define Identity
           </h2>
           <p className="text-[rgba(255,255,255,0.4)] text-sm mb-6 font-light">
-            soul.md = who it is. skill.md = what it can do. Hashed on-chain.
+            soul.md = who it is. skill.md = what it can do. Both are hashed and registered on-chain.
           </p>
 
+          {/* Template selection */}
+          <div className="mb-6">
+            <label className="tech-label block mb-3">CHOOSE A TEMPLATE TO START WITH, OR WRITE FROM SCRATCH</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {(Object.entries(SPECIALIZATIONS) as [Specialization, typeof spec][]).map(([key, val]) => (
+                <button
+                  key={key}
+                  onClick={() => handleTemplateSelect(key)}
+                  className={`glass-sm p-3 text-left transition-all hover:bg-[rgba(255,255,255,0.06)] group ${
+                    templateSelected && specialization === key ? "ring-1 ring-white/20 bg-[rgba(255,255,255,0.04)]" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{val.icon}</span>
+                    <div>
+                      <div className="font-medium text-xs group-hover:text-white transition-colors">
+                        {val.label}
+                      </div>
+                      <div className="text-[10px] text-[rgba(255,255,255,0.3)] mt-0.5 font-light leading-tight">
+                        {val.description}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* soul.md editor */}
           <div className="space-y-4">
             <div>
               <label className="tech-label block mb-2">SOUL.MD</label>
@@ -221,40 +231,41 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
-            <button onClick={() => setStep("specialization")} className="text-xs text-[rgba(255,255,255,0.3)] hover:text-white transition-colors">
-              &larr; Back
-            </button>
+          <div className="mt-6">
             <button
-              onClick={() => setStep("confirm")}
-              className="flex-1 btn-secondary py-3 text-sm font-medium"
+              onClick={() => setStep("fund")}
+              disabled={!soul.trim() || !skill.trim()}
+              className="w-full btn-secondary py-3 text-sm font-medium disabled:opacity-30"
             >
-              Continue
+              Continue to Fund
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 3: Name + Fund + Confirm */}
-      {step === "confirm" && (
+      {/* Step 2: FUND — Name + Compute Deposit */}
+      {step === "fund" && (
         <div>
-          <div className="sys-badge mb-4">STEP.03</div>
+          <div className="sys-badge mb-4">FUND</div>
           <h2 className="text-2xl font-medium tracking-tight mb-2">
             Name &amp; Fund Your Entity
           </h2>
           <p className="text-[rgba(255,255,255,0.4)] text-sm mb-8 font-light">
-            This identity will be registered on the $HEART chain and run autonomously on the server.
+            Choose a name and deposit compute tokens to fuel autonomous operation.
           </p>
 
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Cortex-7, NeuralNomad..."
-            className="glass-input w-full h-14 px-6 text-base mb-4"
-            autoFocus
-            onKeyDown={(e) => e.key === "Enter" && handleLaunch()}
-          />
+          {/* Entity name */}
+          <div className="mb-6">
+            <label className="tech-label block mb-2">ENTITY NAME</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Cortex-7, NeuralNomad..."
+              className="glass-input w-full h-14 px-6 text-base"
+              autoFocus
+            />
+          </div>
 
           {/* Compute Deposit */}
           <div className="glass-sm p-4 mb-6">
@@ -275,33 +286,94 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
             </p>
           </div>
 
+          {/* Cost Summary */}
+          <div className="glass-sm p-4 mb-6">
+            <div className="tech-label mb-3">COST SUMMARY</div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[rgba(255,255,255,0.4)]">Genesis stake</span>
+                <span className="font-mono">100 HEART</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[rgba(255,255,255,0.4)]">Compute deposit</span>
+                <span className="font-mono">{computeDeposit} tokens</span>
+              </div>
+              <div className="border-t border-[rgba(255,255,255,0.06)] pt-2 mt-2 flex justify-between font-medium">
+                <span className="text-[rgba(255,255,255,0.6)]">Total</span>
+                <span className="font-mono">100 HEART + {computeDeposit} Compute</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Wallet Balance */}
+          {wallet.connected && (
+            <div className="glass-sm p-3 mb-6 flex items-center justify-between text-xs">
+              <span className="text-[rgba(255,255,255,0.4)]">Wallet balance</span>
+              <span className="font-mono text-[rgba(255,255,255,0.7)]">
+                {wallet.balance ? `${wallet.balance} HEART` : "0 HEART"}
+              </span>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={() => setStep("define")} className="text-xs text-[rgba(255,255,255,0.3)] hover:text-white transition-colors">
+              &larr; Back
+            </button>
+            <button
+              onClick={() => setStep("spawn")}
+              disabled={!name.trim()}
+              className="flex-1 btn-secondary py-3 text-sm font-medium disabled:opacity-30"
+            >
+              Continue to Spawn
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: SPAWN — Summary + Execute */}
+      {step === "spawn" && (
+        <div>
+          <div className="sys-badge mb-4">SPAWN</div>
+          <h2 className="text-2xl font-medium tracking-tight mb-2">
+            Release Your Entity
+          </h2>
+          <p className="text-[rgba(255,255,255,0.4)] text-sm mb-8 font-light">
+            Review and spawn. This identity will be registered on the $HEART chain and begin autonomous operation.
+          </p>
+
           {/* Summary */}
           <div className="glass-sm p-5 mb-6">
-            <div className="tech-label mb-3">SPAWN.SUMMARY</div>
+            <div className="tech-label mb-3">SPAWN SUMMARY</div>
             <div className="space-y-2 text-sm">
+              <SummaryRow label="Entity name" value={name} />
               <SummaryRow label="Template" value={`${spec.icon} ${spec.label}`} />
-              <SummaryRow label="Runtime" value="Server Daemon (autonomous)" />
               <SummaryRow label="soul.md" value={`${soul.length} chars`} />
               <SummaryRow label="skill.md" value={`${skill.length} chars`} />
-              <SummaryRow label="Compute Deposit" value={`${computeDeposit} tokens`} />
+              <SummaryRow label="Genesis stake" value="100 HEART" />
+              <SummaryRow label="Compute deposit" value={`${computeDeposit} tokens`} />
+              <SummaryRow label="Runtime" value="Server Daemon (autonomous)" />
             </div>
           </div>
 
           <div className="flex gap-3">
-            <button onClick={() => setStep("soul")} className="text-xs text-[rgba(255,255,255,0.3)] hover:text-white transition-colors">
+            <button onClick={() => setStep("fund")} className="text-xs text-[rgba(255,255,255,0.3)] hover:text-white transition-colors">
               &larr; Back
             </button>
             <button
-              onClick={handleLaunch}
-              disabled={!name.trim() || launching}
+              onClick={handleSpawn}
+              disabled={!name.trim() || spawning}
               className="flex-1 btn-primary py-4 text-base tracking-wide disabled:opacity-30"
             >
-              {launching ? "SPAWNING..." : "SPAWN ENTITY"}
+              {spawning ? "SPAWNING..." : "SPAWN"}
             </button>
           </div>
 
-          {launchStatus && (
-            <p className="text-xs text-[#22c55e] mt-2 font-mono">{launchStatus}</p>
+          {spawnStatus && (
+            <div className="mt-4 glass-sm p-3">
+              <p className={`text-xs font-mono ${spawnStatus === "Entity is ALIVE" ? "text-[#22c55e]" : "text-[rgba(255,255,255,0.6)]"}`}>
+                {spawnStatus === "Entity is ALIVE" ? "✓ " : "⟳ "}{spawnStatus}
+              </p>
+            </div>
           )}
 
           {error && (
