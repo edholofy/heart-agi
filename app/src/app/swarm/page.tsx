@@ -157,7 +157,7 @@ export default function SwarmPage() {
 
           {/* Swarm Visualization */}
           {entities.length > 0 && (
-            <div className="relative bg-black/30 border border-white/[0.06] rounded-xl mb-8 overflow-hidden backdrop-blur-sm" style={{ height: 420 }}>
+            <div className="relative bg-black/40 border border-white/[0.04] rounded-2xl mb-8 overflow-hidden" style={{ height: 480 }}>
               <SwarmVisualization
                 entities={vizEntities}
                 isRunning={loading}
