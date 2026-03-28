@@ -8,8 +8,11 @@ import type {
   Specialization,
 } from '@/types/agent'
 import { calculateXpForLevel, getLevelTitle } from '@/types/agent'
-import type { WalletState } from '@/lib/wallet'
-import { INITIAL_WALLET_STATE } from '@/lib/wallet'
+import type { CosmosWalletState } from '@/lib/cosmos-wallet'
+import { INITIAL_COSMOS_WALLET_STATE } from '@/lib/cosmos-wallet'
+
+// WalletState alias kept for backwards compatibility with any external consumers
+export type WalletState = CosmosWalletState
 
 interface NetworkStats {
   totalAgents: number
@@ -34,8 +37,8 @@ interface LeaderboardEntry {
 }
 
 interface AppStore {
-  wallet: WalletState
-  setWallet: (wallet: WalletState) => void
+  wallet: CosmosWalletState
+  setWallet: (wallet: CosmosWalletState) => void
 
   agents: Agent[]
   selectedAgentId: string | null
@@ -139,7 +142,7 @@ function createDefaultAgent(input: AgentCreateInput, ownerId: string): Agent {
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      wallet: INITIAL_WALLET_STATE,
+      wallet: INITIAL_COSMOS_WALLET_STATE,
       setWallet: (wallet) => set({ wallet }),
 
       agents: [],

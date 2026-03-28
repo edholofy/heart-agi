@@ -29,6 +29,9 @@ export function NetworkBar() {
           <div className="hidden md:block tech-label">
             {stats.totalExperiments.toLocaleString()} EXP
           </div>
+          <Link href="/docs" className="tech-label hover:text-white transition-colors">
+            DOCS
+          </Link>
           <Link href="/explorer" className="tech-label hover:text-white transition-colors">
             EXPLORER
           </Link>
