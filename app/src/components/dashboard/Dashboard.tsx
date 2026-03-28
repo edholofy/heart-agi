@@ -212,7 +212,21 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
                         </div>
                       </div>
                       <button
-                        onClick={() => markSubmitted(disc.id, `0x${Math.random().toString(16).slice(2, 10)}`)}
+                        onClick={async () => {
+                          try {
+                            const { submitResearch } = await import("@/lib/chain-tx")
+                            const txHash = await submitResearch(
+                              disc.finding,
+                              `Improved ${disc.metric} from ${disc.evidenceBefore.toFixed(4)} to ${disc.evidenceAfter.toFixed(4)}`,
+                              disc.evaluation || "Adopt this finding",
+                              disc.entityId
+                            )
+                            markSubmitted(disc.id, txHash)
+                          } catch (err) {
+                            console.error("Chain submission failed:", err)
+                            markSubmitted(disc.id, "local-only")
+                          }
+                        }}
                         className="btn-primary px-3 py-1.5 text-xs rounded-full shrink-0"
                       >
                         SUBMIT TO CHAIN
