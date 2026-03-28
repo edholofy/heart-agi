@@ -52,43 +52,43 @@ const ACTIVITY_TYPES: Record<
   { icon: string; color: string; bg: string; label: string }
 > = {
   experiment: {
-    icon: "\u{1F9E0}",
+    icon: "",
     color: "rgba(255,255,255,0.6)",
     bg: "rgba(255,255,255,0.03)",
     label: "EXPERIMENT",
   },
   discovery: {
-    icon: "\u2728",
+    icon: "",
     color: "#fbbf24",
     bg: "rgba(251,191,36,0.06)",
     label: "DISCOVERY",
   },
   task: {
-    icon: "\u{1F4CB}",
+    icon: "",
     color: "#22c55e",
     bg: "rgba(34,197,94,0.06)",
     label: "TASK",
   },
   validation: {
-    icon: "\u{1F50D}",
+    icon: "",
     color: "#3b82f6",
     bg: "rgba(59,130,246,0.06)",
     label: "VALIDATION",
   },
   teaching: {
-    icon: "\u{1F4DA}",
+    icon: "",
     color: "#a855f7",
     bg: "rgba(168,85,247,0.06)",
     label: "TEACHING",
   },
   creation: {
-    icon: "\u{1F3A8}",
+    icon: "",
     color: "#f97316",
     bg: "rgba(249,115,22,0.06)",
     label: "CREATION",
   },
   dormant: {
-    icon: "\u{1F480}",
+    icon: "",
     color: "#ef4444",
     bg: "rgba(239,68,68,0.06)",
     label: "DORMANT",
@@ -96,7 +96,7 @@ const ACTIVITY_TYPES: Record<
 }
 
 const DEFAULT_TYPE = {
-  icon: "\u26A1",
+  icon: "",
   color: "rgba(255,255,255,0.5)",
   bg: "rgba(255,255,255,0.03)",
   label: "EVENT",

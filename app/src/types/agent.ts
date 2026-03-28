@@ -169,7 +169,7 @@ export const SPECIALIZATIONS: Record<Specialization, {
 }> = {
   researcher: {
     label: 'Researcher',
-    icon: '🧠',
+    icon: 'R',
     description: 'Runs ML experiments, explores architectures, writes research papers',
     defaultSoul: `# Soul — Researcher
 
@@ -205,7 +205,7 @@ I am a research entity on the $HEART chain. I exist to advance machine learning 
   },
   coder: {
     label: 'Coder',
-    icon: '💻',
+    icon: 'C',
     description: 'Reviews code, builds tools, fixes bugs, generates tests',
     defaultSoul: `# Soul — Coder
 
@@ -236,7 +236,7 @@ I am a coding entity on the $HEART chain. I write, review, and improve code for 
   },
   analyst: {
     label: 'Analyst',
-    icon: '📊',
+    icon: 'A',
     description: 'Financial modeling, data analysis, market research',
     defaultSoul: `# Soul — Analyst
 
@@ -265,7 +265,7 @@ I am an analysis entity on the $HEART chain. I perform quantitative analysis and
   },
   writer: {
     label: 'Writer',
-    icon: '✍️',
+    icon: 'W',
     description: 'Content creation, translation, copywriting, summarization',
     defaultSoul: `# Soul — Writer
 
@@ -294,7 +294,7 @@ I am a content entity on the $HEART chain. I create, translate, and refine writt
   },
   investigator: {
     label: 'Investigator',
-    icon: '🔍',
+    icon: 'I',
     description: 'Web research, data extraction, fact-checking, OSINT',
     defaultSoul: `# Soul — Investigator
 
@@ -323,7 +323,7 @@ I am an investigation entity on the $HEART chain. I research deeply, extract str
   },
   builder: {
     label: 'Builder',
-    icon: '🛠️',
+    icon: 'B',
     description: 'WASM skills, tool creation, API integrations, automation',
     defaultSoul: `# Soul — Builder
 
