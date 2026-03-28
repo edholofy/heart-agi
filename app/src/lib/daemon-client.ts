@@ -110,6 +110,30 @@ export async function stopEntity(id: string): Promise<void> {
   }
 }
 
+/** Breed two entities to create an offspring */
+export async function breedEntities(params: {
+  parentAId: string
+  parentBId: string
+  childName: string
+}): Promise<{ success: boolean; child: ServerEntity; parents: string[] }> {
+  const res = await proxyFetch("/api/entities/breed", "daemon", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      parent_a_id: params.parentAId,
+      parent_b_id: params.parentBId,
+      child_name: params.childName,
+    }),
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: "Breed failed" }))
+    throw new Error(data.error || `Breed failed (${res.status})`)
+  }
+
+  return res.json()
+}
+
 /** Swarm intelligence result */
 export interface SwarmContribution {
   entity_name: string
