@@ -6,6 +6,7 @@ import { getLevelTitle, SPECIALIZATIONS } from "@/types/agent"
 import {
   getEntityStatus,
   refuelEntity,
+  spawnOnDaemon,
   type ServerEntity,
 } from "@/lib/daemon-client"
 
@@ -19,6 +20,8 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
   const selectAgent = useAppStore((s) => s.selectAgent)
   const updateSoul = useAppStore((s) => s.updateSoul)
   const updateSkill = useAppStore((s) => s.updateSkill)
+  const retireAgent = useAppStore((s) => s.retireAgent)
+  const wallet = useAppStore((s) => s.wallet)
 
   const agent = agents.find((a) => a.id === selectedId) ?? agents[0]
 
@@ -28,6 +31,8 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
   const [refuelAmount, setRefuelAmount] = useState(100)
   const [refueling, setRefueling] = useState(false)
   const [refuelError, setRefuelError] = useState("")
+  const [spawning, setSpawning] = useState(false)
+  const [spawnError, setSpawnError] = useState("")
 
   // Poll daemon every 5 seconds
   useEffect(() => {
@@ -66,6 +71,33 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
       setRefueling(false)
     }
   }, [agent?.id, refuelAmount, refueling])
+
+  const handleSpawn = useCallback(async () => {
+    if (!agent?.id || spawning) return
+    setSpawning(true)
+    setSpawnError("")
+    try {
+      const entity = await spawnOnDaemon({
+        id: agent.id,
+        name: agent.name,
+        ownerAddress: wallet.address ?? "local-user",
+        soul: agent.identity?.soul ?? "",
+        skill: agent.identity?.skill ?? "",
+        computeBalance: agent.compute?.balance ?? 100,
+      })
+      setServerEntity(entity)
+    } catch (err) {
+      setSpawnError(err instanceof Error ? err.message : "Spawn failed")
+    } finally {
+      setSpawning(false)
+    }
+  }, [agent?.id, agent?.name, agent?.identity?.soul, agent?.identity?.skill, agent?.compute?.balance, wallet.address, spawning])
+
+  const handleRetire = useCallback(() => {
+    if (!agent?.id) return
+    if (!window.confirm(`Retire "${agent.name}"? This removes it from your local dashboard. It will NOT be deleted on-chain.`)) return
+    retireAgent(agent.id)
+  }, [agent?.id, agent?.name, retireAgent])
 
   if (!agent) return null
 
@@ -217,6 +249,16 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
               <MiniStat label="REP" value={String(reputation)} />
               <MiniStat label="COMPUTE" value={String(Math.round(computeBalance))} />
             </div>
+
+            {/* Retire */}
+            <div className="mt-5 pt-4 border-t border-[rgba(255,255,255,0.05)] flex justify-end">
+              <button
+                onClick={handleRetire}
+                className="text-[10px] font-mono tracking-wider text-[rgba(239,68,68,0.4)] hover:text-[#ef4444] transition-colors px-3 py-1.5 rounded-full hover:bg-[rgba(239,68,68,0.08)]"
+              >
+                RETIRE ENTITY
+              </button>
+            </div>
           </div>
 
           {/* Server Activity */}
@@ -252,8 +294,20 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
             )}
 
             {daemonOnline && !serverEntity && (
-              <div className="text-sm text-[rgba(255,255,255,0.25)] py-4 text-center font-light">
-                Entity not found on daemon. It may need to be spawned.
+              <div className="py-4 text-center">
+                <p className="text-sm text-[rgba(255,255,255,0.25)] font-light mb-3">
+                  Entity not found on daemon. Spawn it to start running autonomously.
+                </p>
+                <button
+                  onClick={handleSpawn}
+                  disabled={spawning}
+                  className="btn-primary px-5 py-2 text-xs rounded-full font-medium disabled:opacity-40"
+                >
+                  {spawning ? "SPAWNING..." : "SPAWN ON SERVER"}
+                </button>
+                {spawnError && (
+                  <p className="text-xs text-red-400 mt-2 font-mono">{spawnError}</p>
+                )}
               </div>
             )}
           </div>

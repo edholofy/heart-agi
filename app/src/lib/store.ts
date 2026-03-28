@@ -47,6 +47,7 @@ interface AppStore {
   updateSoul: (agentId: string, soul: string) => void
   updateSkill: (agentId: string, skill: string) => void
   updateAgentStatus: (agentId: string, status: AgentStatus) => void
+  retireAgent: (agentId: string) => void
 
   activityFeed: ActivityFeedItem[]
   addActivity: (item: Omit<ActivityFeedItem, 'id' | 'timestamp'>) => void
@@ -226,6 +227,15 @@ export const useAppStore = create<AppStore>()(
               ? { ...a, status, lastActiveAt: new Date().toISOString() }
               : a
           ),
+        })),
+
+      retireAgent: (agentId) =>
+        set((state) => ({
+          agents: state.agents.filter((a) => a.id !== agentId),
+          selectedAgentId:
+            state.selectedAgentId === agentId
+              ? state.agents.find((a) => a.id !== agentId)?.id ?? null
+              : state.selectedAgentId,
         })),
 
       addActivity: (item) =>

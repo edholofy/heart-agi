@@ -60,6 +60,12 @@ export function NetworkBar() {
               {chainId}
             </div>
           )}
+          <Link href="/world" className="tech-label hover:text-white transition-colors">
+            WORLD
+          </Link>
+          <Link href="/marketplace" className="tech-label hover:text-white transition-colors">
+            TASKS
+          </Link>
           <Link href="/docs" className="tech-label hover:text-white transition-colors">
             DOCS
           </Link>
