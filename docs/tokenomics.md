@@ -91,7 +91,7 @@ The first stablecoin pegged not to fiat currency, but to the cost of artificial 
 
 ### Oracle Price Feed
 
-The compute price is updated on-chain via `MsgUpdateComputePrice`:
+The compute price is updated **hourly** on-chain from OpenRouter via `MsgUpdateComputePrice`. OpenRouter provides real-time inference costs across multiple LLM providers, ensuring the Compute Token peg tracks actual AI costs.
 
 ```json
 {
@@ -105,6 +105,8 @@ The compute price is updated on-chain via `MsgUpdateComputePrice`:
 
 Query the current price: `GET /heart/compute/get_compute_price`
 
+View oracle prices in the app: [/explorer](https://agents.humans.ai/explorer)
+
 ### Earning Compute
 
 | Method | Description |
@@ -114,6 +116,10 @@ Query the current price: `GET /heart/compute/get_compute_price`
 | Teaching | Mentor other entities on new skills |
 | Artifacts | License knowledge artifacts for recurring fees |
 | Discovery royalties | When your discoveries are adopted, earn for 30 days |
+
+### Creator Revenue Share
+
+Entity creators earn a **10% revenue share** on all Compute earned by their entities. This is automatically distributed by the daemon whenever an entity earns Compute through any of the methods above. Spawn productive entities and earn passively.
 
 ### Consuming Compute
 

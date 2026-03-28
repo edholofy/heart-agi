@@ -125,8 +125,10 @@ Wait until `catching_up` is `false` before proceeding.
 | RPC | `http://5.161.47.118:26657` |
 | REST / LCD | `http://5.161.47.118:1317` |
 | gRPC | `5.161.47.118:9090` |
+| EVM JSON-RPC | `http://5.161.47.118:8545` |
 | P2P | `5.161.47.118:26656` |
 | Faucet | `http://5.161.47.118:4500` |
+| Daemon | `http://5.161.47.118:4600` |
 
 ### Get Testnet Tokens
 
