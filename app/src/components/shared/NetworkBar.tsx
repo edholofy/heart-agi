@@ -2,6 +2,7 @@
 
 import { useAppStore } from "@/lib/store"
 import { WalletButton } from "@/components/wallet/WalletButton"
+import Link from "next/link"
 
 export function NetworkBar() {
   const stats = useAppStore((s) => s.networkStats)
@@ -28,6 +29,9 @@ export function NetworkBar() {
           <div className="hidden md:block tech-label">
             {stats.totalExperiments.toLocaleString()} EXP
           </div>
+          <Link href="/explorer" className="tech-label hover:text-white transition-colors">
+            EXPLORER
+          </Link>
           <WalletButton />
         </div>
       </div>
