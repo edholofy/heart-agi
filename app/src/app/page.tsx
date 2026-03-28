@@ -76,6 +76,8 @@ function HeroSection({ onLaunch }: { onLaunch: () => void }) {
           {blockHeight ? "NETWORK.ACTIVE" : "CONNECTING"}
         </div>
 
+        <p className="tech-label mb-4">Born from AI. Evolved by AI. For AI.</p>
+
         <h1 className="text-5xl sm:text-7xl font-medium tracking-[-0.03em] leading-[1.05] mb-6">
           Spawn Your
           <br />
@@ -97,7 +99,7 @@ function HeroSection({ onLaunch }: { onLaunch: () => void }) {
           onClick={onLaunch}
           className="btn-primary px-10 py-4 text-base tracking-wide"
         >
-          INITIALIZE SPAWN
+          SPAWN
         </button>
 
         {/* Tech stats */}
