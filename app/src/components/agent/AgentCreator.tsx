@@ -4,47 +4,17 @@ import { useState } from "react"
 import {
   SPECIALIZATIONS,
   type Specialization,
-  type ComputeTier,
   hashIdentityFile,
 } from "@/types/agent"
 import { useAppStore } from "@/lib/store"
 import { registerSoul, registerSkill, spawnEntity } from "@/lib/chain-tx"
+import { spawnOnDaemon } from "@/lib/daemon-client"
 
 interface AgentCreatorProps {
   onComplete: () => void
 }
 
-const COMPUTE_TIERS: Record<
-  ComputeTier,
-  { label: string; description: string; tag: string; cost: string }
-> = {
-  browser: {
-    label: "Browser",
-    description: "Runs in your browser tab. Free, lower earnings.",
-    tag: "FREE",
-    cost: "100 compute",
-  },
-  gpu: {
-    label: "Self-hosted GPU",
-    description: "Run locally on your GPU. No API costs, max profit.",
-    tag: "GPU",
-    cost: "500 compute",
-  },
-  api: {
-    label: "API-powered",
-    description: "Stake $HEART for Claude/GPT access. Highest quality.",
-    tag: "API",
-    cost: "1,000 compute",
-  },
-  hybrid: {
-    label: "Hybrid",
-    description: "Local GPU + API for complex tasks. Best efficiency.",
-    tag: "HYBRID",
-    cost: "750 compute",
-  },
-}
-
-type Step = "specialization" | "compute" | "soul" | "confirm"
+type Step = "specialization" | "soul" | "confirm"
 
 export function AgentCreator({ onComplete }: AgentCreatorProps) {
   const createAgent = useAppStore((s) => s.createAgent)
@@ -53,7 +23,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
   const [step, setStep] = useState<Step>("specialization")
   const [name, setName] = useState("")
   const [specialization, setSpecialization] = useState<Specialization>("researcher")
-  const [computeTier, setComputeTier] = useState<ComputeTier>("browser")
+  const [computeDeposit, setComputeDeposit] = useState(500)
   const [soul, setSoul] = useState("")
   const [skill, setSkill] = useState("")
   const [launching, setLaunching] = useState(false)
@@ -66,7 +36,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
     setSpecialization(s)
     setSoul(SPECIALIZATIONS[s].defaultSoul)
     setSkill(SPECIALIZATIONS[s].defaultSkill)
-    setStep("compute")
+    setStep("soul")
   }
 
   async function handleLaunch() {
@@ -81,7 +51,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
 
     setLaunching(true)
 
-    const input = { name: name.trim(), specialization, computeTier, soul, skill }
+    const input = { name: name.trim(), specialization, computeTier: "api" as const, soul, skill, computeDeposit }
 
     try {
       // 1. Hash the soul and skill
@@ -106,15 +76,46 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
       )
 
       // 5. Also create locally for the dashboard
-      createAgent(input)
+      const localAgent = createAgent(input)
 
-      setLaunchStatus(`Entity spawned! TX: ${spawnTx.slice(0, 12)}...`)
+      // 6. Spawn on the server daemon (entity runs autonomously)
+      setLaunchStatus("Starting entity on server daemon...")
+      try {
+        await spawnOnDaemon({
+          id: localAgent.id,
+          name: name.trim(),
+          ownerAddress: wallet.address ?? "local-user",
+          soul,
+          skill,
+          computeBalance: computeDeposit,
+        })
+        setLaunchStatus(`Entity spawned and running! TX: ${spawnTx.slice(0, 12)}...`)
+      } catch (daemonErr) {
+        console.error("Daemon spawn failed:", daemonErr)
+        setLaunchStatus(`On-chain OK (TX: ${spawnTx.slice(0, 12)}...) — daemon offline, will start when available`)
+      }
+
       setTimeout(() => onComplete(), 2000)
     } catch (err: unknown) {
       const e = err as Error
       setError(e.message)
       // If chain fails, still create locally so the UI works
-      createAgent(input)
+      const localAgent = createAgent(input)
+
+      // Try daemon spawn even if chain failed
+      try {
+        await spawnOnDaemon({
+          id: localAgent.id,
+          name: name.trim(),
+          ownerAddress: wallet.address ?? "local-user",
+          soul,
+          skill,
+          computeBalance: computeDeposit,
+        })
+      } catch {
+        // Daemon also offline — entity will be local-only for now
+      }
+
       onComplete()
     } finally {
       setLaunching(false)
@@ -125,8 +126,8 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
     <div className="max-w-xl mx-auto px-4 py-12">
       {/* Progress pills */}
       <div className="flex items-center gap-2 mb-10">
-        {(["specialization", "compute", "soul", "confirm"] as Step[]).map((s, i) => {
-          const steps: Step[] = ["specialization", "compute", "soul", "confirm"]
+        {(["specialization", "soul", "confirm"] as Step[]).map((s, i) => {
+          const steps: Step[] = ["specialization", "soul", "confirm"]
           const active = step === s
           const done = steps.indexOf(step) > i
           return (
@@ -142,7 +143,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
               >
                 {i + 1}
               </div>
-              {i < 3 && <div className="flex-1 h-px bg-[rgba(255,255,255,0.05)]" />}
+              {i < 2 && <div className="flex-1 h-px bg-[rgba(255,255,255,0.05)]" />}
             </div>
           )
         })}
@@ -153,10 +154,10 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
         <div>
           <div className="sys-badge mb-4">STEP.01</div>
           <h2 className="text-2xl font-medium tracking-tight mb-2">
-            Choose Specialization
+            Choose a Template
           </h2>
           <p className="text-[rgba(255,255,255,0.4)] text-sm mb-8 font-light">
-            Defines your entity&apos;s core domain and default soul.md + skill.md.
+            Pick a starting template for soul.md + skill.md. You can edit freely in the next step.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -183,42 +184,10 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
         </div>
       )}
 
-      {/* Step 2: Compute Tier */}
-      {step === "compute" && (
-        <div>
-          <div className="sys-badge mb-4">STEP.02</div>
-          <h2 className="text-2xl font-medium tracking-tight mb-2">Compute Tier</h2>
-          <p className="text-[rgba(255,255,255,0.4)] text-sm mb-8 font-light">
-            How will your entity think? Determines initial compute deposit.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(Object.entries(COMPUTE_TIERS) as [ComputeTier, typeof COMPUTE_TIERS.browser][]).map(([key, val]) => (
-              <button
-                key={key}
-                onClick={() => { setComputeTier(key); setStep("soul") }}
-                className="glass-sm p-4 text-left transition-all hover:bg-[rgba(255,255,255,0.06)] group"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-sm">{val.label}</span>
-                  <span className="tech-label">{val.tag}</span>
-                </div>
-                <div className="text-xs text-[rgba(255,255,255,0.35)] font-light">{val.description}</div>
-                <div className="text-xs text-[rgba(255,255,255,0.5)] mt-2 font-mono">{val.cost}</div>
-              </button>
-            ))}
-          </div>
-
-          <button onClick={() => setStep("specialization")} className="mt-4 text-xs text-[rgba(255,255,255,0.3)] hover:text-white transition-colors">
-            &larr; Back
-          </button>
-        </div>
-      )}
-
-      {/* Step 3: soul.md + skill.md */}
+      {/* Step 2: soul.md + skill.md */}
       {step === "soul" && (
         <div>
-          <div className="sys-badge mb-4">STEP.03</div>
+          <div className="sys-badge mb-4">STEP.02</div>
           <h2 className="text-2xl font-medium tracking-tight mb-2">
             Define Identity
           </h2>
@@ -253,7 +222,7 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
           </div>
 
           <div className="flex gap-3 mt-6">
-            <button onClick={() => setStep("compute")} className="text-xs text-[rgba(255,255,255,0.3)] hover:text-white transition-colors">
+            <button onClick={() => setStep("specialization")} className="text-xs text-[rgba(255,255,255,0.3)] hover:text-white transition-colors">
               &larr; Back
             </button>
             <button
@@ -266,15 +235,15 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
         </div>
       )}
 
-      {/* Step 4: Name + Confirm */}
+      {/* Step 3: Name + Fund + Confirm */}
       {step === "confirm" && (
         <div>
-          <div className="sys-badge mb-4">STEP.04</div>
+          <div className="sys-badge mb-4">STEP.03</div>
           <h2 className="text-2xl font-medium tracking-tight mb-2">
-            Name Your Entity
+            Name &amp; Fund Your Entity
           </h2>
           <p className="text-[rgba(255,255,255,0.4)] text-sm mb-8 font-light">
-            This identity will be registered on the $HEART chain.
+            This identity will be registered on the $HEART chain and run autonomously on the server.
           </p>
 
           <input
@@ -282,20 +251,39 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Cortex-7, NeuralNomad..."
-            className="glass-input w-full h-14 px-6 text-base mb-6"
+            className="glass-input w-full h-14 px-6 text-base mb-4"
             autoFocus
             onKeyDown={(e) => e.key === "Enter" && handleLaunch()}
           />
+
+          {/* Compute Deposit */}
+          <div className="glass-sm p-4 mb-6">
+            <label className="tech-label block mb-2">COMPUTE DEPOSIT</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={computeDeposit}
+                onChange={(e) => setComputeDeposit(Math.max(100, Number(e.target.value) || 100))}
+                min={100}
+                step={100}
+                className="glass-input w-32 h-10 px-4 text-sm font-mono text-center"
+              />
+              <span className="text-xs text-[rgba(255,255,255,0.4)]">tokens (min. 100)</span>
+            </div>
+            <p className="text-xs text-[rgba(255,255,255,0.25)] mt-2 font-light">
+              Compute fuels every thought and action. More compute = longer autonomous runtime before refueling.
+            </p>
+          </div>
 
           {/* Summary */}
           <div className="glass-sm p-5 mb-6">
             <div className="tech-label mb-3">SPAWN.SUMMARY</div>
             <div className="space-y-2 text-sm">
-              <SummaryRow label="Specialization" value={`${spec.icon} ${spec.label}`} />
-              <SummaryRow label="Compute Tier" value={COMPUTE_TIERS[computeTier].label} />
+              <SummaryRow label="Template" value={`${spec.icon} ${spec.label}`} />
+              <SummaryRow label="Runtime" value="Server Daemon (autonomous)" />
               <SummaryRow label="soul.md" value={`${soul.length} chars`} />
               <SummaryRow label="skill.md" value={`${skill.length} chars`} />
-              <SummaryRow label="Compute Deposit" value={COMPUTE_TIERS[computeTier].cost} />
+              <SummaryRow label="Compute Deposit" value={`${computeDeposit} tokens`} />
             </div>
           </div>
 

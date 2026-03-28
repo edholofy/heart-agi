@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useAppStore } from "@/lib/store"
 import { getLevelTitle, SPECIALIZATIONS } from "@/types/agent"
-import { useAgentRuntime } from "@/lib/useAgentRuntime"
-import { useRealRuntime, type LiveEvent } from "@/lib/useRealRuntime"
-import { isLLMConfigured } from "@/lib/llm"
+import {
+  getEntityStatus,
+  refuelEntity,
+  type ServerEntity,
+} from "@/lib/daemon-client"
 
 interface DashboardProps {
   onCreateNew: () => void
@@ -20,45 +22,79 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
 
   const agent = agents.find((a) => a.id === selectedId) ?? agents[0]
 
-  // Check once whether real LLM is available
-  const [useLLM] = useState(() => isLLMConfigured())
+  // Server daemon state
+  const [serverEntity, setServerEntity] = useState<ServerEntity | null>(null)
+  const [daemonOnline, setDaemonOnline] = useState(true)
+  const [refuelAmount, setRefuelAmount] = useState(100)
+  const [refueling, setRefueling] = useState(false)
+  const [refuelError, setRefuelError] = useState("")
 
-  // Always call both hooks (React rules), but only auto-start the active one
-  const realRuntime = useRealRuntime({
-    entityId: agent?.id ?? '',
-    entityName: agent?.name ?? '',
-    soul: agent?.identity?.soul ?? '',
-    skill: agent?.identity?.skill ?? '',
-    computeBalance: agent?.compute?.balance ?? 100,
-    autoStart: useLLM,
-  })
+  // Poll daemon every 5 seconds
+  useEffect(() => {
+    if (!agent?.id) return
 
-  const simRuntime = useAgentRuntime({
-    agentId: agent?.id ?? '',
-    agentName: agent?.name ?? '',
-    specialization: agent?.specialization ?? 'researcher',
-    soul: agent?.identity?.soul ?? '',
-    skill: agent?.identity?.skill ?? '',
-    computeBalance: agent?.compute?.balance ?? 100,
-    autoStart: !useLLM,
-  })
+    const poll = async () => {
+      try {
+        const entity = await getEntityStatus(agent.id)
+        if (entity) {
+          setServerEntity(entity)
+          setDaemonOnline(true)
+        } else {
+          setServerEntity(null)
+          setDaemonOnline(true) // daemon is online but entity not found
+        }
+      } catch {
+        setDaemonOnline(false)
+        setServerEntity(null)
+      }
+    }
 
-  // Use whichever runtime is active
-  const {
-    liveFeed,
-    isRunning,
-    start,
-    stop,
-    peerDiscoveries,
-    stats,
-  } = useLLM ? realRuntime : simRuntime
+    poll()
+    const interval = setInterval(poll, 5000)
+    return () => clearInterval(interval)
+  }, [agent?.id])
 
-  // LLM-only fields (safe to destructure — only used when useLLM is true)
-  const { pendingDiscoveries, markSubmitted, computeState } = realRuntime
+  const handleRefuel = useCallback(async () => {
+    if (!agent?.id || refueling) return
+    setRefueling(true)
+    setRefuelError("")
+    try {
+      await refuelEntity(agent.id, refuelAmount)
+    } catch (err) {
+      setRefuelError(err instanceof Error ? err.message : "Refuel failed")
+    } finally {
+      setRefueling(false)
+    }
+  }, [agent?.id, refuelAmount, refueling])
 
   if (!agent) return null
 
   const spec = SPECIALIZATIONS[agent.specialization]
+
+  // Derive display values from server entity or fall back to local
+  const status = serverEntity?.status ?? (daemonOnline ? "unknown" : "offline")
+  const experiments = serverEntity?.experiments ?? agent.stats.experimentsCompleted
+  const discoveries = serverEntity?.discoveries ?? agent.stats.discoveriesCount
+  const tasksCompleted = serverEntity?.tasks_completed ?? agent.stats.tasksCompleted
+  const reputation = serverEntity?.reputation ?? agent.stats.reputation
+  const computeBalance = serverEntity?.compute_balance ?? agent.compute?.balance ?? 0
+  const lastActivity = serverEntity?.last_activity ?? agent.lastActiveAt
+
+  const statusColor: Record<string, string> = {
+    alive: "text-[#22c55e]",
+    dormant: "text-[#f59e0b]",
+    stopped: "text-[#ef4444]",
+    unknown: "text-[rgba(255,255,255,0.3)]",
+    offline: "text-[#ef4444]",
+  }
+
+  const statusDotColor: Record<string, string> = {
+    alive: "bg-[#22c55e] animate-pulse-dot",
+    dormant: "bg-[#f59e0b]",
+    stopped: "bg-[#ef4444]",
+    unknown: "bg-[rgba(255,255,255,0.2)]",
+    offline: "bg-[#ef4444]",
+  }
 
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-6">
@@ -85,6 +121,19 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
         </button>
       </div>
 
+      {/* Daemon offline banner */}
+      {!daemonOnline && (
+        <div className="glass-sm p-4 mb-5 border border-[rgba(239,68,68,0.2)]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
+            <span className="text-sm text-[#ef4444] font-medium">DAEMON OFFLINE</span>
+          </div>
+          <p className="text-xs text-[rgba(255,255,255,0.35)] mt-1 font-light">
+            Cannot reach the entity daemon. Showing cached data. Entity may still be running on the server.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-5">
@@ -99,144 +148,115 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
                     <div className="tech-label mt-1">
                       {spec.label} &middot; LVL {agent.level.level} {getLevelTitle(agent.level.level)} &middot; v{agent.identity?.version ?? 1}
                     </div>
-                    <div className={`tech-label mt-1 ${useLLM ? "text-[#22c55e]" : "text-[#f59e0b]"}`}>
-                      {useLLM ? "LLM.ACTIVE" : "SIMULATED"}
+                    <div className="tech-label mt-1 text-[#22c55e]">
+                      SERVER.DAEMON
                     </div>
                   </div>
                 </div>
               </div>
-              <button
-                onClick={isRunning ? stop : start}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all ${
-                  isRunning
-                    ? "bg-[rgba(34,197,94,0.1)] text-[#22c55e]"
-                    : "btn-secondary text-[rgba(255,255,255,0.4)]"
-                }`}
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium ${
+                  status === "alive"
+                    ? "bg-[rgba(34,197,94,0.1)]"
+                    : status === "dormant"
+                      ? "bg-[rgba(245,158,11,0.1)]"
+                      : "bg-[rgba(239,68,68,0.1)]"
+                } ${statusColor[status] ?? statusColor.unknown}`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? "bg-[#22c55e] animate-pulse-dot" : "bg-[rgba(255,255,255,0.2)]"}`} />
-                {isRunning ? "ALIVE" : "DORMANT"}
-              </button>
+                <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor[status] ?? statusDotColor.unknown}`} />
+                {status.toUpperCase()}
+              </div>
             </div>
 
             {/* Compute balance */}
-            {(() => {
-              const balance = useLLM ? computeState.balance : (agent.compute?.balance ?? 0)
-              const isDormant = useLLM ? computeState.isDormant : (agent.compute?.isDormant ?? false)
-              return (
-                <div className="glass-sm p-4 mb-5">
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="tech-label">COMPUTE.BALANCE</span>
-                    <span className={`font-mono ${balance < 20 ? "text-[#ef4444]" : "text-[#22c55e]"}`}>
-                      {isDormant ? "DEPLETED" : `${balance.toFixed(0)} tokens`}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        balance < 20 ? "bg-[#ef4444]" : "bg-[#22c55e]"
-                      }`}
-                      style={{ width: `${Math.min(100, (balance / 100) * 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between tech-label mt-2">
-                    {useLLM ? (
-                      <>
-                        <span>USED: {computeState.consumed}</span>
-                        <span>EARNED: {computeState.earned}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>-5/EXP -3/TASK</span>
-                        <span>+25/DISCOVERY +8/TASK</span>
-                      </>
-                    )}
-                  </div>
+            <div className="glass-sm p-4 mb-5">
+              <div className="flex justify-between text-xs mb-2">
+                <span className="tech-label">COMPUTE.BALANCE</span>
+                <span className={`font-mono ${computeBalance < 20 ? "text-[#ef4444]" : "text-[#22c55e]"}`}>
+                  {computeBalance <= 0 ? "DEPLETED" : `${computeBalance.toFixed(0)} tokens`}
+                </span>
+              </div>
+              <div className="h-1.5 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    computeBalance < 20 ? "bg-[#ef4444]" : "bg-[#22c55e]"
+                  }`}
+                  style={{ width: `${Math.min(100, (computeBalance / 500) * 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-3">
+                <span className="tech-label">REFUEL</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={refuelAmount}
+                    onChange={(e) => setRefuelAmount(Math.max(10, Number(e.target.value) || 10))}
+                    min={10}
+                    step={50}
+                    className="glass-input w-20 h-8 px-2 text-xs font-mono text-center"
+                  />
+                  <button
+                    onClick={handleRefuel}
+                    disabled={refueling || !daemonOnline}
+                    className="btn-primary px-3 py-1.5 text-xs rounded-full disabled:opacity-30"
+                  >
+                    {refueling ? "..." : "REFUEL"}
+                  </button>
                 </div>
-              )
-            })()}
+              </div>
+              {refuelError && (
+                <p className="text-xs text-red-400 mt-1 font-mono">{refuelError}</p>
+              )}
+            </div>
 
             {/* Stats */}
-            <div className={`grid ${useLLM ? "grid-cols-6" : "grid-cols-4"} gap-3`}>
-              <MiniStat label="EXP" value={String(stats.experiments || agent.stats.experimentsCompleted)} />
-              <MiniStat label="DISC" value={String(stats.discoveries || agent.stats.discoveriesCount)} highlight />
-              {!useLLM && <MiniStat label="ADOPTED" value={String((stats as { adoptions?: number }).adoptions ?? 0)} />}
-              <MiniStat label="PEERS" value={String(peerDiscoveries.length)} />
-              {useLLM && (
-                <>
-                  <MiniStat label="LLM.CALLS" value={String((stats as { llmCalls?: number }).llmCalls ?? 0)} />
-                  <MiniStat label="TOKENS" value={String((stats as { totalTokens?: number }).totalTokens ?? 0)} />
-                  <MiniStat label="PENDING" value={String(pendingDiscoveries.length)} highlight />
-                </>
-              )}
+            <div className="grid grid-cols-5 gap-3">
+              <MiniStat label="EXP" value={String(experiments)} />
+              <MiniStat label="DISC" value={String(discoveries)} highlight />
+              <MiniStat label="TASKS" value={String(tasksCompleted)} />
+              <MiniStat label="REP" value={String(reputation)} />
+              <MiniStat label="COMPUTE" value={String(Math.round(computeBalance))} />
             </div>
           </div>
 
-          {/* Live Feed */}
+          {/* Server Activity */}
           <div className="glass p-6">
             <div className="flex items-center gap-2 mb-4">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse-dot" />
-              <span className="tech-label">LIVE.FEED</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor[status] ?? statusDotColor.unknown}`} />
+              <span className="tech-label">ENTITY.STATUS</span>
             </div>
 
-            <div className="space-y-1 max-h-72 overflow-y-auto">
-              {liveFeed.length === 0 && (
-                <div className="text-sm text-[rgba(255,255,255,0.25)] py-8 text-center font-light">
-                  {isRunning ? "Initializing first experiment..." : "Entity is dormant. Click ALIVE to start."}
-                </div>
+            <div className="space-y-3">
+              <StatusRow label="Status" value={status.toUpperCase()} />
+              <StatusRow
+                label="Last Activity"
+                value={lastActivity ? new Date(lastActivity).toLocaleString() : "N/A"}
+              />
+              {serverEntity?.started_at && (
+                <StatusRow
+                  label="Started At"
+                  value={new Date(serverEntity.started_at).toLocaleString()}
+                />
               )}
-              {liveFeed.map((item) => (
-                <FeedItem key={item.id} item={item} />
-              ))}
+              <StatusRow label="Experiments" value={String(experiments)} />
+              <StatusRow label="Discoveries" value={String(discoveries)} />
+              <StatusRow label="Tasks Completed" value={String(tasksCompleted)} />
+              <StatusRow label="Reputation" value={String(reputation)} />
+              <StatusRow label="Compute Balance" value={`${Math.round(computeBalance)} tokens`} />
             </div>
-          </div>
 
-          {/* Pending Discoveries — LLM only */}
-          {useLLM && pendingDiscoveries.length > 0 && (
-            <div className="glass p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-pulse-dot" />
-                <span className="tech-label">PENDING.DISCOVERIES</span>
-                <span className="text-xs text-[rgba(255,255,255,0.3)] ml-auto">{pendingDiscoveries.length} ready</span>
+            {!daemonOnline && (
+              <div className="text-sm text-[rgba(255,255,255,0.25)] py-4 text-center font-light">
+                Daemon offline — entity status unavailable
               </div>
-              <div className="space-y-3">
-                {pendingDiscoveries.map((disc) => (
-                  <div key={disc.id} className="glass-sm p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{disc.finding}</div>
-                        <div className="text-xs text-[rgba(255,255,255,0.35)] mt-1 font-light">
-                          {disc.metric}: {disc.evidenceBefore.toFixed(4)} → {disc.evidenceAfter.toFixed(4)} ({disc.improvement.toFixed(1)}% improvement)
-                        </div>
-                        <div className="text-xs text-[rgba(255,255,255,0.25)] mt-1 font-light truncate">
-                          {disc.evaluation}
-                        </div>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const { submitResearch } = await import("@/lib/chain-tx")
-                            const txHash = await submitResearch(
-                              disc.finding,
-                              `Improved ${disc.metric} from ${disc.evidenceBefore.toFixed(4)} to ${disc.evidenceAfter.toFixed(4)}`,
-                              disc.evaluation || "Adopt this finding",
-                              disc.entityId
-                            )
-                            markSubmitted(disc.id, txHash)
-                          } catch (err) {
-                            console.error("Chain submission failed:", err)
-                            markSubmitted(disc.id, "local-only")
-                          }
-                        }}
-                        className="btn-primary px-3 py-1.5 text-xs rounded-full shrink-0"
-                      >
-                        SUBMIT TO CHAIN
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            )}
+
+            {daemonOnline && !serverEntity && (
+              <div className="text-sm text-[rgba(255,255,255,0.25)] py-4 text-center font-light">
+                Entity not found on daemon. It may need to be spawned.
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* soul.md + skill.md editors */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -316,29 +336,11 @@ function MiniStat({ label, value, highlight }: { label: string; value: string; h
   )
 }
 
-function FeedItem({ item }: { item: LiveEvent }) {
-  const time = new Date(item.timestamp).toLocaleTimeString("en-GB", {
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  })
-
-  const colors: Record<string, string> = {
-    experiment: "text-[rgba(255,255,255,0.6)]",
-    task: "text-[#22c55e]",
-    discovery: "text-white",
-    gossip: "text-[#f59e0b]",
-    adoption: "text-[#f59e0b]",
-    dormant: "text-[#ef4444]",
-    metabolism: "text-[rgba(255,255,255,0.3)]",
-    presence: "text-[rgba(255,255,255,0.2)]",
-  }
-
+function StatusRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex gap-3 text-xs py-1">
-      <span className="text-[rgba(255,255,255,0.2)] font-mono shrink-0">{time}</span>
-      {item.fromPeer && <span className="text-[rgba(255,127,0,0.5)] shrink-0">[P]</span>}
-      <span className={`${colors[item.type] ?? "text-[rgba(255,255,255,0.5)]"} font-light`}>
-        {item.message}
-      </span>
+    <div className="flex justify-between text-xs py-1">
+      <span className="text-[rgba(255,255,255,0.4)]">{label}</span>
+      <span className="font-mono text-[rgba(255,255,255,0.8)]">{value}</span>
     </div>
   )
 }
@@ -392,5 +394,3 @@ function EarnRow({ label, value }: { label: string; value: number }) {
     </div>
   )
 }
-
-
