@@ -20,6 +20,7 @@ export interface ServerEntity {
   discoveries: number
   tasks_completed: number
   reputation: number
+  creator_revenue: number
   last_activity: string
   started_at: string
 }
@@ -33,7 +34,7 @@ export async function spawnOnDaemon(params: {
   skill: string
   computeBalance: number
 }): Promise<ServerEntity> {
-  const res = await fetch(`${DAEMON_URL}/entities`, {
+  const res = await fetch(`${DAEMON_URL}/api/entities/spawn`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -51,37 +52,30 @@ export async function spawnOnDaemon(params: {
     throw new Error(`Daemon spawn failed (${res.status}): ${text}`)
   }
 
-  return res.json()
+  const data = await res.json()
+  return data.entity || data
 }
 
 /** List all running entities */
 export async function listEntities(): Promise<ServerEntity[]> {
-  const res = await fetch(`${DAEMON_URL}/entities`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  })
+  const res = await fetch(`${DAEMON_URL}/api/entities`)
 
   if (!res.ok) {
     throw new Error(`Daemon list failed (${res.status})`)
   }
 
-  return res.json()
+  const data = await res.json()
+  return data.entities || []
 }
 
 /** Get single entity status */
 export async function getEntityStatus(
   id: string
 ): Promise<ServerEntity | null> {
-  const res = await fetch(`${DAEMON_URL}/entities/${id}`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  })
+  const res = await fetch(`${DAEMON_URL}/api/entities/status?id=${encodeURIComponent(id)}`)
 
   if (res.status === 404) return null
-
-  if (!res.ok) {
-    throw new Error(`Daemon status failed (${res.status})`)
-  }
+  if (!res.ok) return null
 
   return res.json()
 }
@@ -91,10 +85,10 @@ export async function refuelEntity(
   id: string,
   amount: number
 ): Promise<void> {
-  const res = await fetch(`${DAEMON_URL}/entities/${id}/refuel`, {
+  const res = await fetch(`${DAEMON_URL}/api/entities/refuel`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ id, amount }),
   })
 
   if (!res.ok) {
@@ -105,13 +99,29 @@ export async function refuelEntity(
 
 /** Stop an entity */
 export async function stopEntity(id: string): Promise<void> {
-  const res = await fetch(`${DAEMON_URL}/entities/${id}/stop`, {
+  const res = await fetch(`${DAEMON_URL}/api/entities/stop`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
   })
 
   if (!res.ok) {
     const text = await res.text().catch(() => "Unknown error")
     throw new Error(`Daemon stop failed (${res.status}): ${text}`)
   }
+}
+
+/** Get activity log */
+export async function getActivity(
+  entityId?: string,
+  limit = 50
+): Promise<{ type: string; entity_name: string; message: string; timestamp: string }[]> {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (entityId) params.set("entity_id", entityId)
+
+  const res = await fetch(`${DAEMON_URL}/api/activity?${params}`)
+  if (!res.ok) return []
+
+  const data = await res.json()
+  return data.activity || []
 }
