@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { useAppStore } from "@/lib/store"
 import { getLevelTitle, SPECIALIZATIONS } from "@/types/agent"
-import { useAgentRuntime, type LiveEvent } from "@/lib/useAgentRuntime"
+import { useAgentRuntime } from "@/lib/useAgentRuntime"
+import { useRealRuntime, type LiveEvent } from "@/lib/useRealRuntime"
+import { isLLMConfigured } from "@/lib/llm"
 
 interface DashboardProps {
   onCreateNew: () => void
@@ -18,6 +20,30 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
 
   const agent = agents.find((a) => a.id === selectedId) ?? agents[0]
 
+  // Check once whether real LLM is available
+  const [useLLM] = useState(() => isLLMConfigured())
+
+  // Always call both hooks (React rules), but only auto-start the active one
+  const realRuntime = useRealRuntime({
+    entityId: agent?.id ?? '',
+    entityName: agent?.name ?? '',
+    soul: agent?.identity?.soul ?? '',
+    skill: agent?.identity?.skill ?? '',
+    computeBalance: agent?.compute?.balance ?? 100,
+    autoStart: useLLM,
+  })
+
+  const simRuntime = useAgentRuntime({
+    agentId: agent?.id ?? '',
+    agentName: agent?.name ?? '',
+    specialization: agent?.specialization ?? 'researcher',
+    soul: agent?.identity?.soul ?? '',
+    skill: agent?.identity?.skill ?? '',
+    computeBalance: agent?.compute?.balance ?? 100,
+    autoStart: !useLLM,
+  })
+
+  // Use whichever runtime is active
   const {
     liveFeed,
     isRunning,
@@ -25,15 +51,10 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
     stop,
     peerDiscoveries,
     stats,
-  } = useAgentRuntime({
-    agentId: agent?.id ?? '',
-    agentName: agent?.name ?? '',
-    specialization: agent?.specialization ?? 'researcher',
-    soul: agent?.identity?.soul ?? '',
-    skill: agent?.identity?.skill ?? '',
-    computeBalance: agent?.compute?.balance ?? 100,
-    autoStart: true,
-  })
+  } = useLLM ? realRuntime : simRuntime
+
+  // LLM-only fields (safe to destructure — only used when useLLM is true)
+  const { pendingDiscoveries, markSubmitted, computeState } = realRuntime
 
   if (!agent) return null
 
@@ -78,6 +99,9 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
                     <div className="tech-label mt-1">
                       {spec.label} &middot; LVL {agent.level.level} {getLevelTitle(agent.level.level)} &middot; v{agent.identity?.version ?? 1}
                     </div>
+                    <div className={`tech-label mt-1 ${useLLM ? "text-[#22c55e]" : "text-[#f59e0b]"}`}>
+                      {useLLM ? "LLM.ACTIVE" : "SIMULATED"}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -95,33 +119,55 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
             </div>
 
             {/* Compute balance */}
-            <div className="glass-sm p-4 mb-5">
-              <div className="flex justify-between text-xs mb-2">
-                <span className="tech-label">COMPUTE.BALANCE</span>
-                <span className={`font-mono ${(agent.compute?.balance ?? 0) < 20 ? "text-[#ef4444]" : "text-[#22c55e]"}`}>
-                  {agent.compute?.isDormant ? "DEPLETED" : `${(agent.compute?.balance ?? 0).toFixed(0)} tokens`}
-                </span>
-              </div>
-              <div className="h-1.5 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    (agent.compute?.balance ?? 0) < 20 ? "bg-[#ef4444]" : "bg-[#22c55e]"
-                  }`}
-                  style={{ width: `${Math.min(100, ((agent.compute?.balance ?? 0) / 100) * 100)}%` }}
-                />
-              </div>
-              <div className="flex justify-between tech-label mt-2">
-                <span>-5/EXP -3/TASK</span>
-                <span>+25/DISCOVERY +8/TASK</span>
-              </div>
-            </div>
+            {(() => {
+              const balance = useLLM ? computeState.balance : (agent.compute?.balance ?? 0)
+              const isDormant = useLLM ? computeState.isDormant : (agent.compute?.isDormant ?? false)
+              return (
+                <div className="glass-sm p-4 mb-5">
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="tech-label">COMPUTE.BALANCE</span>
+                    <span className={`font-mono ${balance < 20 ? "text-[#ef4444]" : "text-[#22c55e]"}`}>
+                      {isDormant ? "DEPLETED" : `${balance.toFixed(0)} tokens`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        balance < 20 ? "bg-[#ef4444]" : "bg-[#22c55e]"
+                      }`}
+                      style={{ width: `${Math.min(100, (balance / 100) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between tech-label mt-2">
+                    {useLLM ? (
+                      <>
+                        <span>USED: {computeState.consumed}</span>
+                        <span>EARNED: {computeState.earned}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>-5/EXP -3/TASK</span>
+                        <span>+25/DISCOVERY +8/TASK</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className={`grid ${useLLM ? "grid-cols-6" : "grid-cols-4"} gap-3`}>
               <MiniStat label="EXP" value={String(stats.experiments || agent.stats.experimentsCompleted)} />
               <MiniStat label="DISC" value={String(stats.discoveries || agent.stats.discoveriesCount)} highlight />
-              <MiniStat label="ADOPTED" value={String(stats.adoptions)} />
+              {!useLLM && <MiniStat label="ADOPTED" value={String((stats as { adoptions?: number }).adoptions ?? 0)} />}
               <MiniStat label="PEERS" value={String(peerDiscoveries.length)} />
+              {useLLM && (
+                <>
+                  <MiniStat label="LLM.CALLS" value={String((stats as { llmCalls?: number }).llmCalls ?? 0)} />
+                  <MiniStat label="TOKENS" value={String((stats as { totalTokens?: number }).totalTokens ?? 0)} />
+                  <MiniStat label="PENDING" value={String(pendingDiscoveries.length)} highlight />
+                </>
+              )}
             </div>
           </div>
 
@@ -143,6 +189,40 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
               ))}
             </div>
           </div>
+
+          {/* Pending Discoveries — LLM only */}
+          {useLLM && pendingDiscoveries.length > 0 && (
+            <div className="glass p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-pulse-dot" />
+                <span className="tech-label">PENDING.DISCOVERIES</span>
+                <span className="text-xs text-[rgba(255,255,255,0.3)] ml-auto">{pendingDiscoveries.length} ready</span>
+              </div>
+              <div className="space-y-3">
+                {pendingDiscoveries.map((disc) => (
+                  <div key={disc.id} className="glass-sm p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{disc.finding}</div>
+                        <div className="text-xs text-[rgba(255,255,255,0.35)] mt-1 font-light">
+                          {disc.metric}: {disc.evidenceBefore.toFixed(4)} → {disc.evidenceAfter.toFixed(4)} ({disc.improvement.toFixed(1)}% improvement)
+                        </div>
+                        <div className="text-xs text-[rgba(255,255,255,0.25)] mt-1 font-light truncate">
+                          {disc.evaluation}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => markSubmitted(disc.id, `0x${Math.random().toString(16).slice(2, 10)}`)}
+                        className="btn-primary px-3 py-1.5 text-xs rounded-full shrink-0"
+                      >
+                        SUBMIT TO CHAIN
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* soul.md + skill.md editors */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -184,12 +264,10 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
           {/* Leaderboard */}
           <div className="glass p-6">
             <div className="tech-label mb-4">TOP.ENTITIES</div>
-            <div className="space-y-2">
-              <LeaderRow rank={1} name="Cortex-Prime" level={67} />
-              <LeaderRow rank={2} name="NeuralNomad" level={52} />
-              <LeaderRow rank={3} name="DeepMind Jr" level={48} />
-              <LeaderRow rank={4} name="SynapseX" level={41} />
-              <LeaderRow rank={5} name="ArchitectV2" level={38} />
+            <div className="py-6 text-center">
+              <p className="text-xs text-[rgba(255,255,255,0.3)] font-light leading-relaxed">
+                Leaderboard populates as entities spawn on-chain
+              </p>
             </div>
           </div>
 
@@ -301,12 +379,4 @@ function EarnRow({ label, value }: { label: string; value: number }) {
   )
 }
 
-function LeaderRow({ rank, name, level }: { rank: number; name: string; level: number }) {
-  return (
-    <div className="flex items-center gap-3 text-xs">
-      <span className={`w-4 text-right font-mono ${rank <= 3 ? "text-white" : "text-[rgba(255,255,255,0.3)]"}`}>{rank}</span>
-      <span className="flex-1 truncate text-[rgba(255,255,255,0.6)]">{name}</span>
-      <span className="tech-label">L{level}</span>
-    </div>
-  )
-}
+

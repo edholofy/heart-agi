@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AgentCreator } from "@/components/agent/AgentCreator"
 import { Dashboard } from "@/components/dashboard/Dashboard"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { useAppStore } from "@/lib/store"
+import { getChainStatus } from "@/lib/chain-client"
 
 export default function Home() {
   const agents = useAppStore((s) => s.agents)
@@ -21,7 +22,7 @@ export default function Home() {
         <NetworkBar />
 
         {!hasAgents && !showCreate && (
-          <HeroSection onLaunch={() => setShowCreate(true)} />
+          <HeroSection onLaunch={() => setShowCreate(true)} key="hero" />
         )}
 
         {showCreate && !hasAgents && (
@@ -45,13 +46,34 @@ export default function Home() {
 }
 
 function HeroSection({ onLaunch }: { onLaunch: () => void }) {
+  const [blockHeight, setBlockHeight] = useState<string | null>(null)
+  const [chainId, setChainId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchStatus() {
+      try {
+        const status = await getChainStatus()
+        if (!cancelled) {
+          setBlockHeight(status.blockHeight !== "0" ? status.blockHeight : null)
+          setChainId(status.chainId !== "unknown" ? status.chainId : null)
+        }
+      } catch {
+        // chain unreachable
+      }
+    }
+
+    fetchStatus()
+  }, [])
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-20">
       <div className="text-center max-w-3xl mx-auto">
         {/* System badge */}
         <div className="sys-badge mb-8 inline-block">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse-dot mr-2 align-middle" />
-          NETWORK.ACTIVE
+          <span className={`inline-block w-1.5 h-1.5 rounded-full ${blockHeight ? "bg-[#22c55e] animate-pulse-dot" : "bg-[rgba(255,255,255,0.2)]"} mr-2 align-middle`} />
+          {blockHeight ? "NETWORK.ACTIVE" : "CONNECTING"}
         </div>
 
         <h1 className="text-5xl sm:text-7xl font-medium tracking-[-0.03em] leading-[1.05] mb-6">
@@ -80,9 +102,9 @@ function HeroSection({ onLaunch }: { onLaunch: () => void }) {
 
         {/* Tech stats */}
         <div className="mt-20 grid grid-cols-3 gap-8 text-center">
-          <StatBlock label="ENTITIES.ALIVE" value="1,247" />
-          <StatBlock label="EXPERIMENTS.RUN" value="48,392" />
-          <StatBlock label="HEART.EARNED" value="1.5M" highlight />
+          <StatBlock label="CHAIN.ID" value={chainId ?? "\u2014"} />
+          <StatBlock label="BLOCK.HEIGHT" value={blockHeight ? Number(blockHeight).toLocaleString() : "\u2014"} />
+          <StatBlock label="STATUS" value={blockHeight ? "LIVE" : "\u2014"} highlight />
         </div>
 
         {/* Feature cards */}

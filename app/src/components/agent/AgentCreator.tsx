@@ -5,10 +5,10 @@ import {
   SPECIALIZATIONS,
   type Specialization,
   type ComputeTier,
+  hashIdentityFile,
 } from "@/types/agent"
 import { useAppStore } from "@/lib/store"
-import { createAgentApi } from "@/lib/api"
-import { isContractConfigured, mintAgentNFT } from "@/lib/contract"
+import { registerSoul, registerSkill, spawnEntity } from "@/lib/chain-tx"
 
 interface AgentCreatorProps {
   onComplete: () => void
@@ -57,6 +57,8 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
   const [soul, setSoul] = useState("")
   const [skill, setSkill] = useState("")
   const [launching, setLaunching] = useState(false)
+  const [launchStatus, setLaunchStatus] = useState("")
+  const [error, setError] = useState("")
 
   const spec = SPECIALIZATIONS[specialization]
 
@@ -69,22 +71,50 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
 
   async function handleLaunch() {
     if (!name.trim()) return
+    setError("")
+    setLaunchStatus("")
+
+    if (!wallet.connected) {
+      setError("Create a wallet first to spawn on-chain")
+      return
+    }
+
     setLaunching(true)
 
     const input = { name: name.trim(), specialization, computeTier, soul, skill }
 
     try {
+      // 1. Hash the soul and skill
+      const soulHash = await hashIdentityFile(soul)
+      const skillHash = await hashIdentityFile(skill)
+
+      // 2. Register soul on-chain
+      setLaunchStatus("Registering soul.md on-chain...")
+      await registerSoul(`sha256:${soulHash}`)
+
+      // 3. Register skill on-chain
+      setLaunchStatus("Registering skill.md on-chain...")
+      await registerSkill(`sha256:${skillHash}`)
+
+      // 4. Spawn entity on-chain (requires 100 HEART stake)
+      setLaunchStatus("Spawning entity on-chain (staking 100 HEART)...")
+      const spawnTx = await spawnEntity(
+        name.trim(),
+        specialization,
+        `sha256:${soulHash}`,
+        `sha256:${skillHash}`
+      )
+
+      // 5. Also create locally for the dashboard
       createAgent(input)
-      if (wallet.connected && wallet.address) {
-        await createAgentApi(wallet.address, input)
-      }
-      if (wallet.connected && isContractConfigured()) {
-        try {
-          await mintAgentNFT(input.name, input.specialization)
-        } catch { /* NFT optional */ }
-      }
-      onComplete()
-    } catch {
+
+      setLaunchStatus(`Entity spawned! TX: ${spawnTx.slice(0, 12)}...`)
+      setTimeout(() => onComplete(), 2000)
+    } catch (err: unknown) {
+      const e = err as Error
+      setError(e.message)
+      // If chain fails, still create locally so the UI works
+      createAgent(input)
       onComplete()
     } finally {
       setLaunching(false)
@@ -282,9 +312,17 @@ export function AgentCreator({ onComplete }: AgentCreatorProps) {
             </button>
           </div>
 
+          {launchStatus && (
+            <p className="text-xs text-[#22c55e] mt-2 font-mono">{launchStatus}</p>
+          )}
+
+          {error && (
+            <p className="text-xs text-red-400 mt-2 font-mono">{error}</p>
+          )}
+
           {!wallet.connected && (
             <p className="text-xs text-[rgba(255,255,255,0.25)] mt-3 text-center font-mono">
-              Connect wallet to register on-chain
+              Create a wallet to spawn on-chain
             </p>
           )}
         </div>
