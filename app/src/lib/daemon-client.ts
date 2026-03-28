@@ -110,6 +110,51 @@ export async function stopEntity(id: string): Promise<void> {
   }
 }
 
+/** Swarm intelligence result */
+export interface SwarmContribution {
+  entity_name: string
+  skill: string
+  subtask: string
+  response: string
+  confidence: number
+  duration_ms: number
+}
+
+export interface SwarmResult {
+  task: string
+  synthesis: string
+  contributions: SwarmContribution[]
+  entities_used: number
+  total_duration_ms: number
+  tx_hash?: string
+}
+
+/** Run a swarm intelligence task across multiple entities */
+export async function runSwarm(params: {
+  task: string
+  context?: string
+  maxEntities?: number
+  entityNames?: string[]
+}): Promise<SwarmResult> {
+  const res = await proxyFetch("/api/entities/swarm", "daemon", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      task: params.task,
+      context: params.context || "",
+      max_entities: params.maxEntities || 0,
+      entity_names: params.entityNames || [],
+    }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "Unknown error")
+    throw new Error(`Swarm failed (${res.status}): ${text}`)
+  }
+
+  return res.json()
+}
+
 /** Get activity log */
 export async function getActivity(
   entityId?: string,

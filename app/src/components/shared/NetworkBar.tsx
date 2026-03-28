@@ -66,6 +66,9 @@ export function NetworkBar() {
           <Link href="/marketplace" className="hidden sm:block tech-label hover:text-white transition-colors">
             TASKS
           </Link>
+          <Link href="/swarm" className="hidden sm:block tech-label hover:text-white transition-colors">
+            SWARM
+          </Link>
           <Link href="/artifacts" className="hidden sm:block tech-label hover:text-white transition-colors">
             ARTIFACTS
           </Link>
