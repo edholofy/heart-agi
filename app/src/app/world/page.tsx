@@ -146,7 +146,7 @@ export default function WorldPage() {
 
       const entries: ActivityEntry[] = Array.isArray(data)
         ? data
-        : data.activities || data.data || []
+        : data.activity || data.activities || data.data || []
 
       setActivities((prev) => {
         if (isFirstLoad.current) {
