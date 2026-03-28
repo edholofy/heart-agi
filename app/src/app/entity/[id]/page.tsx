@@ -4,12 +4,8 @@ import { useState, useEffect, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
-
-const DAEMON_URL =
-  process.env.NEXT_PUBLIC_DAEMON_URL || "http://5.161.47.118:4600"
-const REST_URL =
-  process.env.NEXT_PUBLIC_HEART_REST || "http://5.161.47.118:1317"
 
 interface EntityStatus {
   id: string
@@ -152,8 +148,8 @@ export default function EntityProfilePage() {
 
   const fetchDaemonStatus = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${DAEMON_URL}/api/entities/status?id=${encodeURIComponent(id)}`
+      const res = await proxyFetch(
+        `/api/entities/status?id=${encodeURIComponent(id)}`, "daemon"
       )
       if (res.status === 404) {
         setEntity(null)
@@ -174,8 +170,8 @@ export default function EntityProfilePage() {
 
   const fetchActivity = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${DAEMON_URL}/api/activity?entity_id=${encodeURIComponent(id)}&limit=30`
+      const res = await proxyFetch(
+        `/api/activity?entity_id=${encodeURIComponent(id)}&limit=30`, "daemon"
       )
       if (!res.ok) return
       const data = await res.json()
@@ -187,8 +183,8 @@ export default function EntityProfilePage() {
 
   const fetchChainEntity = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${REST_URL}/heart/existence/get_entity/${encodeURIComponent(id)}`
+      const res = await proxyFetch(
+        `/heart/existence/get_entity/${encodeURIComponent(id)}`, "rest"
       )
       if (!res.ok) return
       const data = await res.json()
@@ -231,8 +227,8 @@ export default function EntityProfilePage() {
 
     async function fetchVersionHistory() {
       try {
-        const res = await fetch(
-          `${REST_URL}/heart/identity/get_version_history/${encodeURIComponent(resolvedOwner)}`
+        const res = await proxyFetch(
+          `/heart/identity/get_version_history/${encodeURIComponent(resolvedOwner)}`, "rest"
         )
         if (!res.ok) {
           setVersionLoading(false)

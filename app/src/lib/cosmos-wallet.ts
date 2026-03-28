@@ -3,12 +3,29 @@
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing"
 import { SigningStargateClient, StargateClient } from "@cosmjs/stargate"
 
-const CHAIN_RPC =
+const RAW_CHAIN_RPC =
   process.env.NEXT_PUBLIC_HEART_RPC || "http://5.161.47.118:26657"
 const CHAIN_ID = "heart-testnet-1"
 const PREFIX = "heart"
 const DENOM = "uheart"
 const WALLET_STORAGE_KEY = "heart-wallet-mnemonic"
+
+/**
+ * Returns the RPC endpoint to use for CosmJS connections.
+ *
+ * On HTTPS pages (e.g. Vercel), the browser blocks mixed-content
+ * requests to plain HTTP RPC nodes.  We route through the Next.js
+ * API proxy at `/api/chain/rpc` instead.
+ */
+function getChainRPC(): string {
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    return `${window.location.origin}/api/chain/rpc`
+  }
+  return RAW_CHAIN_RPC
+}
+
+/** Static alias kept for backwards-compatible re-exports. */
+const CHAIN_RPC = RAW_CHAIN_RPC
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -111,7 +128,7 @@ export async function importWallet(
  */
 export async function getBalance(address: string): Promise<string> {
   try {
-    const client = await StargateClient.connect(CHAIN_RPC)
+    const client = await StargateClient.connect(getChainRPC())
     const coin = await client.getBalance(address, DENOM)
     client.disconnect()
 
@@ -154,7 +171,7 @@ export async function getSigningClient(): Promise<{
   const [account] = await wallet.getAccounts()
 
   const client = await SigningStargateClient.connectWithSigner(
-    CHAIN_RPC,
+    getChainRPC(),
     wallet
   )
 

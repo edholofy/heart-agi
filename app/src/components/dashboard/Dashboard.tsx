@@ -129,9 +129,9 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
   }
 
   return (
-    <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-6">
+    <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6">
       {/* Agent tabs */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
         {agents.map((a) => (
           <button
             key={a.id}
@@ -242,7 +242,7 @@ export function Dashboard({ onCreateNew }: DashboardProps) {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
               <MiniStat label="EXP" value={String(experiments)} />
               <MiniStat label="DISC" value={String(discoveries)} highlight />
               <MiniStat label="TASKS" value={String(tasksCompleted)} />

@@ -3,12 +3,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
-
-const RPC_URL =
-  process.env.NEXT_PUBLIC_HEART_RPC || "http://5.161.47.118:26657"
-const REST_URL =
-  process.env.NEXT_PUBLIC_HEART_REST || "http://5.161.47.118:1317"
 
 const REFRESH_INTERVAL = 5000
 
@@ -85,7 +81,7 @@ export default function ExplorerPage() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${RPC_URL}/status`)
+      const res = await proxyFetch("/status", "rpc")
       const data = await res.json()
       const info = data.result.node_info
       const syncInfo = data.result.sync_info
@@ -105,8 +101,8 @@ export default function ExplorerPage() {
   const fetchBlocks = useCallback(async (latestHeight: number) => {
     try {
       const minHeight = Math.max(1, latestHeight - 9)
-      const res = await fetch(
-        `${RPC_URL}/blockchain?minHeight=${minHeight}&maxHeight=${latestHeight}`
+      const res = await proxyFetch(
+        `/blockchain?minHeight=${minHeight}&maxHeight=${latestHeight}`, "rpc"
       )
       const data = await res.json()
       const blockMetas = data.result.block_metas || []
@@ -138,8 +134,8 @@ export default function ExplorerPage() {
 
   const fetchValidators = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${REST_URL}/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED`
+      const res = await proxyFetch(
+        "/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED", "rest"
       )
       const data = await res.json()
       const vals = data.validators || []
@@ -169,7 +165,7 @@ export default function ExplorerPage() {
 
   const fetchPool = useCallback(async () => {
     try {
-      const res = await fetch(`${REST_URL}/cosmos/staking/v1beta1/pool`)
+      const res = await proxyFetch("/cosmos/staking/v1beta1/pool", "rest")
       const data = await res.json()
       setPool({
         bondedTokens: data.pool.bonded_tokens,
@@ -182,7 +178,7 @@ export default function ExplorerPage() {
 
   const fetchComputePrice = useCallback(async () => {
     try {
-      const res = await fetch(`${REST_URL}/heart/compute/get_compute_price`)
+      const res = await proxyFetch("/heart/compute/get_compute_price", "rest")
       if (!res.ok) return
       const data = await res.json()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

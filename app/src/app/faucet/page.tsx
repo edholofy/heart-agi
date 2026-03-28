@@ -3,10 +3,8 @@
 import { useState } from "react"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
-
-const FAUCET_URL =
-  process.env.NEXT_PUBLIC_FAUCET_URL || "http://5.161.47.118:4500"
 
 interface FaucetResult {
   success: boolean
@@ -35,7 +33,7 @@ export default function FaucetPage() {
     setResult(null)
 
     try {
-      const response = await fetch(`${FAUCET_URL}/api/faucet`, {
+      const response = await proxyFetch("/api/faucet", "faucet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address: trimmed }),

@@ -3,12 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { proxyFetch } from "@/lib/proxy"
 import { createProposal, voteProposal } from "@/lib/chain-tx"
 import { useAppStore } from "@/lib/store"
 import Link from "next/link"
-
-const REST_URL =
-  process.env.NEXT_PUBLIC_HEART_REST || "http://5.161.47.118:1317"
 
 type ProposalStatus = "active" | "passed" | "rejected"
 
@@ -134,8 +132,8 @@ export default function GovernancePage() {
 
   const fetchProposals = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${REST_URL}/heart/existence/list_proposals`
+      const res = await proxyFetch(
+        "/heart/existence/list_proposals", "rest"
       )
       const data = await res.json()
       const parsed = parseProposals(data)

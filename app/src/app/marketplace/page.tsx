@@ -3,12 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { proxyFetch } from "@/lib/proxy"
 import { postTask } from "@/lib/chain-tx"
 import { useAppStore } from "@/lib/store"
 import Link from "next/link"
-
-const REST_URL =
-  process.env.NEXT_PUBLIC_HEART_REST || "http://5.161.47.118:1317"
 
 const SPECIALIZATIONS = [
   "researcher",
@@ -186,8 +184,8 @@ export default function MarketplacePage() {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${REST_URL}/heart/existence/list_tasks`
+      const res = await proxyFetch(
+        "/heart/existence/list_tasks", "rest"
       )
       const data = await res.json()
       const parsed = parseTasks(data)
@@ -202,7 +200,7 @@ export default function MarketplacePage() {
 
   const fetchEntityListings = useCallback(async () => {
     try {
-      const res = await fetch(`${REST_URL}/heart/existence/get_listings`)
+      const res = await proxyFetch("/heart/existence/get_listings", "rest")
       const data = await res.json()
       const parsed = parseEntityListings(data)
       setEntityListings(parsed)

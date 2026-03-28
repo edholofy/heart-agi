@@ -3,19 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
-
-const DIRECT_DAEMON_URL =
-  process.env.NEXT_PUBLIC_DAEMON_URL || "http://5.161.47.118:4600"
-
-function getDaemonUrl(path: string): string {
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    return `/api/daemon?path=${encodeURIComponent(path)}`
-  }
-  return `${DIRECT_DAEMON_URL}${path}`
-}
-const RPC_URL =
-  process.env.NEXT_PUBLIC_HEART_RPC || "http://5.161.47.118:26657"
 
 const ACTIVITY_INTERVAL = 3000
 const ENTITY_INTERVAL = 10000
@@ -147,7 +136,7 @@ export default function WorldPage() {
   /* ── Fetch activity feed ── */
   const fetchActivity = useCallback(async () => {
     try {
-      const res = await fetch(getDaemonUrl("/api/activity?limit=50"))
+      const res = await proxyFetch("/api/activity?limit=50", "daemon")
       if (!res.ok) throw new Error("offline")
       const data = await res.json()
 
@@ -182,7 +171,7 @@ export default function WorldPage() {
   /* ── Fetch entities ── */
   const fetchEntities = useCallback(async () => {
     try {
-      const res = await fetch(getDaemonUrl("/api/entities"))
+      const res = await proxyFetch("/api/entities", "daemon")
       if (!res.ok) throw new Error("offline")
       const data = await res.json()
 
@@ -220,7 +209,7 @@ export default function WorldPage() {
   /* ── Fetch chain block height ── */
   const fetchChain = useCallback(async () => {
     try {
-      const res = await fetch(`${RPC_URL}/status`)
+      const res = await proxyFetch("/status", "rpc")
       const data = await res.json()
       const height = data.result?.sync_info?.latest_block_height || null
       setStats((prev) => ({ ...prev, blockHeight: height }))
@@ -255,9 +244,9 @@ export default function WorldPage() {
 
         <div className="flex-1 px-4 sm:px-6 py-8 max-w-7xl mx-auto w-full">
           {/* ── Header ── */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
             <div className="flex items-center gap-4">
-              <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
+              <h1 className="text-2xl sm:text-4xl font-medium tracking-[-0.03em]">
                 WORLD
                 <span className="text-[rgba(255,255,255,0.4)]">.VIEW</span>
               </h1>

@@ -6,10 +6,7 @@
  * is unreachable – they return sensible defaults instead of throwing.
  */
 
-const HEART_REST =
-  process.env.NEXT_PUBLIC_HEART_REST ?? "http://5.161.47.118:1317";
-const HEART_RPC =
-  process.env.NEXT_PUBLIC_HEART_RPC ?? "http://5.161.47.118:26657";
+import { proxyFetch } from "@/lib/proxy";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -44,25 +41,25 @@ export interface ComputeBalance {
 /* ------------------------------------------------------------------ */
 
 /**
- * Fetch JSON from a URL with a timeout and graceful error handling.
+ * Fetch JSON from a proxied path with a timeout and graceful error handling.
  * Returns `null` when the request fails for any reason.
  */
-async function safeFetch<T>(url: string): Promise<T | null> {
+async function safeFetch<T>(path: string, target: "rpc" | "rest"): Promise<T | null> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8_000);
 
-    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    const res = await proxyFetch(path, target, { signal: controller.signal, cache: "no-store" });
     clearTimeout(timeout);
 
     if (!res.ok) {
-      console.warn(`[chain-client] ${res.status} from ${url}`);
+      console.warn(`[chain-client] ${res.status} from ${target}${path}`);
       return null;
     }
 
     return (await res.json()) as T;
   } catch (err) {
-    console.warn(`[chain-client] Failed to fetch ${url}:`, err);
+    console.warn(`[chain-client] Failed to fetch ${target}${path}:`, err);
     return null;
   }
 }
@@ -81,7 +78,7 @@ export async function getChainStatus(): Promise<ChainStatus> {
       node_info: { network: string };
       sync_info: { latest_block_height: string };
     };
-  }>(`${HEART_RPC}/status`);
+  }>("/status", "rpc");
 
   if (!data) {
     return { chainId: "unknown", blockHeight: "0" };
@@ -100,7 +97,7 @@ export async function getChainStatus(): Promise<ChainStatus> {
  */
 export async function getIdentity(ownerAddress: string): Promise<Identity> {
   const data = await safeFetch<{ soulHash: string; skillHash: string }>(
-    `${HEART_REST}/heart/identity/get_identity/${encodeURIComponent(ownerAddress)}`
+    `/heart/identity/get_identity/${encodeURIComponent(ownerAddress)}`, "rest"
   );
 
   if (!data) {
@@ -127,7 +124,7 @@ export async function getEntity(entityId: string): Promise<Entity | null> {
     skillHash: string;
     level: string;
     reputation: string;
-  }>(`${HEART_REST}/heart/existence/get_entity/${encodeURIComponent(entityId)}`);
+  }>(`/heart/existence/get_entity/${encodeURIComponent(entityId)}`, "rest");
 
   if (!data || !data.name) {
     return null;
@@ -156,7 +153,7 @@ export async function getEntitiesByOwner(
   ownerAddress: string
 ): Promise<string[]> {
   const data = await safeFetch<{ entities: string }>(
-    `${HEART_REST}/heart/existence/get_entities_by_owner/${encodeURIComponent(ownerAddress)}`
+    `/heart/existence/get_entities_by_owner/${encodeURIComponent(ownerAddress)}`, "rest"
   );
 
   if (!data || !data.entities) {
@@ -185,7 +182,7 @@ export async function getEntitiesByOwner(
  */
 export async function getComputeBalance(entityId: string): Promise<number> {
   const data = await safeFetch<{ balance: string }>(
-    `${HEART_REST}/heart/compute/get_balance/${encodeURIComponent(entityId)}`
+    `/heart/compute/get_balance/${encodeURIComponent(entityId)}`, "rest"
   );
 
   if (!data) {
