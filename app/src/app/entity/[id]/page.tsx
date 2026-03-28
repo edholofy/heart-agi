@@ -155,20 +155,44 @@ export default function EntityProfilePage() {
 
   const fetchDaemonStatus = useCallback(async () => {
     try {
-      const res = await proxyFetch(
-        `/api/entities/status?id=${encodeURIComponent(id)}`, "daemon"
-      )
-      if (res.status === 404) {
-        setEntity(null)
-        setDaemonOnline(true)
-        return
+      // Try status endpoint first, but fall back to entity list if it times out
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)
+
+      try {
+        const res = await proxyFetch(
+          `/api/entities/status?id=${encodeURIComponent(id)}`, "daemon",
+          { signal: controller.signal }
+        )
+        clearTimeout(timeout)
+        if (res.status === 404) {
+          // Try finding in the entity list
+        } else if (res.ok) {
+          const data = await res.json()
+          setEntity(data)
+          setDaemonOnline(true)
+          return
+        }
+      } catch {
+        clearTimeout(timeout)
+        // Status endpoint timed out — fall back to list
       }
-      if (!res.ok) {
-        setDaemonOnline(false)
-        return
+
+      // Fallback: find entity in the full list (doesn't lock individual entities)
+      const listRes = await proxyFetch("/api/entities", "daemon")
+      if (listRes.ok) {
+        const listData = await listRes.json()
+        const found = (listData.entities || []).find(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (e: any) => e.id === id || e.name === id
+        )
+        if (found) {
+          setEntity(found)
+          setDaemonOnline(true)
+          return
+        }
       }
-      const data = await res.json()
-      setEntity(data)
+      setEntity(null)
       setDaemonOnline(true)
     } catch {
       setDaemonOnline(false)
