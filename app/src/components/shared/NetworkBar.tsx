@@ -66,6 +66,12 @@ export function NetworkBar() {
           <Link href="/marketplace" className="tech-label hover:text-white transition-colors">
             TASKS
           </Link>
+          <Link href="/artifacts" className="tech-label hover:text-white transition-colors">
+            ARTIFACTS
+          </Link>
+          <Link href="/governance" className="tech-label hover:text-white transition-colors">
+            GOV
+          </Link>
           <Link href="/docs" className="tech-label hover:text-white transition-colors">
             DOCS
           </Link>

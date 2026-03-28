@@ -38,6 +38,14 @@ interface StakingPool {
   notBondedTokens: string
 }
 
+interface ComputePrice {
+  claudePrice: string
+  gptPrice: string
+  geminiPrice: string
+  basketPrice: string
+  lastUpdated: string
+}
+
 /** Truncate a hash: first 8 + last 4 chars */
 function truncateHash(hash: string): string {
   if (hash.length <= 14) return hash
@@ -71,6 +79,7 @@ export default function ExplorerPage() {
   const [validators, setValidators] = useState<ValidatorInfo[]>([])
   const [pool, setPool] = useState<StakingPool | null>(null)
   const [error, setError] = useState(false)
+  const [computePrice, setComputePrice] = useState<ComputePrice | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResult, setSearchResult] = useState<string | null>(null)
 
@@ -171,6 +180,28 @@ export default function ExplorerPage() {
     }
   }, [])
 
+  const fetchComputePrice = useCallback(async () => {
+    try {
+      const res = await fetch(`${REST_URL}/heart/compute/get_compute_price`)
+      if (!res.ok) return
+      const data = await res.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = data as any
+      const price = raw?.price ?? raw?.compute_price ?? raw
+      if (price && typeof price === "object") {
+        setComputePrice({
+          claudePrice: String(price.claude_price ?? price.claudePrice ?? "—"),
+          gptPrice: String(price.gpt_price ?? price.gptPrice ?? "—"),
+          geminiPrice: String(price.gemini_price ?? price.geminiPrice ?? "—"),
+          basketPrice: String(price.basket_price ?? price.basketPrice ?? price.weighted_price ?? "—"),
+          lastUpdated: String(price.last_updated ?? price.lastUpdated ?? price.timestamp ?? ""),
+        })
+      }
+    } catch {
+      // oracle may not be initialized
+    }
+  }, [])
+
   const fetchAll = useCallback(async () => {
     const height = await fetchStatus()
     if (height) {
@@ -183,7 +214,8 @@ export default function ExplorerPage() {
     fetchAll()
     fetchValidators()
     fetchPool()
-  }, [fetchAll, fetchValidators, fetchPool])
+    fetchComputePrice()
+  }, [fetchAll, fetchValidators, fetchPool, fetchComputePrice])
 
   // Polling
   useEffect(() => {
@@ -191,14 +223,15 @@ export default function ExplorerPage() {
     return () => clearInterval(interval)
   }, [fetchAll])
 
-  // Refresh validators/pool less often
+  // Refresh validators/pool/oracle less often
   useEffect(() => {
     const interval = setInterval(() => {
       fetchValidators()
       fetchPool()
+      fetchComputePrice()
     }, 30000)
     return () => clearInterval(interval)
-  }, [fetchValidators, fetchPool])
+  }, [fetchValidators, fetchPool, fetchComputePrice])
 
   function handleSearch() {
     const q = searchQuery.trim()
@@ -409,6 +442,61 @@ export default function ExplorerPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Compute Oracle */}
+          <div className="mb-12">
+            <div className="aura-divider mb-5">COMPUTE.ORACLE</div>
+
+            {!computePrice ? (
+              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] inline-block mr-2 align-middle animate-pulse-dot" />
+                Oracle initializing...
+              </div>
+            ) : (
+              <div className="glass p-1.5 sm:p-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 sm:p-4">
+                  <div className="glass-sm p-4">
+                    <div className="tech-label mb-2">CLAUDE.PRICE</div>
+                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight">
+                      {computePrice.claudePrice}
+                    </div>
+                    <div className="tech-label text-[9px] mt-1">HEART/TOKEN</div>
+                  </div>
+                  <div className="glass-sm p-4">
+                    <div className="tech-label mb-2">GPT.PRICE</div>
+                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight">
+                      {computePrice.gptPrice}
+                    </div>
+                    <div className="tech-label text-[9px] mt-1">HEART/TOKEN</div>
+                  </div>
+                  <div className="glass-sm p-4">
+                    <div className="tech-label mb-2">GEMINI.PRICE</div>
+                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight">
+                      {computePrice.geminiPrice}
+                    </div>
+                    <div className="tech-label text-[9px] mt-1">HEART/TOKEN</div>
+                  </div>
+                  <div className="glass-sm p-4">
+                    <div className="tech-label mb-2">BASKET.PRICE</div>
+                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight text-white">
+                      {computePrice.basketPrice}
+                    </div>
+                    <div className="tech-label text-[9px] mt-1">WEIGHTED AVG</div>
+                  </div>
+                </div>
+                {computePrice.lastUpdated && (
+                  <div className="px-4 pb-3 text-right">
+                    <span className="tech-label text-[9px]">
+                      LAST.UPDATED:{" "}
+                      <span className="font-mono text-[rgba(255,255,255,0.5)]">
+                        {timeAgo(computePrice.lastUpdated)}
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Back link */}

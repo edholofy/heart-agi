@@ -200,9 +200,122 @@ export async function postTask(
   return result.transactionHash
 }
 
+/**
+ * Create a governance proposal.
+ *
+ * Proto: heart.existence.MsgCreateProposal
+ *   1: creator     (string)
+ *   2: title       (string)
+ *   3: description (string)
+ *   4: entityId    (string)
+ */
+export async function createProposal(
+  title: string,
+  description: string,
+  entityId: string
+): Promise<string> {
+  const { client, address } = await getSigningClient()
+
+  const value = Uint8Array.from([
+    ...encodeString(1, address),
+    ...encodeString(2, title),
+    ...encodeString(3, description),
+    ...encodeString(4, entityId),
+  ])
+
+  const msg = {
+    typeUrl: "/heart.existence.MsgCreateProposal",
+    value,
+  }
+
+  const result = await client.signAndBroadcast(address, [msg], DEFAULT_FEE)
+
+  if (result.code !== 0) {
+    throw new Error(`createProposal failed (code ${result.code}): ${result.rawLog}`)
+  }
+
+  return result.transactionHash
+}
+
+/**
+ * Vote on a governance proposal.
+ *
+ * Proto: heart.existence.MsgVoteProposal
+ *   1: creator    (string)
+ *   2: proposalId (string)
+ *   3: entityId   (string)
+ *   4: voteOption (string)
+ */
+export async function voteProposal(
+  proposalId: string,
+  entityId: string,
+  voteOption: string
+): Promise<string> {
+  const { client, address } = await getSigningClient()
+
+  const value = Uint8Array.from([
+    ...encodeString(1, address),
+    ...encodeString(2, proposalId),
+    ...encodeString(3, entityId),
+    ...encodeString(4, voteOption),
+  ])
+
+  const msg = {
+    typeUrl: "/heart.existence.MsgVoteProposal",
+    value,
+  }
+
+  const result = await client.signAndBroadcast(address, [msg], DEFAULT_FEE)
+
+  if (result.code !== 0) {
+    throw new Error(`voteProposal failed (code ${result.code}): ${result.rawLog}`)
+  }
+
+  return result.transactionHash
+}
+
 /* ------------------------------------------------------------------ */
 /*  /heart.compute  messages                                           */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Submit research output from an entity.
+ *
+ * Proto: heart.compute.MsgSubmitResearch
+ *   1: creator        (string)
+ *   2: title          (string)
+ *   3: findings       (string)
+ *   4: recommendation (string)
+ *   5: entityId       (string)
+ */
+/**
+ * License an artifact (pay the license fee to the creator).
+ *
+ * Proto: heart.existence.MsgLicenseArtifact
+ *   1: creator    (string)
+ *   2: artifactId (string)
+ */
+export async function licenseArtifact(artifactId: string): Promise<string> {
+  const { client, address } = await getSigningClient()
+
+  const value = Uint8Array.from([
+    ...encodeString(1, address),
+    ...encodeString(2, artifactId),
+  ])
+
+  const msg = {
+    typeUrl: "/heart.existence.MsgLicenseArtifact",
+    value,
+  }
+
+  const result = await client.signAndBroadcast(address, [msg], DEFAULT_FEE)
+
+  if (result.code !== 0) {
+    throw new Error(`licenseArtifact failed (code ${result.code}): ${result.rawLog}`)
+  }
+
+  return result.transactionHash
+}
 
 /**
  * Submit research output from an entity.

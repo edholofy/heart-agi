@@ -110,6 +110,51 @@ function parseTasks(data: unknown): Task[] {
   }
 }
 
+interface EntityListing {
+  id: string
+  entityId: string
+  entityName: string
+  seller: string
+  price: string
+  status: string
+}
+
+function parseEntityListings(data: unknown): EntityListing[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = data as any
+    let listings = raw?.listings ?? raw?.Listings ?? raw?.listing ?? null
+
+    if (typeof listings === "string") {
+      listings = JSON.parse(listings)
+    }
+
+    if (!Array.isArray(listings)) {
+      const keys = Object.keys(raw || {})
+      for (const key of keys) {
+        const candidate = raw[key]
+        if (Array.isArray(candidate)) {
+          listings = candidate
+          break
+        }
+      }
+    }
+
+    if (!Array.isArray(listings)) return []
+
+    return listings.map((l: Record<string, unknown>, index: number) => ({
+      id: String(l.id ?? l.Id ?? index),
+      entityId: String(l.entity_id ?? l.entityId ?? l.EntityId ?? ""),
+      entityName: String(l.entity_name ?? l.entityName ?? l.EntityName ?? "Unknown"),
+      seller: String(l.seller ?? l.Seller ?? l.owner ?? ""),
+      price: String(l.price ?? l.Price ?? "0"),
+      status: String(l.status ?? l.Status ?? "active").toLowerCase(),
+    }))
+  } catch {
+    return []
+  }
+}
+
 function normalizeStatus(s: string): TaskStatus {
   const lower = s.toLowerCase()
   if (lower === "completed") return "completed"
@@ -120,6 +165,10 @@ function normalizeStatus(s: string): TaskStatus {
 export default function MarketplacePage() {
   const wallet = useAppStore((s) => s.wallet)
   const isConnected = !!wallet.address
+
+  // Entity listings state
+  const [entityListings, setEntityListings] = useState<EntityListing[]>([])
+  const [listingsLoading, setListingsLoading] = useState(true)
 
   // Form state
   const [title, setTitle] = useState("")
@@ -151,12 +200,29 @@ export default function MarketplacePage() {
     }
   }, [])
 
+  const fetchEntityListings = useCallback(async () => {
+    try {
+      const res = await fetch(`${REST_URL}/heart/existence/get_listings`)
+      const data = await res.json()
+      const parsed = parseEntityListings(data)
+      setEntityListings(parsed)
+    } catch {
+      // chain may not support listings yet
+    } finally {
+      setListingsLoading(false)
+    }
+  }, [])
+
   // Initial fetch + polling every 10s
   useEffect(() => {
     fetchTasks()
-    const interval = setInterval(fetchTasks, 10_000)
+    fetchEntityListings()
+    const interval = setInterval(() => {
+      fetchTasks()
+      fetchEntityListings()
+    }, 10_000)
     return () => clearInterval(interval)
-  }, [fetchTasks])
+  }, [fetchTasks, fetchEntityListings])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -378,6 +444,99 @@ export default function MarketplacePage() {
               </div>
             </div>
           )}
+
+          {/* ENTITY MARKETPLACE */}
+          <div className="mb-10">
+            <div className="aura-divider mb-5">ENTITY.MARKETPLACE</div>
+
+            <p className="text-xs text-[rgba(255,255,255,0.3)] font-light mb-4">
+              Coming soon: buy and sell entities on the $HEART marketplace.
+            </p>
+
+            {listingsLoading && entityListings.length === 0 && (
+              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
+                Loading entity listings from chain...
+              </div>
+            )}
+
+            {!listingsLoading && entityListings.length === 0 && (
+              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
+                No entities listed for sale yet.
+              </div>
+            )}
+
+            {entityListings.length > 0 && (
+              <div className="glass p-1.5 sm:p-3">
+                {/* Table header */}
+                <div className="grid grid-cols-5 gap-2 px-3 sm:px-4 py-2.5 tech-label text-[9px] sm:text-[10px]">
+                  <span>ENTITY</span>
+                  <span>SELLER</span>
+                  <span>PRICE</span>
+                  <span>STATUS</span>
+                  <span></span>
+                </div>
+
+                {entityListings.map((listing) => {
+                  const isActive = listing.status === "active"
+                  return (
+                    <div
+                      key={listing.id}
+                      className="grid grid-cols-5 gap-2 px-3 sm:px-4 py-3 rounded-xl hover:bg-[rgba(255,255,255,0.03)] transition-colors items-center"
+                    >
+                      <div>
+                        <span className="text-sm font-medium text-white block truncate">
+                          {listing.entityName}
+                        </span>
+                        <span className="font-mono text-[10px] text-[rgba(255,255,255,0.3)]">
+                          ID:{listing.entityId}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs text-[rgba(255,255,255,0.4)] truncate">
+                        {listing.seller.length > 16
+                          ? `${listing.seller.slice(0, 10)}...${listing.seller.slice(-4)}`
+                          : listing.seller}
+                      </span>
+                      <span className="font-mono text-sm font-medium text-white">
+                        {listing.price}{" "}
+                        <span className="tech-label text-[9px]">HEART</span>
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[10px] font-mono tracking-wider px-2.5 py-1 rounded-full w-fit ${
+                          isActive
+                            ? "bg-[rgba(34,197,94,0.12)] text-[#22c55e]"
+                            : listing.status === "sold"
+                              ? "bg-[rgba(59,130,246,0.12)] text-[#3b82f6]"
+                              : "bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.3)]"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isActive
+                              ? "bg-[#22c55e] animate-pulse-dot"
+                              : listing.status === "sold"
+                                ? "bg-[#3b82f6]"
+                                : "bg-[rgba(255,255,255,0.2)]"
+                          }`}
+                        />
+                        {listing.status.toUpperCase()}
+                      </span>
+                      <div>
+                        {isActive && (
+                          <button
+                            disabled
+                            className="btn-primary px-4 py-1.5 text-[10px] tracking-wider opacity-40 cursor-not-allowed"
+                            title="Entity buying coming soon"
+                          >
+                            BUY
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Back link */}
           <div className="text-center mb-8">

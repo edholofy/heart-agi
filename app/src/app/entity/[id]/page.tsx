@@ -35,6 +35,13 @@ interface ActivityItem {
   timestamp: string
 }
 
+interface VersionEntry {
+  hash: string
+  type: string
+  version: number
+  timestamp: string
+}
+
 interface ChainEntity {
   id: string
   name: string
@@ -137,6 +144,8 @@ export default function EntityProfilePage() {
   const [entity, setEntity] = useState<EntityStatus | null>(null)
   const [chainEntity, setChainEntity] = useState<ChainEntity | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [versionHistory, setVersionHistory] = useState<VersionEntry[]>([])
+  const [versionLoading, setVersionLoading] = useState(true)
   const [daemonOnline, setDaemonOnline] = useState(true)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -211,6 +220,63 @@ export default function EntityProfilePage() {
       setNotFound(false)
     }
   }, [loading, entity, chainEntity])
+
+  // Fetch version history once we have the owner address
+  const resolvedOwner = entity?.owner_address ?? chainEntity?.owner ?? ""
+  useEffect(() => {
+    if (!resolvedOwner) {
+      setVersionLoading(false)
+      return
+    }
+
+    async function fetchVersionHistory() {
+      try {
+        const res = await fetch(
+          `${REST_URL}/heart/identity/get_version_history/${encodeURIComponent(resolvedOwner)}`
+        )
+        if (!res.ok) {
+          setVersionLoading(false)
+          return
+        }
+        const data = await res.json()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = data as any
+        let versions = raw?.versions ?? raw?.history ?? raw?.version_history ?? null
+
+        if (typeof versions === "string") {
+          try { versions = JSON.parse(versions) } catch { versions = null }
+        }
+
+        if (!Array.isArray(versions)) {
+          const keys = Object.keys(raw || {})
+          for (const key of keys) {
+            const candidate = raw[key]
+            if (Array.isArray(candidate)) {
+              versions = candidate
+              break
+            }
+          }
+        }
+
+        if (Array.isArray(versions)) {
+          setVersionHistory(
+            versions.map((v: Record<string, unknown>, idx: number) => ({
+              hash: String(v.hash ?? v.Hash ?? ""),
+              type: String(v.type ?? v.Type ?? "unknown"),
+              version: Number(v.version ?? v.Version ?? idx + 1),
+              timestamp: String(v.timestamp ?? v.Timestamp ?? v.created_at ?? ""),
+            }))
+          )
+        }
+      } catch {
+        // version history endpoint may not exist yet
+      } finally {
+        setVersionLoading(false)
+      }
+    }
+
+    fetchVersionHistory()
+  }, [resolvedOwner])
 
   // Poll daemon every 10 seconds
   useEffect(() => {
@@ -469,6 +535,72 @@ export default function EntityProfilePage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* ========== EVOLUTION HISTORY ========== */}
+              <div className="mb-6">
+                <div className="aura-divider mb-5">EVOLUTION.HISTORY</div>
+
+                <div className="glass p-6">
+                  {versionLoading ? (
+                    <div className="text-center py-6 text-[rgba(255,255,255,0.3)] text-sm font-light">
+                      Loading version history...
+                    </div>
+                  ) : versionHistory.length === 0 ? (
+                    <div className="text-center py-6 text-[rgba(255,255,255,0.3)] text-sm font-light">
+                      {resolvedOwner
+                        ? "No evolution history recorded yet."
+                        : "Evolution history \u2014 coming soon"}
+                    </div>
+                  ) : (
+                    <div className="relative pl-6">
+                      {/* Vertical timeline line */}
+                      <div className="absolute left-[7px] top-2 bottom-2 w-px bg-[rgba(255,255,255,0.08)]" />
+
+                      {versionHistory.map((entry, idx) => {
+                        const typeColor =
+                          entry.type === "soul"
+                            ? "bg-[#a78bfa]"
+                            : entry.type === "skill"
+                              ? "bg-[#3b82f6]"
+                              : "bg-[rgba(255,255,255,0.3)]"
+                        const typeTextColor =
+                          entry.type === "soul"
+                            ? "text-[#a78bfa]"
+                            : entry.type === "skill"
+                              ? "text-[#3b82f6]"
+                              : "text-[rgba(255,255,255,0.5)]"
+
+                        return (
+                          <div key={`${entry.hash}-${idx}`} className="relative mb-5 last:mb-0">
+                            {/* Timeline dot */}
+                            <div
+                              className={`absolute -left-6 top-1.5 w-3 h-3 rounded-full border-2 border-[#0a0b0f] ${typeColor}`}
+                            />
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`font-mono text-[10px] uppercase tracking-wider ${typeTextColor}`}>
+                                {entry.type}
+                              </span>
+                              <span className="sys-badge text-[9px]">v{entry.version}</span>
+                              {entry.timestamp && (
+                                <span className="text-[10px] text-[rgba(255,255,255,0.2)] font-mono">
+                                  {timeAgo(entry.timestamp)}
+                                </span>
+                              )}
+                            </div>
+                            {entry.hash && (
+                              <span className="font-mono text-xs text-[rgba(255,255,255,0.35)] truncate block">
+                                {entry.hash.length > 20
+                                  ? `${entry.hash.slice(0, 12)}...${entry.hash.slice(-6)}`
+                                  : entry.hash}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
