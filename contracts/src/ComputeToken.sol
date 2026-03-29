@@ -33,6 +33,16 @@ contract ComputeToken is ERC20, ERC20Burnable, Ownable {
     /// @notice Authorized oracle address
     address public oracle;
 
+    /// @notice Maximum allowed oracle staleness (24 hours)
+    uint256 public constant ORACLE_STALENESS_THRESHOLD = 24 hours;
+
+    /// @notice Maximum allowed price change per update (50%)
+    uint256 public constant MAX_PRICE_CHANGE_BPS = 5000; // 50% in basis points
+
+    // ── Supply Cap ────────────────────────────────────────────────────────
+    /// @notice Maximum total supply of Compute Tokens
+    uint256 public constant MAX_SUPPLY = 1_000_000_000 ether; // 1 billion tokens
+
     // ── Agent Registry ───────────────────────────────────────────────────
     /// @notice HumanAgent NFT contract address
     address public agentContract;
@@ -73,6 +83,7 @@ contract ComputeToken is ERC20, ERC20Burnable, Ownable {
      *         or by reward distributor for research/validation rewards.
      */
     function mint(address to, uint256 amount) external onlyMinter {
+        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
         _mint(to, amount);
     }
 
@@ -85,6 +96,7 @@ contract ComputeToken is ERC20, ERC20Burnable, Ownable {
         uint256 agentTokenId,
         string calldata source
     ) external onlyMinter {
+        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
         _mint(to, amount);
         emit ComputeEarned(agentTokenId, amount, source);
     }
@@ -125,6 +137,13 @@ contract ComputeToken is ERC20, ERC20Burnable, Ownable {
         require(msg.sender == oracle, "Only oracle can update price");
         require(newPriceUsd > 0, "Price must be positive");
 
+        // Enforce max 50% price change per update
+        if (computePriceUsd > 0) {
+            uint256 maxIncrease = computePriceUsd + (computePriceUsd * MAX_PRICE_CHANGE_BPS) / 10000;
+            uint256 maxDecrease = computePriceUsd - (computePriceUsd * MAX_PRICE_CHANGE_BPS) / 10000;
+            require(newPriceUsd <= maxIncrease && newPriceUsd >= maxDecrease, "Price change exceeds 50% limit");
+        }
+
         computePriceUsd = newPriceUsd;
         lastOracleUpdate = block.timestamp;
         emit PriceUpdated(newPriceUsd, block.timestamp);
@@ -135,6 +154,7 @@ contract ComputeToken is ERC20, ERC20Burnable, Ownable {
      */
     function usdToCompute(uint256 usdAmount) external view returns (uint256) {
         require(computePriceUsd > 0, "Price not set");
+        require(block.timestamp - lastOracleUpdate <= ORACLE_STALENESS_THRESHOLD, "Oracle price stale");
         return (usdAmount * 1e18) / computePriceUsd;
     }
 
@@ -142,6 +162,7 @@ contract ComputeToken is ERC20, ERC20Burnable, Ownable {
      * @notice Convert Compute Tokens to USD amount.
      */
     function computeToUsd(uint256 computeAmount) external view returns (uint256) {
+        require(block.timestamp - lastOracleUpdate <= ORACLE_STALENESS_THRESHOLD, "Oracle price stale");
         return (computeAmount * computePriceUsd) / 1e18;
     }
 

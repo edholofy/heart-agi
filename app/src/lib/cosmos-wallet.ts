@@ -8,7 +8,134 @@ const RAW_CHAIN_RPC =
 const CHAIN_ID = "heart-testnet-1"
 const PREFIX = "heart"
 const DENOM = "uheart"
-const WALLET_STORAGE_KEY = "heart-wallet-mnemonic"
+const WALLET_STORAGE_KEY = "heart-wallet-encrypted"
+const SESSION_KEY_STORAGE = "heart-wallet-session-key"
+/** @deprecated Used only for migration from plaintext storage */
+const LEGACY_STORAGE_KEY = "heart-wallet-mnemonic"
+
+/* ------------------------------------------------------------------ */
+/*  Encryption helpers (AES-256-GCM via Web Crypto API)               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Generate a new AES-256-GCM CryptoKey, export it as base64, and
+ * store the exported key material in sessionStorage so it is
+ * automatically cleared when the tab/window closes.
+ */
+async function generateAndStoreSessionKey(): Promise<CryptoKey> {
+  const key = await crypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true, // extractable so we can persist in sessionStorage
+    ["encrypt", "decrypt"]
+  )
+  const exported = await crypto.subtle.exportKey("raw", key)
+  const b64 = btoa(String.fromCharCode(...new Uint8Array(exported)))
+  sessionStorage.setItem(SESSION_KEY_STORAGE, b64)
+  return key
+}
+
+/**
+ * Retrieve the AES key from sessionStorage. Returns `null` when the
+ * session has expired (new tab / browser restart).
+ */
+async function getSessionKey(): Promise<CryptoKey | null> {
+  const b64 = sessionStorage.getItem(SESSION_KEY_STORAGE)
+  if (!b64) return null
+
+  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+  return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, true, [
+    "encrypt",
+    "decrypt",
+  ])
+}
+
+/**
+ * Encrypt a plaintext mnemonic with AES-256-GCM.
+ * Returns a base64 string containing `iv (12 bytes) || ciphertext`.
+ */
+async function encryptMnemonic(
+  mnemonic: string,
+  key: CryptoKey
+): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encoded = new TextEncoder().encode(mnemonic)
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    encoded
+  )
+  // Concatenate iv + ciphertext into a single buffer
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength)
+  combined.set(iv, 0)
+  combined.set(new Uint8Array(ciphertext), iv.length)
+  return btoa(String.fromCharCode(...combined))
+}
+
+/**
+ * Decrypt a previously encrypted mnemonic.
+ * Expects the base64 blob produced by `encryptMnemonic`.
+ */
+async function decryptMnemonic(
+  blob: string,
+  key: CryptoKey
+): Promise<string> {
+  const combined = Uint8Array.from(atob(blob), (c) => c.charCodeAt(0))
+  const iv = combined.slice(0, 12)
+  const ciphertext = combined.slice(12)
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    ciphertext
+  )
+  return new TextDecoder().decode(decrypted)
+}
+
+/**
+ * Persist an encrypted mnemonic in localStorage and ensure the
+ * session key exists in sessionStorage.
+ */
+async function storeMnemonicEncrypted(mnemonic: string): Promise<void> {
+  let key = await getSessionKey()
+  if (!key) {
+    key = await generateAndStoreSessionKey()
+  }
+  const encrypted = await encryptMnemonic(mnemonic, key)
+  localStorage.setItem(WALLET_STORAGE_KEY, encrypted)
+  // Clean up any legacy plaintext entry
+  localStorage.removeItem(LEGACY_STORAGE_KEY)
+}
+
+/**
+ * Load and decrypt the mnemonic from localStorage.
+ * Returns `null` when no encrypted blob exists or the session key
+ * is unavailable (tab was closed).
+ *
+ * Also handles migration: if a legacy plaintext mnemonic is found
+ * it is encrypted in-place and the plaintext entry removed.
+ */
+async function loadMnemonicDecrypted(): Promise<string | null> {
+  // --- Migration: plaintext → encrypted --------------------------------
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
+  if (legacy) {
+    await storeMnemonicEncrypted(legacy)
+    // storeMnemonicEncrypted already removes LEGACY_STORAGE_KEY
+    return legacy
+  }
+
+  // --- Normal path: decrypt from localStorage ---------------------------
+  const blob = localStorage.getItem(WALLET_STORAGE_KEY)
+  if (!blob) return null
+
+  const key = await getSessionKey()
+  if (!key) return null // session expired — user must re-import
+
+  try {
+    return await decryptMnemonic(blob, key)
+  } catch {
+    // Decryption failed (wrong key / corrupted data)
+    return null
+  }
+}
 
 /**
  * Returns the RPC endpoint to use for CosmJS connections.
@@ -66,7 +193,7 @@ export async function createWallet(): Promise<{
   const mnemonic = wallet.mnemonic
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(WALLET_STORAGE_KEY, mnemonic)
+    await storeMnemonicEncrypted(mnemonic)
   }
 
   return { address: account.address, mnemonic }
@@ -82,7 +209,7 @@ export async function loadWallet(): Promise<{
 } | null> {
   if (typeof window === "undefined") return null
 
-  const mnemonic = localStorage.getItem(WALLET_STORAGE_KEY)
+  const mnemonic = await loadMnemonicDecrypted()
   if (!mnemonic) return null
 
   try {
@@ -94,6 +221,7 @@ export async function loadWallet(): Promise<{
   } catch {
     // Corrupted mnemonic — clear it
     localStorage.removeItem(WALLET_STORAGE_KEY)
+    sessionStorage.removeItem(SESSION_KEY_STORAGE)
     return null
   }
 }
@@ -112,7 +240,7 @@ export async function importWallet(
   const [account] = await wallet.getAccounts()
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(WALLET_STORAGE_KEY, trimmed)
+    await storeMnemonicEncrypted(trimmed)
   }
 
   return { address: account.address }
@@ -171,9 +299,13 @@ export async function getSigningClient(): Promise<{
     throw new Error("getSigningClient can only be called in the browser")
   }
 
-  const mnemonic = localStorage.getItem(WALLET_STORAGE_KEY)
+  const mnemonic = await loadMnemonicDecrypted()
   if (!mnemonic) {
-    throw new Error("No wallet found — create or import one first")
+    throw new Error(
+      "No wallet found — create or import one first. " +
+        "If you previously had a wallet, your session may have expired. " +
+        "Please re-import your mnemonic."
+    )
   }
 
   const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
@@ -195,10 +327,12 @@ export async function getSigningClient(): Promise<{
 /*  Disconnect                                                         */
 /* ------------------------------------------------------------------ */
 
-/** Remove the stored mnemonic. */
+/** Remove the stored mnemonic and session encryption key. */
 export function disconnectWallet(): void {
   if (typeof window === "undefined") return
   localStorage.removeItem(WALLET_STORAGE_KEY)
+  localStorage.removeItem(LEGACY_STORAGE_KEY)
+  sessionStorage.removeItem(SESSION_KEY_STORAGE)
 }
 
 /* ------------------------------------------------------------------ */

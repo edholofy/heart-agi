@@ -30,7 +30,7 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint64 birthTimestamp;
         bytes32 soulHash;         // SHA-256 hash of soul.md
         bytes32 skillHash;        // SHA-256 hash of skill.md
-        uint16 identityVersion;   // increments on every evolution
+        uint32 identityVersion;   // increments on every evolution
         bool isDormant;           // true when compute depleted
     }
 
@@ -39,6 +39,10 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
     string private _baseTokenURI;
 
     mapping(uint256 => AgentData) public agents;
+
+    // Mint config
+    uint256 public mintPrice = 100 ether;
+    uint256 public constant MAX_SUPPLY = 10000;
 
     // Breeding config
     uint256 public breedCooldown = 7 days;
@@ -58,11 +62,12 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
     event AgentBred(uint256 indexed childId, uint256 indexed parentA, uint256 indexed parentB);
     event AgentLeveledUp(uint256 indexed tokenId, uint16 newLevel);
     event AgentReputationUpdated(uint256 indexed tokenId, uint32 newReputation);
-    event SoulEvolved(uint256 indexed tokenId, bytes32 newSoulHash, uint16 version);
-    event SkillEvolved(uint256 indexed tokenId, bytes32 newSkillHash, uint16 version);
+    event SoulEvolved(uint256 indexed tokenId, bytes32 newSoulHash, uint32 version);
+    event SkillEvolved(uint256 indexed tokenId, bytes32 newSkillHash, uint32 version);
     event AgentDormant(uint256 indexed tokenId, bool isDormant);
     event FundsCollected(address indexed from, uint256 amount, string reason);
     event FundsWithdrawn(address indexed to, uint256 amount);
+    event MintPriceUpdated(uint256 newPrice);
 
     // ── Constructor ──────────────────────────────────────────────────────
     constructor(string memory baseURI)
@@ -86,8 +91,10 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
         Specialization spec,
         bytes32 soulHash,
         bytes32 skillHash
-    ) external returns (uint256) {
+    ) external payable nonReentrant returns (uint256) {
         require(bytes(name).length > 0, "Name cannot be empty");
+        require(msg.value >= mintPrice, "Insufficient $HEART for minting");
+        require(_nextTokenId <= MAX_SUPPLY, "Max supply reached");
         uint256 tokenId = _nextTokenId++;
 
         agents[tokenId] = AgentData({
@@ -114,8 +121,10 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
     /**
      * @notice Backwards-compatible mint without hashes.
      */
-    function mint(string calldata name, Specialization spec) external returns (uint256) {
+    function mint(string calldata name, Specialization spec) external payable nonReentrant returns (uint256) {
         require(bytes(name).length > 0, "Name cannot be empty");
+        require(msg.value >= mintPrice, "Insufficient $HEART for minting");
+        require(_nextTokenId <= MAX_SUPPLY, "Max supply reached");
         uint256 tokenId = _nextTokenId++;
 
         agents[tokenId] = AgentData({
@@ -152,7 +161,13 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
         agents[tokenId].soulHash = newSoulHash;
         agents[tokenId].identityVersion++;
         emit SoulEvolved(tokenId, newSoulHash, agents[tokenId].identityVersion);
-        emit FundsCollected(msg.sender, msg.value, "soul_evolution");
+        emit FundsCollected(msg.sender, evolutionCost, "soul_evolution");
+
+        uint256 excess = msg.value - evolutionCost;
+        if (excess > 0) {
+            (bool sent, ) = payable(msg.sender).call{value: excess}("");
+            require(sent, "Refund failed");
+        }
     }
 
     /**
@@ -165,7 +180,13 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
         agents[tokenId].skillHash = newSkillHash;
         agents[tokenId].identityVersion++;
         emit SkillEvolved(tokenId, newSkillHash, agents[tokenId].identityVersion);
-        emit FundsCollected(msg.sender, msg.value, "skill_evolution");
+        emit FundsCollected(msg.sender, evolutionCost, "skill_evolution");
+
+        uint256 excess = msg.value - evolutionCost;
+        if (excess > 0) {
+            (bool sent, ) = payable(msg.sender).call{value: excess}("");
+            require(sent, "Refund failed");
+        }
     }
 
     // ── Dormancy (oracle-controlled) ─────────────────────────────────────
@@ -248,7 +269,13 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
 
         _safeMint(msg.sender, childId);
         emit AgentBred(childId, parentAId, parentBId);
-        emit FundsCollected(msg.sender, msg.value, "breeding");
+        emit FundsCollected(msg.sender, cost, "breeding");
+
+        uint256 excess = msg.value - cost;
+        if (excess > 0) {
+            (bool sent, ) = payable(msg.sender).call{value: excess}("");
+            require(sent, "Refund failed");
+        }
 
         return childId;
     }
@@ -259,6 +286,7 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @notice Update an agent's level. Called by the network oracle.
      */
     function setLevel(uint256 tokenId, uint16 newLevel) external onlyOwner {
+        require(tokenId > 0 && tokenId < _nextTokenId, "Agent does not exist");
         require(newLevel <= MAX_LEVEL, "Exceeds max level");
         agents[tokenId].level = newLevel;
         emit AgentLeveledUp(tokenId, newLevel);
@@ -268,6 +296,7 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @notice Update an agent's reputation. Called by the network oracle.
      */
     function setReputation(uint256 tokenId, uint32 newReputation) external onlyOwner {
+        require(tokenId > 0 && tokenId < _nextTokenId, "Agent does not exist");
         require(newReputation <= 1000, "Reputation max 1000");
         agents[tokenId].reputation = newReputation;
         emit AgentReputationUpdated(tokenId, newReputation);
@@ -282,6 +311,7 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
     ) external onlyOwner {
         require(tokenIds.length == levels.length, "Length mismatch");
         for (uint256 i = 0; i < tokenIds.length; i++) {
+            require(tokenIds[i] > 0 && tokenIds[i] < _nextTokenId, "Agent does not exist");
             require(levels[i] <= MAX_LEVEL, "Exceeds max level");
             agents[tokenIds[i]].level = levels[i];
             emit AgentLeveledUp(tokenIds[i], levels[i]);
@@ -341,11 +371,18 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
     }
 
     function setBreedMinLevel(uint16 level) external onlyOwner {
+        require(level >= 10 && level <= 50, "Level must be 10-50");
         breedMinLevel = level;
     }
 
     function setBreedCooldown(uint256 cooldown) external onlyOwner {
+        require(cooldown >= 1 days && cooldown <= 30 days, "Cooldown must be 1-30 days");
         breedCooldown = cooldown;
+    }
+
+    function setMintPrice(uint256 newPrice) external onlyOwner {
+        mintPrice = newPrice;
+        emit MintPriceUpdated(newPrice);
     }
 
     /**
@@ -376,10 +413,11 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
         // On-chain fallback: return a data URI with basic metadata
         AgentData memory agent = agents[tokenId];
         string memory specName = _specToString(agent.specialization);
+        string memory safeName = _sanitizeJsonString(agent.name);
 
         return string(abi.encodePacked(
             'data:application/json,{"name":"',
-            agent.name,
+            safeName,
             '","specialization":"',
             specName,
             '","level":',
@@ -388,6 +426,29 @@ contract HumanAgent is ERC721Enumerable, Ownable, ReentrancyGuard {
             uint256(agent.reputation).toString(),
             "}"
         ));
+    }
+
+    /**
+     * @notice Escape backslashes and double quotes for safe JSON embedding.
+     */
+    function _sanitizeJsonString(string memory value) internal pure returns (string memory) {
+        bytes memory input = bytes(value);
+        // Worst case: every char needs escaping → 2x length
+        bytes memory output = new bytes(input.length * 2);
+        uint256 outputLen = 0;
+        for (uint256 i = 0; i < input.length; i++) {
+            bytes1 char = input[i];
+            if (char == '"' || char == '\\') {
+                output[outputLen++] = '\\';
+            }
+            output[outputLen++] = char;
+        }
+        // Trim output to actual length
+        bytes memory trimmed = new bytes(outputLen);
+        for (uint256 i = 0; i < outputLen; i++) {
+            trimmed[i] = output[i];
+        }
+        return string(trimmed);
     }
 
     function _specToString(Specialization spec) internal pure returns (string memory) {
