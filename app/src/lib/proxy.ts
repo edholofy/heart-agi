@@ -26,7 +26,12 @@ export async function proxyFetch(
   options?: RequestInit
 ): Promise<Response> {
   if (isHTTPS()) {
-    // Route through server-side proxy to avoid mixed content
+    // Daemon calls go through /api/daemon (which injects the API key)
+    if (target === "daemon") {
+      const daemonUrl = `/api/daemon?path=${encodeURIComponent(path)}`
+      return fetch(daemonUrl, options)
+    }
+    // Other calls go through /api/proxy
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(path)}&target=${target}`
     return fetch(proxyUrl, options)
   }
