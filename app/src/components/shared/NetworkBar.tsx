@@ -60,6 +60,9 @@ export function NetworkBar() {
               {chainId}
             </div>
           )}
+          <Link href="/spawn" className="text-[10px] font-mono tracking-[0.2em] uppercase text-white bg-[rgba(255,255,255,0.08)] px-3 py-1 rounded-full hover:bg-[rgba(255,255,255,0.15)] transition-all">
+            SPAWN
+          </Link>
           <Link href="/world" className="tech-label hover:text-white transition-colors">
             WORLD
           </Link>
