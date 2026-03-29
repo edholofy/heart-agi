@@ -34,7 +34,9 @@ function isPathAllowed(target: string, url: string): boolean {
 
   // Normalize the path to prevent traversal attacks (e.g., /heart/../../etc/passwd)
   // Reject any URL containing path traversal sequences
-  if (url.includes('..') || url.includes('//') || url.includes('\\')) {
+  if (url.includes('..') || url.includes('//') || url.includes('\\') ||
+      url.includes('@') || url.includes('%2e') || url.includes('%2E') ||
+      url.includes('%00') || !url.startsWith('/')) {
     return false
   }
 
