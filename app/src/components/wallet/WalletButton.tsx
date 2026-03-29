@@ -308,7 +308,7 @@ export function WalletButton() {
                 <MenuItem
                   onClick={() =>
                     window.open(
-                      "https://faucet.humans.ai",
+                      "/faucet",
                       "_blank"
                     )
                   }
