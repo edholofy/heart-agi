@@ -193,3 +193,48 @@ export async function getActivity(
   const data = await res.json()
   return data.activity || []
 }
+
+/** Leaderboard entry from daemon */
+export interface LeaderboardEntry {
+  rank: number
+  id: string
+  name: string
+  status: string
+  discoveries: number
+  experiments: number
+  discovery_rate: number
+  compute_balance: number
+  compute_pnl: number
+  soul_version: number
+  started_at: string
+  last_activity: string
+}
+
+/** Leaderboard response from daemon */
+export interface LeaderboardResponse {
+  leaderboard: LeaderboardEntry[]
+  total_alive: number
+  total_discoveries: number
+  total_experiments: number
+  civilization_age: string
+}
+
+/** Get leaderboard data */
+export async function getLeaderboard(
+  sort = "discoveries"
+): Promise<LeaderboardResponse> {
+  const params = new URLSearchParams({ sort })
+  const res = await proxyFetch(`/api/leaderboard?${params}`, "daemon")
+
+  if (!res.ok) {
+    return {
+      leaderboard: [],
+      total_alive: 0,
+      total_discoveries: 0,
+      total_experiments: 0,
+      civilization_age: "",
+    }
+  }
+
+  return res.json()
+}

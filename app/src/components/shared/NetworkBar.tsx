@@ -75,6 +75,9 @@ export function NetworkBar() {
           <Link href="/artifacts" className="hidden sm:block tech-label hover:text-white transition-colors">
             ARTIFACTS
           </Link>
+          <Link href="/leaderboard" className="hidden sm:block tech-label hover:text-white transition-colors">
+            LEADERBOARD
+          </Link>
           <Link href="/governance" className="hidden md:block tech-label hover:text-white transition-colors">
             GOV
           </Link>
