@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import Stripe from "stripe"
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: "2025-04-30.basil" as Stripe.LatestApiVersion })
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || ""
 
 const PLANS = {
   spark:   { price: 500,   compute: 500,   name: "Spark" },
@@ -21,8 +25,19 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.text()
 
-    // Parse the event (signature verification can be added when webhook secret is configured)
-    const event = JSON.parse(body)
+    // Verify Stripe webhook signature
+    let event: Stripe.Event
+    if (webhookSecret) {
+      const sig = req.headers.get("stripe-signature") || ""
+      try {
+        event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+      } catch (err) {
+        console.error("[webhook] Signature verification failed:", err)
+        return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
+      }
+    } else {
+      event = JSON.parse(body) as Stripe.Event
+    }
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object
