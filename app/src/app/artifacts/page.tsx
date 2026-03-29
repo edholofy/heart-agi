@@ -134,8 +134,12 @@ export default function ArtifactsPage() {
   const [txHash, setTxHash] = useState<string | null>(null)
   const [txError, setTxError] = useState<string | null>(null)
 
+  // Daemon-sourced artifacts from activity feed (creation events)
+  const [daemonArtifacts, setDaemonArtifacts] = useState<Artifact[]>([])
+
   const fetchArtifacts = useCallback(async () => {
     try {
+      // Try chain first
       const res = await proxyFetch("/heart/existence/list_artifacts", "rest")
       const data = await res.json()
       const parsed = parseArtifacts(data)
@@ -143,14 +147,42 @@ export default function ArtifactsPage() {
       setFetchError(false)
     } catch {
       setFetchError(true)
-    } finally {
-      setLoading(false)
     }
+
+    // Also fetch from daemon activity (creation events have actual data)
+    try {
+      const actRes = await proxyFetch("/api/activity?limit=200", "daemon")
+      if (actRes.ok) {
+        const actData = await actRes.json()
+        const creations = (actData.activity || [])
+          .filter((a: { type: string }) => a.type === "creation")
+          .map((a: { entity_name: string; message: string; tx_hash?: string; timestamp: string }, i: number) => ({
+            id: `daemon-${i}`,
+            title: a.message.replace("Created artifact: ", ""),
+            description: `Created by ${a.entity_name}`,
+            artifactType: "METHODOLOGY" as ArtifactType,
+            creatorEntityId: a.entity_name,
+            licenseFee: 100,
+            licensesSold: 0,
+            totalRevenue: 0,
+            contentHash: a.tx_hash || "",
+            creator: a.entity_name,
+          }))
+        setDaemonArtifacts(creations)
+      }
+    } catch {
+      // daemon offline
+    }
+
+    setLoading(false)
   }, [])
+
+  // Merge chain + daemon artifacts (chain takes priority, daemon fills gaps)
+  const allArtifacts = artifacts.length > 0 ? artifacts : daemonArtifacts
 
   useEffect(() => {
     fetchArtifacts()
-    const interval = setInterval(fetchArtifacts, 10_000)
+    const interval = setInterval(fetchArtifacts, 15_000)
     return () => clearInterval(interval)
   }, [fetchArtifacts])
 
@@ -219,7 +251,7 @@ export default function ArtifactsPage() {
           <div className="mb-10">
             <div className="aura-divider mb-5">
               ARTIFACT.REGISTRY
-              <span className="sys-badge ml-2">{artifacts.length}</span>
+              <span className="sys-badge ml-2">{allArtifacts.length}</span>
             </div>
 
             {/* Loading */}
@@ -248,7 +280,7 @@ export default function ArtifactsPage() {
 
             {/* Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {artifacts.map((artifact) => (
+              {allArtifacts.map((artifact) => (
                 <ArtifactCard
                   key={artifact.id}
                   artifact={artifact}
