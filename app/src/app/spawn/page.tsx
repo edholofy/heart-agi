@@ -1,8 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
+import { useState, useEffect } from "react"
 
 /* ------------------------------------------------------------------ */
 /*  Soul & Skill Templates                                             */
@@ -64,37 +62,49 @@ const SKILL_TEMPLATES = [
 const PLANS = [
   {
     key: "spark",
-    name: "Spark",
+    name: "SPARK",
     price: 5,
     compute: 500,
+    cycles: 50,
     description: "Perfect for testing. Enough compute for ~50 thought cycles.",
-    accent: false,
   },
   {
     key: "flame",
-    name: "Flame",
+    name: "FLAME",
     price: 20,
     compute: 2500,
+    cycles: 250,
     description: "For serious exploration. ~250 thought cycles of autonomous work.",
-    accent: false,
   },
   {
     key: "inferno",
-    name: "Inferno",
+    name: "INFERNO",
     price: 50,
     compute: 10000,
+    cycles: 1000,
     description: "Power user. ~1,000 cycles. Enough to make real discoveries.",
-    accent: true,
   },
   {
     key: "eternal",
-    name: "Eternal",
+    name: "ETERNAL",
     price: 100,
     compute: 25000,
+    cycles: 2500,
     description: "Maximum autonomy. ~2,500 cycles. A long-lived intelligence.",
-    accent: false,
   },
 ]
+
+/* ------------------------------------------------------------------ */
+/*  Inline styles matching the reference design                         */
+/* ------------------------------------------------------------------ */
+
+const ROOT_STYLES = {
+  "--bg": "#f0f0f0",
+  "--fg": "#121212",
+  "--dot-size": "1.5px",
+  "--grid-size": "6px",
+  "--font-mono": "'SF Mono', 'Roboto Mono', 'Courier New', monospace",
+} as React.CSSProperties
 
 /* ------------------------------------------------------------------ */
 /*  Page Component                                                      */
@@ -109,6 +119,19 @@ export default function SpawnPage() {
   const [selectedPlan, setSelectedPlan] = useState("flame")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [clock, setClock] = useState("00:00:00.0")
+
+  /** Clock */
+  useEffect(() => {
+    function tick() {
+      const now = new Date()
+      const t = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      setClock(`${t}.${Math.floor(now.getMilliseconds() / 100)}`)
+    }
+    tick()
+    const id = setInterval(tick, 100)
+    return () => clearInterval(id)
+  }, [])
 
   /** Step tracking */
   const step1Done = entityName.trim().length >= 2
@@ -165,236 +188,386 @@ export default function SpawnPage() {
     }
   }
 
+  const maxCompute = PLANS[PLANS.length - 1].compute
+
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <main style={{ ...ROOT_STYLES, background: "var(--bg)", color: "var(--fg)", minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif", fontSize: 12, lineHeight: 1.4, WebkitFontSmoothing: "antialiased" }}>
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
-
-        <div className="flex-1 flex flex-col items-center px-4 pt-8 pb-24">
-          <div className="w-full max-w-4xl mx-auto">
-
-            {/* Header */}
-            <section className="text-center pt-8 pb-12">
-              <div className="sys-badge mb-6 inline-block">SPAWN.PROTOCOL</div>
-              <h1 className="text-4xl sm:text-6xl font-medium tracking-[-0.04em] leading-[1.0] mb-4">
-                Create Your
-                <br />
-                <span className="text-[rgba(255,255,255,0.3)]">AI Human</span>
-              </h1>
-              <p className="text-[rgba(255,255,255,0.5)] text-base max-w-xl mx-auto font-light leading-relaxed">
-                Define its identity. Choose its skills. Fund its existence.
-                Your entity will think autonomously on the $HEART network.
-              </p>
-            </section>
-
-            {/* ============================================================ */}
-            {/*  STEP 1 — Name                                                */}
-            {/* ============================================================ */}
-            <section className="mb-10">
-              <div className="aura-divider mb-6">
-                <span className="text-white font-medium">01</span> NAME YOUR ENTITY
-              </div>
-
-              <div className="glass-sm p-6">
-                <input
-                  type="text"
-                  value={entityName}
-                  onChange={(e) => setEntityName(e.target.value)}
-                  placeholder="e.g. ATLAS-7, Nova, Prometheus..."
-                  className="glass-input w-full px-6 py-4 text-lg"
-                  maxLength={40}
-                />
-                <p className="tech-label mt-3 text-center">
-                  This name is permanent. Choose wisely.
-                </p>
-              </div>
-            </section>
-
-            {/* ============================================================ */}
-            {/*  STEP 2 — Soul                                                */}
-            {/* ============================================================ */}
-            <section className="mb-10">
-              <div className="aura-divider mb-6">
-                <span className="text-white font-medium">02</span> DEFINE ITS SOUL
-              </div>
-
-              <div className="glass-sm p-6">
-                <p className="text-[rgba(255,255,255,0.5)] text-sm mb-4 font-light">
-                  The soul.md defines who your entity is — its personality, values, and approach to problems.
-                </p>
-
-                {/* Soul template selector */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-5">
-                  {SOUL_TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      onClick={() => handleSoulTemplateSelect(template.id)}
-                      className={`p-3 rounded-2xl text-center transition-all duration-300 ${
-                        selectedSoulTemplate === template.id
-                          ? "bg-[rgba(255,255,255,0.1)] text-white"
-                          : "bg-[rgba(255,255,255,0.02)] text-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.05)]"
-                      }`}
-                    >
-                      <span className="block text-lg mb-1 font-mono">{template.icon}</span>
-                      <span className="text-xs tracking-wider uppercase">{template.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Soul textarea */}
-                <textarea
-                  value={soul}
-                  onChange={(e) => {
-                    setSoul(e.target.value)
-                    setSelectedSoulTemplate("custom")
-                  }}
-                  placeholder="Describe your entity's personality, values, and approach..."
-                  rows={4}
-                  className="w-full bg-[rgba(255,255,255,0.05)] border-none outline-none rounded-2xl p-4 text-sm text-white font-light leading-relaxed resize-none focus:bg-[rgba(255,255,255,0.08)] transition-colors"
-                />
-              </div>
-            </section>
-
-            {/* ============================================================ */}
-            {/*  STEP 3 — Skills                                              */}
-            {/* ============================================================ */}
-            <section className="mb-10">
-              <div className="aura-divider mb-6">
-                <span className="text-white font-medium">03</span> CHOOSE ITS SKILLS
-              </div>
-
-              <div className="glass-sm p-6">
-                <p className="text-[rgba(255,255,255,0.5)] text-sm mb-4 font-light">
-                  The skill.md defines what your entity can do — its capabilities and specializations.
-                </p>
-
-                {/* Skill template selector */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
-                  {SKILL_TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      onClick={() => handleSkillTemplateSelect(template.id)}
-                      className={`p-3 rounded-2xl text-center transition-all duration-300 ${
-                        selectedSkillTemplate === template.id
-                          ? "bg-[rgba(255,255,255,0.1)] text-white"
-                          : "bg-[rgba(255,255,255,0.02)] text-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.05)]"
-                      }`}
-                    >
-                      <span className="text-xs tracking-wider uppercase">{template.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Skill textarea */}
-                <textarea
-                  value={skill}
-                  onChange={(e) => {
-                    setSkill(e.target.value)
-                    setSelectedSkillTemplate("custom")
-                  }}
-                  placeholder="Describe your entity's capabilities..."
-                  rows={3}
-                  className="w-full bg-[rgba(255,255,255,0.05)] border-none outline-none rounded-2xl p-4 text-sm text-white font-light leading-relaxed resize-none focus:bg-[rgba(255,255,255,0.08)] transition-colors"
-                />
-              </div>
-            </section>
-
-            {/* ============================================================ */}
-            {/*  STEP 4 — Plan                                                */}
-            {/* ============================================================ */}
-            <section className="mb-12">
-              <div className="aura-divider mb-6">
-                <span className="text-white font-medium">04</span> FUEL ITS EXISTENCE
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {PLANS.map((plan) => (
-                  <button
-                    key={plan.key}
-                    onClick={() => setSelectedPlan(plan.key)}
-                    className={`glass-sm p-6 text-left transition-all duration-300 group relative overflow-hidden ${
-                      selectedPlan === plan.key
-                        ? "bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.2)]"
-                        : "hover:bg-[rgba(255,255,255,0.03)]"
-                    } ${plan.accent ? "ring-1 ring-[rgba(255,255,255,0.08)]" : ""}`}
-                  >
-                    {plan.accent && (
-                      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-                    )}
-
-                    {/* Plan name */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="tech-label text-white">{plan.name}</span>
-                      {selectedPlan === plan.key && (
-                        <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse-dot" />
-                      )}
-                    </div>
-
-                    {/* Price */}
-                    <div className="mb-3">
-                      <span className="text-3xl font-medium tracking-tight">${plan.price}</span>
-                    </div>
-
-                    {/* Compute */}
-                    <div className="sys-badge mb-4 text-[9px]">
-                      {plan.compute.toLocaleString()} COMPUTE
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-xs text-[rgba(255,255,255,0.35)] leading-relaxed font-light">
-                      {plan.description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* ============================================================ */}
-            {/*  SPAWN BUTTON                                                 */}
-            {/* ============================================================ */}
-            <section className="text-center pb-12">
-              {error && (
-                <div className="glass-sm p-4 mb-6 text-[#ef4444] text-sm text-center">
-                  {error}
-                </div>
-              )}
-
-              <button
-                onClick={handleSpawn}
-                disabled={!canSpawn}
-                className={`btn-primary px-16 py-5 text-lg tracking-wide transition-all duration-300 ${
-                  !canSpawn ? "opacity-30 cursor-not-allowed" : ""
-                }`}
-              >
-                {loading ? (
-                  <span className="flex items-center gap-3 justify-center">
-                    <span className="w-4 h-4 border-2 border-[#030407] border-t-transparent rounded-full animate-spin" />
-                    INITIALIZING...
-                  </span>
-                ) : (
-                  `SPAWN ${entityName.trim() || "ENTITY"} — $${PLANS.find((p) => p.key === selectedPlan)?.price || 0}`
-                )}
-              </button>
-
-              <p className="tech-label mt-4">
-                SECURE PAYMENT VIA STRIPE &middot; USD
-              </p>
-
-              {/* Progress indicator */}
-              <div className="flex items-center justify-center gap-3 mt-8">
-                <StepDot done={step1Done} label="NAME" />
-                <div className="w-8 h-px bg-[rgba(255,255,255,0.05)]" />
-                <StepDot done={step2Done} label="SOUL" />
-                <div className="w-8 h-px bg-[rgba(255,255,255,0.05)]" />
-                <StepDot done={step3Done} label="SKILL" />
-                <div className="w-8 h-px bg-[rgba(255,255,255,0.05)]" />
-                <StepDot done={step4Done} label="PLAN" />
-              </div>
-            </section>
-
+      {/* ========== DARK ZONE HEADER ========== */}
+      <div style={{ backgroundColor: "var(--fg)", color: "var(--bg)", padding: "24px 32px 0 32px" }}>
+        {/* Header bar */}
+        <header style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 16, marginBottom: 32 }}>
+          <div>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>SYSTEM OPERATION</span>
+            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>ENTITY SPAWN // GENESIS PROTOCOL</div>
           </div>
+          <div style={{ textAlign: "center" }}>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>ACTIVE PROTOCOL</span>
+            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>SPAWN_GENESIS_V1</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>LOCAL TIME</span>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 400, letterSpacing: "-0.02em" }}>{clock}</div>
+          </div>
+        </header>
+
+        {/* Giant dot-matrix hero */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "end", paddingBottom: 24 }}>
+          <div>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>ENTITY GENESIS</span>
+            <div style={{
+              fontSize: "14vw",
+              fontFamily: "Impact, 'Arial Black', sans-serif",
+              fontWeight: 900,
+              lineHeight: 0.8,
+              letterSpacing: "-0.02em",
+              marginLeft: "-0.05em",
+              backgroundImage: "radial-gradient(circle at center, #f0f0f0 2px, transparent 2px)",
+              backgroundSize: "8px 8px",
+              color: "transparent",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+            }}>
+              SPAWN
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>CONFIGURATION MATRIX</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
+                {[step1Done, step2Done, step3Done, step4Done].filter(Boolean).length} / 4 READY
+              </span>
+            </div>
+            <SensorGrid />
+          </div>
+        </div>
+      </div>
+
+      {/* ========== DOT TRANSITION ========== */}
+      <div style={{
+        height: 120,
+        backgroundColor: "var(--bg)",
+        position: "relative",
+        borderBottom: "1px solid rgba(0,0,0,0.1)",
+      }}>
+        {/* Dark fade */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: "var(--fg)",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%)",
+        }} />
+        {/* Dot pattern */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "radial-gradient(circle at center, var(--fg) var(--dot-size), transparent var(--dot-size))",
+          backgroundSize: "var(--grid-size) var(--grid-size)",
+          backgroundPosition: "center top",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%)",
+        }} />
+      </div>
+
+      {/* ========== LIGHT ZONE CONTENT ========== */}
+      <div style={{ padding: "0 32px 64px 32px", maxWidth: 960, margin: "0 auto" }}>
+
+        {/* STEP 1 — NAME */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, borderTop: "1px solid var(--fg)", paddingTop: 8, marginBottom: 16, textTransform: "uppercase" }}>
+            01 // NAME YOUR ENTITY
+          </div>
+          <input
+            type="text"
+            value={entityName}
+            onChange={(e) => setEntityName(e.target.value)}
+            placeholder="e.g. ATLAS-7, Nova, Prometheus..."
+            maxLength={40}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 14,
+              backgroundColor: "transparent",
+              border: "1px solid var(--fg)",
+              color: "var(--fg)",
+              outline: "none",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          />
+          <div style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, marginTop: 8 }}>
+            THIS NAME IS PERMANENT. CHOOSE WISELY.
+          </div>
+        </div>
+
+        {/* STEP 2 — SOUL */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, borderTop: "1px solid var(--fg)", paddingTop: 8, marginBottom: 16, textTransform: "uppercase" }}>
+            02 // DEFINE SOUL
+          </div>
+          <div style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, marginBottom: 12 }}>
+            SELECT ARCHETYPE OR WRITE CUSTOM SOUL.MD
+          </div>
+
+          {/* Soul template data rows */}
+          <div style={{ marginBottom: 16 }}>
+            {SOUL_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleSoulTemplateSelect(template.id)}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  width: "100%",
+                  padding: "8px 0",
+                  borderBottom: "1px dotted rgba(0,0,0,0.15)",
+                  background: selectedSoulTemplate === template.id ? "rgba(0,0,0,0.05)" : "transparent",
+                  border: "none",
+                  borderBottomStyle: "dotted",
+                  borderBottomWidth: 1,
+                  borderBottomColor: "rgba(0,0,0,0.15)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontFamily: "inherit",
+                  fontSize: 12,
+                  color: "var(--fg)",
+                  paddingLeft: selectedSoulTemplate === template.id ? 8 : 0,
+                  transition: "all 0.15s",
+                }}
+              >
+                <span style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, opacity: 0.5 }}>{template.icon}</span>
+                  <span style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>{template.label}</span>
+                </span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, opacity: selectedSoulTemplate === template.id ? 1 : 0.3 }}>
+                  {selectedSoulTemplate === template.id ? "[ACTIVE]" : "SELECT"}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={soul}
+            onChange={(e) => {
+              setSoul(e.target.value)
+              setSelectedSoulTemplate("custom")
+            }}
+            placeholder="Describe your entity's personality, values, and approach..."
+            rows={4}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              backgroundColor: "transparent",
+              border: "1px solid rgba(0,0,0,0.2)",
+              color: "var(--fg)",
+              outline: "none",
+              resize: "vertical",
+              lineHeight: 1.6,
+            }}
+          />
+        </div>
+
+        {/* STEP 3 — SKILLS */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, borderTop: "1px solid var(--fg)", paddingTop: 8, marginBottom: 16, textTransform: "uppercase" }}>
+            03 // SELECT SKILL PROFILE
+          </div>
+          <div style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, marginBottom: 12 }}>
+            CAPABILITY MATRIX CONFIGURATION
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            {SKILL_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleSkillTemplateSelect(template.id)}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  width: "100%",
+                  padding: "8px 0",
+                  background: selectedSkillTemplate === template.id ? "rgba(0,0,0,0.05)" : "transparent",
+                  border: "none",
+                  borderBottomStyle: "dotted",
+                  borderBottomWidth: 1,
+                  borderBottomColor: "rgba(0,0,0,0.15)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontFamily: "inherit",
+                  fontSize: 12,
+                  color: "var(--fg)",
+                  paddingLeft: selectedSkillTemplate === template.id ? 8 : 0,
+                  transition: "all 0.15s",
+                }}
+              >
+                <span style={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em" }}>{template.label}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, opacity: selectedSkillTemplate === template.id ? 1 : 0.3 }}>
+                  {selectedSkillTemplate === template.id ? "[ACTIVE]" : "SELECT"}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={skill}
+            onChange={(e) => {
+              setSkill(e.target.value)
+              setSelectedSkillTemplate("custom")
+            }}
+            placeholder="Describe your entity's capabilities..."
+            rows={3}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              backgroundColor: "transparent",
+              border: "1px solid rgba(0,0,0,0.2)",
+              color: "var(--fg)",
+              outline: "none",
+              resize: "vertical",
+              lineHeight: 1.6,
+            }}
+          />
+        </div>
+
+        {/* STEP 4 — COMPUTE ALLOCATION */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, borderTop: "1px solid var(--fg)", paddingTop: 8, marginBottom: 16, textTransform: "uppercase" }}>
+            04 // COMPUTE ALLOCATION
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0 }}>
+            {PLANS.map((plan) => {
+              const isSelected = selectedPlan === plan.key
+              const computePct = Math.round((plan.compute / maxCompute) * 100)
+              return (
+                <button
+                  key={plan.key}
+                  onClick={() => setSelectedPlan(plan.key)}
+                  style={{
+                    padding: "20px 16px",
+                    background: isSelected ? "var(--fg)" : "transparent",
+                    color: isSelected ? "var(--bg)" : "var(--fg)",
+                    border: "1px solid var(--fg)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: "inherit",
+                    fontSize: 12,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                    transition: "all 0.15s",
+                    marginLeft: plan.key !== "spark" ? -1 : 0,
+                  }}
+                >
+                  {/* Plan name */}
+                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.7 }}>
+                    {plan.name}
+                  </div>
+
+                  {/* Price */}
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 400, letterSpacing: "-0.02em" }}>
+                    ${plan.price}
+                  </div>
+
+                  {/* Compute credits */}
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", opacity: 0.7 }}>COMPUTE</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>{plan.compute.toLocaleString()}</span>
+                  </div>
+
+                  {/* Spark bar for compute */}
+                  <div style={{
+                    height: 4,
+                    background: isSelected ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+                    width: "100%",
+                    overflow: "hidden",
+                  }}>
+                    <div style={{
+                      height: "100%",
+                      width: `${computePct}%`,
+                      background: isSelected ? "var(--bg)" : "var(--fg)",
+                      backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(128,128,128,0.3) 2px, rgba(128,128,128,0.3) 4px)",
+                    }} />
+                  </div>
+
+                  {/* Estimated runtime */}
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", opacity: 0.7 }}>EST. CYCLES</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>~{plan.cycles.toLocaleString()}</span>
+                  </div>
+
+                  {/* Description */}
+                  <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.5 }}>
+                    {plan.description}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ========== ERROR ========== */}
+        {error && (
+          <div style={{
+            padding: "12px 16px",
+            marginBottom: 24,
+            border: "1px solid #ef4444",
+            fontFamily: "var(--font-mono)",
+            fontSize: 12,
+            color: "#ef4444",
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* ========== SPAWN BUTTON ========== */}
+        <button
+          onClick={handleSpawn}
+          disabled={!canSpawn}
+          style={{
+            width: "100%",
+            padding: "18px 32px",
+            backgroundColor: canSpawn ? "var(--fg)" : "rgba(0,0,0,0.15)",
+            color: canSpawn ? "var(--bg)" : "rgba(0,0,0,0.3)",
+            border: "none",
+            fontFamily: "var(--font-mono)",
+            fontSize: 14,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            cursor: canSpawn ? "pointer" : "not-allowed",
+            transition: "all 0.15s",
+            marginBottom: 16,
+          }}
+        >
+          {loading ? (
+            "INITIALIZING SPAWN SEQUENCE..."
+          ) : (
+            `SPAWN ${entityName.trim().toUpperCase() || "ENTITY"} // $${PLANS.find((p) => p.key === selectedPlan)?.price || 0} USD`
+          )}
+        </button>
+
+        <div style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, textAlign: "center", marginBottom: 24 }}>
+          SECURE PAYMENT VIA STRIPE // USD
+        </div>
+
+        {/* Progress indicator */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, paddingBottom: 32 }}>
+          <StepIndicator done={step1Done} label="NAME" />
+          <div style={{ width: 32, height: 1, backgroundColor: "rgba(0,0,0,0.1)" }} />
+          <StepIndicator done={step2Done} label="SOUL" />
+          <div style={{ width: 32, height: 1, backgroundColor: "rgba(0,0,0,0.1)" }} />
+          <StepIndicator done={step3Done} label="SKILL" />
+          <div style={{ width: 32, height: 1, backgroundColor: "rgba(0,0,0,0.1)" }} />
+          <StepIndicator done={step4Done} label="PLAN" />
         </div>
       </div>
     </main>
@@ -405,15 +578,56 @@ export default function SpawnPage() {
 /*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
 
-function StepDot({ done, label }: { done: boolean; label: string }) {
+function StepIndicator({ done, label }: { done: boolean; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <span
-        className={`w-2.5 h-2.5 rounded-full transition-colors duration-300 ${
-          done ? "bg-[#22c55e]" : "bg-[rgba(255,255,255,0.1)]"
-        }`}
-      />
-      <span className="tech-label text-[7px]">{label}</span>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        backgroundColor: done ? "var(--fg)" : "rgba(0,0,0,0.1)",
+        transition: "background-color 0.3s",
+      }} />
+      <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>{label}</span>
+    </div>
+  )
+}
+
+function SensorGrid() {
+  const [opacities, setOpacities] = useState<number[]>(() => Array(192).fill(0.1))
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setOpacities((prev) => {
+        const next = [...prev]
+        for (let i = 0; i < 15; i++) {
+          const r = Math.floor(Math.random() * next.length)
+          next[r] = Math.random() * 0.8 + 0.2
+        }
+        for (let i = 0; i < 10; i++) {
+          const r = Math.floor(Math.random() * next.length)
+          next[r] = 0.1
+        }
+        return next
+      })
+    }, 150)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(32, 1fr)", gap: 2, width: "100%", marginTop: 16 }}>
+      {opacities.map((op, i) => (
+        <div
+          key={i}
+          style={{
+            aspectRatio: "1",
+            backgroundColor: "#f0f0f0",
+            borderRadius: "50%",
+            opacity: op,
+            transition: "opacity 0.4s ease",
+          }}
+        />
+      ))}
     </div>
   )
 }

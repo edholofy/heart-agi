@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import { createProposal, voteProposal } from "@/lib/chain-tx"
@@ -22,22 +21,10 @@ interface Proposal {
   status: ProposalStatus
 }
 
-const STATUS_COLORS: Record<ProposalStatus, { dot: string; badge: string; label: string }> = {
-  active: {
-    dot: "bg-[#3b82f6]",
-    badge: "bg-[rgba(59,130,246,0.12)] text-[#3b82f6]",
-    label: "ACTIVE",
-  },
-  passed: {
-    dot: "bg-[#22c55e]",
-    badge: "bg-[rgba(34,197,94,0.12)] text-[#22c55e]",
-    label: "PASSED",
-  },
-  rejected: {
-    dot: "bg-[#ef4444]",
-    badge: "bg-[rgba(239,68,68,0.12)] text-[#ef4444]",
-    label: "REJECTED",
-  },
+const STATUS_COLORS: Record<ProposalStatus, { label: string; color: string }> = {
+  active: { label: "ACTIVE", color: "#3b82f6" },
+  passed: { label: "PASSED", color: "#22c55e" },
+  rejected: { label: "REJECTED", color: "#ef4444" },
 }
 
 /**
@@ -202,225 +189,282 @@ export default function GovernancePage() {
   )
 
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <div className="flex flex-col min-h-screen">
+      <NetworkBar />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
-
-        <div className="flex-1 px-4 sm:px-6 py-8 max-w-7xl mx-auto w-full">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
-              $HEART{" "}
-              <span className="text-[rgba(255,255,255,0.4)]">
-                Governance
-              </span>
-            </h1>
-            <p className="text-sm text-[rgba(255,255,255,0.4)] font-light mt-2">
-              Create and vote on proposals that shape the autonomous network.
-            </p>
+      {/* ── ZONE DARK ── */}
+      <div className="zone-dark">
+        <header style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 16, marginBottom: 32 }}>
+          <div>
+            <span className="sys-label">SYSTEM OPERATION</span>
+            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              GOVERNANCE // DELIBERATION PROTOCOL
+            </div>
           </div>
+          <div style={{ textAlign: "center" }}>
+            <span className="sys-label">ACTIVE PROTOCOL</span>
+            <div className="sys-value">CONSENSUS_VOTE_V1</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <span className="sys-label">PROPOSALS</span>
+            <div className="sys-value">{proposals.length} REGISTERED</div>
+          </div>
+        </header>
 
-          {/* CREATE PROPOSAL */}
-          <div className="mb-10">
-            <div className="aura-divider mb-5">CREATE.PROPOSAL</div>
-
-            <div className="glass p-6 sm:p-8">
-              {!isConnected ? (
-                <div className="text-center py-8">
-                  <div className="text-[rgba(255,255,255,0.3)] text-sm font-light mb-3">
-                    Connect your wallet to create proposals
-                  </div>
-                  <div className="sys-badge">WALLET.REQUIRED</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "end", paddingBottom: 24 }}>
+          <div>
+            <span className="sys-label">ACTIVE PROPOSALS</span>
+            <div className="dot-hero">{activeProposals.length}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="sys-label">PROPOSAL BREAKDOWN</span>
+              <span className="sys-value">{proposals.length} TOTAL</span>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <div className="spark-row">
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span className="row-key sys-label">ACTIVE</span>
+                  <span className="row-val">{activeProposals.length}</span>
                 </div>
-              ) : (
-                <form onSubmit={handleCreateProposal} className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    {/* Title */}
-                    <div className="sm:col-span-2">
-                      <label className="tech-label mb-2 block">
-                        PROPOSAL.TITLE
-                      </label>
-                      <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g. Increase entity spawn rate"
-                        className="glass-input w-full px-4 py-3 text-sm"
-                        required
-                      />
-                    </div>
+                <div className="spark-bar-container">
+                  <div className="spark-bar" style={{ width: proposals.length > 0 ? `${(activeProposals.length / proposals.length) * 100}%` : "0%" }} />
+                </div>
+              </div>
+              <div className="spark-row">
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span className="row-key sys-label">PASSED</span>
+                  <span className="row-val">{finishedProposals.filter(p => p.status === "passed").length}</span>
+                </div>
+                <div className="spark-bar-container">
+                  <div className="spark-bar" style={{ width: proposals.length > 0 ? `${(finishedProposals.filter(p => p.status === "passed").length / proposals.length) * 100}%` : "0%" }} />
+                </div>
+              </div>
+              <div className="spark-row">
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span className="row-key sys-label">REJECTED</span>
+                  <span className="row-val">{finishedProposals.filter(p => p.status === "rejected").length}</span>
+                </div>
+                <div className="spark-bar-container">
+                  <div className="spark-bar" style={{ width: proposals.length > 0 ? `${(finishedProposals.filter(p => p.status === "rejected").length / proposals.length) * 100}%` : "0%" }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                    {/* Description */}
-                    <div className="sm:col-span-2">
-                      <label className="tech-label mb-2 block">
-                        DESCRIPTION
-                      </label>
-                      <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Describe the proposal and its rationale..."
-                        className="glass-input w-full px-4 py-3 text-sm min-h-[100px] resize-y"
-                        style={{ borderRadius: "var(--radius-panel)" }}
-                        required
-                      />
-                    </div>
+      {/* ── ZONE TRANSITION ── */}
+      <div className="zone-transition" />
 
-                    {/* Entity ID */}
-                    <div className="sm:col-span-2">
-                      <label className="tech-label mb-2 block">
-                        ENTITY.ID
-                      </label>
-                      <input
-                        type="text"
-                        value={entityId}
-                        onChange={(e) => setEntityId(e.target.value)}
-                        placeholder="Your entity ID (must be Level 10+)"
-                        className="glass-input w-full px-4 py-3 text-sm"
-                        required
-                      />
-                      <p className="text-[10px] text-[rgba(255,255,255,0.25)] font-mono mt-2 tracking-wider">
-                        ENTITIES MUST BE LEVEL 10+ TO PROPOSE
-                      </p>
-                    </div>
-                  </div>
+      {/* ── ZONE LIGHT ── */}
+      <div className="zone-light">
+        {/* CREATE PROPOSAL */}
+        <div className="col-header">CREATE PROPOSAL</div>
 
-                  {/* Submit */}
-                  <div className="flex items-center gap-4 pt-2">
-                    <button
-                      type="submit"
-                      disabled={submitting || !title || !description || !entityId}
-                      className="btn-primary px-8 py-3 text-sm tracking-wider disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
-                    >
-                      {submitting ? "BROADCASTING..." : "CREATE PROPOSAL"}
-                    </button>
+        {!isConnected ? (
+          <div style={{ padding: "24px 0", textAlign: "center" }}>
+            <span className="sys-label" style={{ fontSize: 11 }}>WALLET.REQUIRED — CONNECT TO CREATE PROPOSALS</span>
+          </div>
+        ) : (
+          <form onSubmit={handleCreateProposal} style={{ marginBottom: 32 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="sys-label" style={{ marginBottom: 6 }}>PROPOSAL.TITLE</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Increase entity spawn rate"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    border: "1px solid rgba(0,0,0,0.2)",
+                    background: "transparent",
+                    color: "var(--fg)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="sys-label" style={{ marginBottom: 6 }}>DESCRIPTION</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe the proposal and its rationale..."
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    border: "1px solid rgba(0,0,0,0.2)",
+                    background: "transparent",
+                    color: "var(--fg)",
+                    outline: "none",
+                    minHeight: 80,
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label className="sys-label" style={{ marginBottom: 6 }}>ENTITY.ID</label>
+                <input
+                  type="text"
+                  value={entityId}
+                  onChange={(e) => setEntityId(e.target.value)}
+                  placeholder="Your entity ID (must be Level 10+)"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    border: "1px solid rgba(0,0,0,0.2)",
+                    background: "transparent",
+                    color: "var(--fg)",
+                    outline: "none",
+                  }}
+                />
+                <span className="sys-label" style={{ marginTop: 4, display: "block" }}>ENTITIES MUST BE LEVEL 10+ TO PROPOSE</span>
+              </div>
+            </div>
 
-                    {txHash && (
-                      <span className="sys-badge text-[10px] truncate max-w-xs">
-                        TX: {txHash.slice(0, 12)}...{txHash.slice(-6)}
-                      </span>
-                    )}
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button
+                type="submit"
+                disabled={submitting || !title || !description || !entityId}
+                className="btn-primary"
+                style={{ opacity: submitting || !title || !description || !entityId ? 0.4 : 1, cursor: submitting ? "wait" : "pointer" }}
+              >
+                {submitting ? "BROADCASTING..." : "CREATE PROPOSAL"}
+              </button>
 
-                    {submitError && (
-                      <span className="text-[#ef4444] text-xs font-light truncate max-w-sm">
-                        {submitError}
-                      </span>
-                    )}
-                  </div>
-                </form>
+              {txHash && (
+                <span className="sys-value" style={{ fontSize: 10, opacity: 0.6 }}>
+                  TX: {txHash.slice(0, 12)}...{txHash.slice(-6)}
+                </span>
+              )}
+
+              {submitError && (
+                <span style={{ color: "#ef4444", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+                  {submitError}
+                </span>
               )}
             </div>
+          </form>
+        )}
+
+        {/* Chain offline warning */}
+        {fetchError && (
+          <div className="data-row" style={{ color: "#ef4444", marginBottom: 16, borderBottom: "1px solid rgba(239,68,68,0.3)" }}>
+            <span className="row-key" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+              CHAIN OFFLINE
+            </span>
+            <span className="row-val">RETRYING EVERY 10S</span>
           </div>
+        )}
 
-          {/* Chain offline warning */}
-          {fetchError && (
-            <div className="glass-sm p-4 mb-6 bg-[rgba(239,68,68,0.08)] text-sm">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444] mr-2 align-middle" />
-              <span className="text-[#ef4444] font-light">
-                Chain offline or unreachable. Retrying every 10s...
-              </span>
-            </div>
-          )}
-
-          {/* Vote entity ID input (shown when connected) */}
-          {isConnected && activeProposals.length > 0 && (
-            <div className="glass-sm p-4 mb-6 flex items-center gap-4 flex-wrap">
-              <label className="tech-label whitespace-nowrap">
-                YOUR.ENTITY.ID (FOR VOTING)
-              </label>
+        {/* Vote entity ID input */}
+        {isConnected && activeProposals.length > 0 && (
+          <div style={{ marginBottom: 24, padding: "12px 0", borderTop: "1px dotted rgba(0,0,0,0.15)", borderBottom: "1px dotted rgba(0,0,0,0.15)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <span className="sys-label" style={{ whiteSpace: "nowrap", marginBottom: 0 }}>YOUR.ENTITY.ID (FOR VOTING)</span>
               <input
                 type="text"
                 value={voteEntityId}
                 onChange={(e) => setVoteEntityId(e.target.value)}
                 placeholder="Enter your entity ID to vote"
-                className="glass-input px-4 py-2 text-sm flex-1 min-w-[200px]"
+                style={{
+                  flex: 1,
+                  minWidth: 200,
+                  padding: "8px 12px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                  border: "1px solid rgba(0,0,0,0.2)",
+                  background: "transparent",
+                  color: "var(--fg)",
+                  outline: "none",
+                }}
               />
               {voteTxHash && (
-                <span className="sys-badge text-[10px] truncate max-w-xs">
+                <span className="sys-value" style={{ fontSize: 10, opacity: 0.6 }}>
                   VOTE TX: {voteTxHash.slice(0, 12)}...{voteTxHash.slice(-6)}
                 </span>
               )}
               {voteError && (
-                <span className="text-[#ef4444] text-xs font-light truncate max-w-sm">
+                <span style={{ color: "#ef4444", fontSize: 11, fontFamily: "var(--font-mono)" }}>
                   {voteError}
                 </span>
               )}
             </div>
-          )}
-
-          {/* ACTIVE PROPOSALS */}
-          <div className="mb-10">
-            <div className="aura-divider mb-5">
-              ACTIVE.PROPOSALS
-              <span className="sys-badge ml-2">{activeProposals.length}</span>
-            </div>
-
-            {loading && proposals.length === 0 && !fetchError && (
-              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                Loading proposals from chain...
-              </div>
-            )}
-
-            {!loading && activeProposals.length === 0 && !fetchError && (
-              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                No active proposals. Create one above.
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {activeProposals.map((proposal) => (
-                <ProposalCard
-                  key={proposal.id}
-                  proposal={proposal}
-                  canVote={isConnected && !!voteEntityId}
-                  isVoting={votingId === proposal.id}
-                  onVote={(option) => handleVote(proposal.id, option)}
-                />
-              ))}
-            </div>
           </div>
+        )}
 
-          {/* PASSED / REJECTED */}
-          {finishedProposals.length > 0 && (
-            <div className="mb-12">
-              <div className="aura-divider mb-5">
-                PASSED./.REJECTED
-                <span className="sys-badge ml-2">
-                  {finishedProposals.length}
-                </span>
-              </div>
+        {/* ACTIVE PROPOSALS */}
+        <div className="col-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>ACTIVE PROPOSALS</span>
+          <span className="sys-value" style={{ fontSize: 11 }}>{activeProposals.length}</span>
+        </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {finishedProposals.map((proposal) => (
-                  <ProposalCard
-                    key={proposal.id}
-                    proposal={proposal}
-                    canVote={false}
-                    isVoting={false}
-                    onVote={() => {}}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Back link */}
-          <div className="text-center mb-8">
-            <Link
-              href="/"
-              className="btn-secondary inline-block px-6 py-2.5 text-sm tracking-wide"
-            >
-              BACK TO DASHBOARD
-            </Link>
+        {loading && proposals.length === 0 && !fetchError && (
+          <div style={{ padding: "32px 0", textAlign: "center" }}>
+            <span className="sys-label" style={{ fontSize: 11 }}>LOADING PROPOSALS FROM CHAIN...</span>
           </div>
+        )}
+
+        {!loading && activeProposals.length === 0 && !fetchError && (
+          <div style={{ padding: "32px 0", textAlign: "center" }}>
+            <span className="sys-label" style={{ fontSize: 11 }}>NO ACTIVE PROPOSALS. CREATE ONE ABOVE.</span>
+          </div>
+        )}
+
+        {activeProposals.map((proposal) => (
+          <ProposalRow
+            key={proposal.id}
+            proposal={proposal}
+            canVote={isConnected && !!voteEntityId}
+            isVoting={votingId === proposal.id}
+            onVote={(option) => handleVote(proposal.id, option)}
+          />
+        ))}
+
+        {/* PASSED / REJECTED */}
+        {finishedProposals.length > 0 && (
+          <>
+            <div className="col-header" style={{ marginTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>PASSED / REJECTED</span>
+              <span className="sys-value" style={{ fontSize: 11 }}>{finishedProposals.length}</span>
+            </div>
+
+            {finishedProposals.map((proposal) => (
+              <ProposalRow
+                key={proposal.id}
+                proposal={proposal}
+                canVote={false}
+                isVoting={false}
+                onVote={() => {}}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Back link */}
+        <div style={{ textAlign: "center", marginTop: 48 }}>
+          <Link href="/" className="btn-primary" style={{ textDecoration: "none" }}>
+            BACK TO DASHBOARD
+          </Link>
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 
-function ProposalCard({
+function ProposalRow({
   proposal,
   canVote,
   isVoting,
@@ -434,101 +478,95 @@ function ProposalCard({
   const statusStyle = STATUS_COLORS[proposal.status]
   const totalVotes = proposal.yesVotes + proposal.noVotes + proposal.abstainVotes
   const yesPercent = totalVotes > 0 ? (proposal.yesVotes / totalVotes) * 100 : 0
-  const noPercent = totalVotes > 0 ? (proposal.noVotes / totalVotes) * 100 : 0
 
   return (
-    <div className="glass-sm p-5 flex flex-col gap-3 hover:bg-[rgba(255,255,255,0.03)] transition-colors">
-      {/* Header: status + ID */}
-      <div className="flex items-center justify-between">
-        <span
-          className={`inline-flex items-center gap-1.5 text-[10px] font-mono tracking-wider px-2.5 py-1 rounded-full ${statusStyle.badge}`}
-        >
+    <div style={{ padding: "12px 0", borderBottom: "1px dotted rgba(0,0,0,0.15)" }}>
+      {/* Row 1: status, title, ID */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span
-            className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} ${proposal.status === "active" ? "animate-pulse-dot" : ""}`}
-          />
-          {statusStyle.label}
-        </span>
-        <span className="sys-badge text-[9px]">ID:{proposal.id}</span>
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              padding: "2px 8px",
+              border: `1px solid ${statusStyle.color}`,
+              color: statusStyle.color,
+            }}
+          >
+            {statusStyle.label}
+          </span>
+          <span style={{ fontWeight: 500, fontSize: 13 }}>{proposal.title}</span>
+        </div>
+        <span className="sys-label" style={{ marginBottom: 0 }}>ID:{proposal.id}</span>
       </div>
 
-      {/* Title */}
-      <h3 className="text-sm font-medium text-white leading-snug">
-        {proposal.title}
-      </h3>
-
-      {/* Description */}
-      <p className="text-xs text-[rgba(255,255,255,0.4)] font-light line-clamp-3 leading-relaxed">
+      {/* Row 2: description */}
+      <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 8, maxWidth: "80ch" }}>
         {proposal.description}
-      </p>
-
-      {/* Proposer */}
-      <div className="tech-label text-[9px]">
-        PROPOSER:{" "}
-        <span className="font-mono text-[rgba(255,255,255,0.5)]">
-          {proposal.proposer
-            ? `${proposal.proposer.slice(0, 10)}...${proposal.proposer.slice(-6)}`
-            : "unknown"}
-        </span>
       </div>
 
-      {/* Vote tally bar */}
-      <div className="mt-1">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] font-mono text-[#22c55e]">
-            YES {proposal.yesVotes}
+      {/* Row 3: proposer + votes */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <span className="sys-label" style={{ marginBottom: 0, fontSize: 9 }}>
+          PROPOSER: <span className="sys-value" style={{ fontSize: 10 }}>
+            {proposal.proposer
+              ? `${proposal.proposer.slice(0, 10)}...${proposal.proposer.slice(-6)}`
+              : "unknown"}
           </span>
-          <span className="text-[10px] font-mono text-[rgba(255,255,255,0.3)]">
-            ABSTAIN {proposal.abstainVotes}
-          </span>
-          <span className="text-[10px] font-mono text-[#ef4444]">
-            NO {proposal.noVotes}
-          </span>
+        </span>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16, fontFamily: "var(--font-mono)", fontSize: 10 }}>
+          <span style={{ color: "#22c55e" }}>YES {proposal.yesVotes}</span>
+          <span style={{ opacity: 0.4 }}>ABSTAIN {proposal.abstainVotes}</span>
+          <span style={{ color: "#ef4444" }}>NO {proposal.noVotes}</span>
+          <span style={{ opacity: 0.3 }}>{totalVotes} TOTAL</span>
         </div>
-        <div className="w-full h-1.5 rounded-full bg-[rgba(255,255,255,0.05)] overflow-hidden flex">
-          {yesPercent > 0 && (
-            <div
-              className="h-full bg-[#22c55e] rounded-l-full"
-              style={{ width: `${yesPercent}%` }}
-            />
-          )}
-          {noPercent > 0 && (
-            <div
-              className="h-full bg-[#ef4444] rounded-r-full ml-auto"
-              style={{ width: `${noPercent}%` }}
-            />
-          )}
-        </div>
-        <div className="text-center mt-1">
-          <span className="tech-label text-[9px]">
-            {totalVotes} TOTAL VOTE{totalVotes !== 1 ? "S" : ""}
-          </span>
-        </div>
+      </div>
+
+      {/* Vote tally spark bar */}
+      <div className="spark-bar-container" style={{ marginTop: 6 }}>
+        <div className="spark-bar" style={{ width: `${yesPercent}%` }} />
       </div>
 
       {/* Vote buttons (only for active proposals) */}
       {proposal.status === "active" && (
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
-          <button
-            onClick={() => onVote("yes")}
-            disabled={!canVote || isVoting}
-            className="flex-1 px-3 py-2 text-[10px] font-mono tracking-wider rounded-full bg-[rgba(34,197,94,0.1)] text-[#22c55e] hover:bg-[rgba(34,197,94,0.2)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {isVoting ? "..." : "YES"}
-          </button>
-          <button
-            onClick={() => onVote("no")}
-            disabled={!canVote || isVoting}
-            className="flex-1 px-3 py-2 text-[10px] font-mono tracking-wider rounded-full bg-[rgba(239,68,68,0.1)] text-[#ef4444] hover:bg-[rgba(239,68,68,0.2)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {isVoting ? "..." : "NO"}
-          </button>
-          <button
-            onClick={() => onVote("abstain")}
-            disabled={!canVote || isVoting}
-            className="flex-1 px-3 py-2 text-[10px] font-mono tracking-wider rounded-full bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.1)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {isVoting ? "..." : "ABSTAIN"}
-          </button>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          {(["yes", "no", "abstain"] as const).map((option) => (
+            <button
+              key={option}
+              onClick={() => onVote(option)}
+              disabled={!canVote || isVoting}
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                padding: "6px 20px",
+                border: "1px solid var(--fg)",
+                background: "transparent",
+                color: "var(--fg)",
+                cursor: !canVote || isVoting ? "not-allowed" : "pointer",
+                opacity: !canVote || isVoting ? 0.3 : 1,
+                transition: "background-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (canVote && !isVoting) {
+                  e.currentTarget.style.background = "var(--fg)"
+                  e.currentTarget.style.color = "var(--bg)"
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent"
+                e.currentTarget.style.color = "var(--fg)"
+              }}
+            >
+              {isVoting ? "..." : option.toUpperCase()}
+            </button>
+          ))}
         </div>
       )}
     </div>

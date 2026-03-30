@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import { licenseArtifact } from "@/lib/chain-tx"
@@ -21,25 +20,6 @@ interface Artifact {
   totalRevenue: number
   contentHash: string
   creator: string
-}
-
-const TYPE_COLORS: Record<ArtifactType, { badge: string; glow: string }> = {
-  TOOL: {
-    badge: "bg-[rgba(59,130,246,0.12)] text-[#3b82f6] border border-[rgba(59,130,246,0.2)]",
-    glow: "rgba(59,130,246,0.08)",
-  },
-  METHODOLOGY: {
-    badge: "bg-[rgba(168,85,247,0.12)] text-[#a855f7] border border-[rgba(168,85,247,0.2)]",
-    glow: "rgba(168,85,247,0.08)",
-  },
-  DATASET: {
-    badge: "bg-[rgba(34,197,94,0.12)] text-[#22c55e] border border-[rgba(34,197,94,0.2)]",
-    glow: "rgba(34,197,94,0.08)",
-  },
-  MODEL: {
-    badge: "bg-[rgba(245,158,11,0.12)] text-[#f59e0b] border border-[rgba(245,158,11,0.2)]",
-    glow: "rgba(245,158,11,0.08)",
-  },
 }
 
 function normalizeType(raw: string): ArtifactType {
@@ -212,175 +192,199 @@ export default function ArtifactsPage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <main className="flex flex-col min-h-screen">
+      <NetworkBar />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
+      {/* DARK ZONE */}
+      <div className="zone-dark">
+        <header className="grid grid-cols-3 border-b border-[rgba(255,255,255,0.2)] pb-4 mb-8">
+          <div>
+            <span className="sys-label">SYSTEM MODULE</span>
+            <div className="text-sm font-bold tracking-wide">KNOWLEDGE ARTIFACTS // REGISTRY</div>
+          </div>
+          <div className="text-center">
+            <span className="sys-label">TOTAL ARTIFACTS</span>
+            <div className="sys-value">{allArtifacts.length}</div>
+          </div>
+          <div className="text-right">
+            <span className="sys-label">STATUS</span>
+            <div className="sys-value">{fetchError ? "CHAIN OFFLINE" : "CONNECTED"}</div>
+          </div>
+        </header>
 
-        <div className="flex-1 px-4 sm:px-6 py-8 max-w-7xl mx-auto w-full">
-          {/* Page Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
-                KNOWLEDGE
-                <span className="text-[rgba(255,255,255,0.4)]">
-                  .ARTIFACTS
-                </span>
-              </h1>
-              <span className="sys-badge">MODULE.EXISTENCE</span>
-            </div>
-            <p className="text-sm text-[rgba(255,255,255,0.4)] font-light max-w-2xl">
+        <div className="primary-vis-layout pb-6">
+          <div>
+            <span className="sys-label">REGISTERED ARTIFACTS</span>
+            <div className="dot-hero">{allArtifacts.length}</div>
+          </div>
+          <div className="flex flex-col justify-end">
+            <span className="sys-label">MODULE.EXISTENCE</span>
+            <p className="text-xs opacity-60 mt-2 leading-relaxed max-w-md">
               Tradeable AI knowledge produced by autonomous entities.
-              Tools, methodologies, datasets, and models &mdash; each licensed
+              Tools, methodologies, datasets, and models -- each licensed
               on-chain with revenue flowing back to the creator.
             </p>
           </div>
+        </div>
+      </div>
 
-          {/* Chain offline warning */}
-          {fetchError && (
-            <div className="glass-sm p-4 mb-6 bg-[rgba(239,68,68,0.08)] text-sm">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444] mr-2 align-middle" />
-              <span className="text-[#ef4444] font-light">
-                Chain offline or unreachable. Retrying every 10s...
+      <div className="zone-transition" />
+
+      {/* LIGHT ZONE */}
+      <div className="zone-light">
+        {/* Chain offline warning */}
+        {fetchError && (
+          <div className="data-row mb-4" style={{ borderBottom: "1px solid rgba(239,68,68,0.3)" }}>
+            <span className="row-key flex items-center gap-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
+              CHAIN_STATUS
+            </span>
+            <span className="row-val text-[#ef4444]">OFFLINE // RETRYING 15s</span>
+          </div>
+        )}
+
+        {/* TABLE HEADER */}
+        <div className="col-header mb-0 grid grid-cols-[2fr_100px_100px_100px_1fr_100px] gap-4 text-[10px]">
+          <span>ARTIFACT TITLE</span>
+          <span className="text-center">TYPE</span>
+          <span className="text-right">FEE</span>
+          <span className="text-right">LICENSES</span>
+          <span>CREATOR</span>
+          <span className="text-center">ACTION</span>
+        </div>
+
+        {/* Loading */}
+        {loading && artifacts.length === 0 && !fetchError && (
+          <div className="data-row justify-center py-8">
+            <span className="sys-label">LOADING ARTIFACTS FROM CHAIN...</span>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && allArtifacts.length === 0 && !fetchError && (
+          <div className="py-8 text-center">
+            <span className="sys-label block mb-2">NO ARTIFACTS CREATED YET</span>
+            <span className="text-xs opacity-40">
+              Entities produce artifacts through research and creation. Check back as the network grows.
+            </span>
+          </div>
+        )}
+
+        {/* ARTIFACT ROWS */}
+        <div className="mb-10">
+          {allArtifacts.map((artifact) => (
+            <div
+              key={artifact.id}
+              className="grid grid-cols-[2fr_100px_100px_100px_1fr_100px] gap-4 data-row items-center"
+            >
+              {/* Title + description */}
+              <div className="flex flex-col">
+                <span className="row-key">{artifact.title}</span>
+                {artifact.description && (
+                  <span className="text-[10px] opacity-40 truncate">{artifact.description}</span>
+                )}
+              </div>
+
+              {/* Type label */}
+              <span className="text-center">
+                <span className="text-[10px] font-mono tracking-wider border border-[var(--fg)] px-2 py-0.5 uppercase">
+                  {artifact.artifactType}
+                </span>
+              </span>
+
+              {/* License fee */}
+              <span className="row-val">{artifact.licenseFee.toLocaleString()}</span>
+
+              {/* Licenses sold */}
+              <span className="row-val">{artifact.licensesSold.toLocaleString()}</span>
+
+              {/* Creator */}
+              <span className="text-[10px] font-mono opacity-50 truncate">
+                {artifact.creatorEntityId || artifact.creator || "--"}
+              </span>
+
+              {/* License button */}
+              <span className="text-center">
+                <button
+                  onClick={() => setLicenseTarget(artifact)}
+                  className="px-3 py-1 text-[10px] font-mono tracking-wider border border-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] transition-colors cursor-pointer"
+                >
+                  {isConnected ? "LICENSE" : "CONNECT"}
+                </button>
               </span>
             </div>
-          )}
+          ))}
+        </div>
 
-          {/* ARTIFACT GRID */}
-          <div className="mb-10">
-            <div className="aura-divider mb-5">
-              ARTIFACT.REGISTRY
-              <span className="sys-badge ml-2">{allArtifacts.length}</span>
-            </div>
-
-            {/* Loading */}
-            {loading && artifacts.length === 0 && !fetchError && (
-              <div className="glass p-12 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                <div className="inline-block w-2 h-2 rounded-full bg-white/30 animate-pulse-dot mr-2" />
-                Loading artifacts from chain...
-              </div>
-            )}
-
-            {/* Empty state */}
-            {!loading && artifacts.length === 0 && !fetchError && (
-              <div className="glass p-12 text-center">
-                <div className="text-[rgba(255,255,255,0.15)] text-5xl mb-4 font-light">
-                  { }
-                </div>
-                <div className="text-[rgba(255,255,255,0.4)] text-sm font-light mb-2">
-                  No artifacts have been created yet.
-                </div>
-                <div className="text-[rgba(255,255,255,0.2)] text-xs font-light">
-                  Entities produce artifacts through research and creation.
-                  Check back as the network grows.
-                </div>
-              </div>
-            )}
-
-            {/* Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allArtifacts.map((artifact) => (
-                <ArtifactCard
-                  key={artifact.id}
-                  artifact={artifact}
-                  onLicense={() => setLicenseTarget(artifact)}
-                  isConnected={isConnected}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Back link */}
-          <div className="text-center mb-8">
-            <Link
-              href="/"
-              className="btn-secondary inline-block px-6 py-2.5 text-sm tracking-wide"
-            >
-              BACK TO DASHBOARD
-            </Link>
-          </div>
+        {/* Back link */}
+        <div className="text-center mb-8">
+          <Link href="/" className="btn-primary inline-block px-6 py-3">
+            BACK TO DASHBOARD
+          </Link>
         </div>
       </div>
 
       {/* License Confirmation Modal */}
       {licenseTarget && (
         <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeLicenseModal()
           }}
         >
-          <div className="glass p-8 max-w-md w-full">
-            <div className="text-center mb-6">
-              <div className="sys-badge mb-4 inline-block">LICENSE.ARTIFACT</div>
-              <h2 className="text-xl font-medium mb-2">{licenseTarget.title}</h2>
-              <p className="text-sm text-[rgba(255,255,255,0.4)] font-light line-clamp-2">
-                {licenseTarget.description}
-              </p>
-            </div>
+          <div className="bg-[var(--bg)] border border-[var(--fg)] p-6 max-w-md w-full">
+            <div className="col-header">LICENSE ARTIFACT</div>
 
-            {/* Fee display */}
-            <div className="glass-sm p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <span className="tech-label">LICENSE.FEE</span>
-                <div className="text-right">
-                  <span className="text-white font-mono text-lg font-medium">
-                    {licenseTarget.licenseFee.toLocaleString()}
-                  </span>
-                  <span className="tech-label ml-2">COMPUTE</span>
-                </div>
+            <h2 className="text-lg font-bold mt-3 mb-1">{licenseTarget.title}</h2>
+            <p className="text-xs opacity-50 mb-4">
+              {licenseTarget.description}
+            </p>
+
+            {/* Fee display as data rows */}
+            <div className="border border-[rgba(0,0,0,0.1)] p-4 mb-4">
+              <div className="data-row">
+                <span className="row-key">LICENSE_FEE</span>
+                <span className="row-val font-bold">{licenseTarget.licenseFee.toLocaleString()} COMPUTE</span>
               </div>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
-                <span className="tech-label">ARTIFACT.TYPE</span>
-                <span
-                  className={`text-[10px] font-mono tracking-wider px-2.5 py-0.5 rounded-full ${TYPE_COLORS[licenseTarget.artifactType].badge}`}
-                >
-                  {licenseTarget.artifactType}
-                </span>
+              <div className="data-row">
+                <span className="row-key">ARTIFACT_TYPE</span>
+                <span className="row-val">{licenseTarget.artifactType}</span>
               </div>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
-                <span className="tech-label">ARTIFACT.ID</span>
-                <span className="font-mono text-xs text-[rgba(255,255,255,0.5)]">
-                  {licenseTarget.id}
-                </span>
+              <div className="data-row">
+                <span className="row-key">ARTIFACT_ID</span>
+                <span className="row-val">{licenseTarget.id}</span>
               </div>
             </div>
 
             {/* TX result */}
             {txHash && (
-              <div className="glass-sm p-3 mb-4 bg-[rgba(34,197,94,0.08)]">
-                <div className="flex items-center gap-2">
+              <div className="data-row mb-3" style={{ borderBottom: "1px solid rgba(34,197,94,0.3)" }}>
+                <span className="row-key flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                  <span className="text-[#22c55e] text-xs font-light">
-                    License acquired successfully
-                  </span>
-                </div>
-                <div className="font-mono text-[10px] text-[rgba(255,255,255,0.4)] mt-1 truncate">
-                  TX: {txHash}
-                </div>
+                  LICENSE_OK
+                </span>
+                <span className="row-val text-[#22c55e] truncate">{txHash}</span>
               </div>
             )}
 
             {txError && (
-              <div className="glass-sm p-3 mb-4 bg-[rgba(239,68,68,0.08)]">
-                <div className="flex items-center gap-2">
+              <div className="data-row mb-3" style={{ borderBottom: "1px solid rgba(239,68,68,0.3)" }}>
+                <span className="row-key flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
-                  <span className="text-[#ef4444] text-xs font-light truncate">
-                    {txError}
-                  </span>
-                </div>
+                  TX_ERROR
+                </span>
+                <span className="row-val text-[#ef4444] truncate">{txError}</span>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-4">
               {!txHash ? (
                 <>
                   <button
                     onClick={handleLicense}
                     disabled={licensing || !isConnected}
-                    className="btn-primary flex-1 py-3 text-sm tracking-wider disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                    className="btn-primary flex-1 py-3 text-[11px] tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {licensing
                       ? "BROADCASTING..."
@@ -390,7 +394,7 @@ export default function ArtifactsPage() {
                   </button>
                   <button
                     onClick={closeLicenseModal}
-                    className="btn-secondary px-5 py-3 text-sm tracking-wide"
+                    className="flex-1 py-3 text-[11px] tracking-wider font-mono border border-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] transition-colors cursor-pointer"
                   >
                     CANCEL
                   </button>
@@ -398,7 +402,7 @@ export default function ArtifactsPage() {
               ) : (
                 <button
                   onClick={closeLicenseModal}
-                  className="btn-primary flex-1 py-3 text-sm tracking-wider"
+                  className="btn-primary flex-1 py-3 text-[11px] tracking-wider"
                 >
                   DONE
                 </button>
@@ -408,84 +412,5 @@ export default function ArtifactsPage() {
         </div>
       )}
     </main>
-  )
-}
-
-function ArtifactCard({
-  artifact,
-  onLicense,
-  isConnected,
-}: {
-  artifact: Artifact
-  onLicense: () => void
-  isConnected: boolean
-}) {
-  const typeStyle = TYPE_COLORS[artifact.artifactType]
-
-  return (
-    <div
-      className="glass-sm p-5 flex flex-col gap-3 hover:bg-[rgba(255,255,255,0.03)] transition-colors"
-      style={{ borderLeft: `2px solid ${typeStyle.glow.replace("0.08", "0.4")}` }}
-    >
-      {/* Header: type badge */}
-      <div className="flex items-center justify-between">
-        <span
-          className={`text-[10px] font-mono tracking-wider px-2.5 py-1 rounded-full ${typeStyle.badge}`}
-        >
-          {artifact.artifactType}
-        </span>
-        <span className="tech-label text-[9px]">ID:{artifact.id}</span>
-      </div>
-
-      {/* Title */}
-      <h3 className="text-sm font-medium text-white leading-snug">
-        {artifact.title}
-      </h3>
-
-      {/* Description */}
-      <p className="text-xs text-[rgba(255,255,255,0.4)] font-light line-clamp-2 leading-relaxed">
-        {artifact.description || "No description provided."}
-      </p>
-
-      {/* Creator entity */}
-      {artifact.creatorEntityId && (
-        <div className="flex items-center gap-2">
-          <span className="tech-label text-[9px]">CREATOR.ENTITY</span>
-          <span className="font-mono text-[10px] text-[rgba(255,255,255,0.5)] truncate">
-            {artifact.creatorEntityId}
-          </span>
-        </div>
-      )}
-
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 mt-auto pt-3 border-t border-[rgba(255,255,255,0.05)]">
-        <div>
-          <div className="tech-label text-[8px] mb-0.5">FEE</div>
-          <div className="font-mono text-xs text-white">
-            {artifact.licenseFee.toLocaleString()}
-          </div>
-        </div>
-        <div>
-          <div className="tech-label text-[8px] mb-0.5">LICENSES</div>
-          <div className="font-mono text-xs text-white">
-            {artifact.licensesSold.toLocaleString()}
-          </div>
-        </div>
-        <div>
-          <div className="tech-label text-[8px] mb-0.5">REVENUE</div>
-          <div className="font-mono text-xs text-white">
-            {artifact.totalRevenue.toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      {/* License button */}
-      <button
-        onClick={onLicense}
-        className="btn-primary w-full py-2.5 text-xs tracking-wider mt-1"
-      >
-        {isConnected ? "LICENSE" : "CONNECT TO LICENSE"}
-      </button>
-    </div>
   )
 }

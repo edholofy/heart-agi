@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
@@ -43,63 +42,14 @@ interface WorldStats {
 
 /* ─── Activity type config ─── */
 
-const ACTIVITY_TYPES: Record<
-  string,
-  { icon: string; color: string; bg: string; label: string }
-> = {
-  experiment: {
-    icon: "",
-    color: "rgba(255,255,255,0.6)",
-    bg: "rgba(255,255,255,0.03)",
-    label: "EXPERIMENT",
-  },
-  discovery: {
-    icon: "",
-    color: "#fbbf24",
-    bg: "rgba(251,191,36,0.06)",
-    label: "DISCOVERY",
-  },
-  task: {
-    icon: "",
-    color: "#22c55e",
-    bg: "rgba(34,197,94,0.06)",
-    label: "TASK",
-  },
-  validation: {
-    icon: "",
-    color: "#3b82f6",
-    bg: "rgba(59,130,246,0.06)",
-    label: "VALIDATION",
-  },
-  teaching: {
-    icon: "",
-    color: "#a855f7",
-    bg: "rgba(168,85,247,0.06)",
-    label: "TEACHING",
-  },
-  creation: {
-    icon: "",
-    color: "#f97316",
-    bg: "rgba(249,115,22,0.06)",
-    label: "CREATION",
-  },
-  dormant: {
-    icon: "",
-    color: "#ef4444",
-    bg: "rgba(239,68,68,0.06)",
-    label: "DORMANT",
-  },
-}
-
-const DEFAULT_TYPE = {
-  icon: "",
-  color: "rgba(255,255,255,0.5)",
-  bg: "rgba(255,255,255,0.03)",
-  label: "EVENT",
-}
-
-function getActivityType(type: string) {
-  return ACTIVITY_TYPES[type] || DEFAULT_TYPE
+const ACTIVITY_LABELS: Record<string, string> = {
+  experiment: "EXPERIMENT",
+  discovery: "DISCOVERY",
+  task: "TASK",
+  validation: "VALIDATION",
+  teaching: "TEACHING",
+  creation: "CREATION",
+  dormant: "DORMANT",
 }
 
 /* ─── Relative time ─── */
@@ -114,6 +64,14 @@ function timeAgo(isoTime: string): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   return `${Math.floor(hours / 24)}d ago`
+}
+
+function formatTimestamp(isoTime: string): string {
+  try {
+    return new Date(isoTime).toISOString().substring(11, 23)
+  } catch {
+    return "00:00:00.000"
+  }
 }
 
 /* ─── Page ─── */
@@ -238,227 +196,290 @@ export default function WorldPage() {
     }
   }, [fetchActivity, fetchEntities, fetchChain])
 
+  const alivePercent =
+    stats.totalEntities > 0
+      ? Math.round((stats.totalAlive / stats.totalEntities) * 100)
+      : 0
+
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <main className="flex flex-col min-h-screen" style={{ background: "var(--fg)" }}>
+      <NetworkBar />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
-
-        <div className="flex-1 px-4 sm:px-6 py-8 max-w-7xl mx-auto w-full">
-          {/* ── Header ── */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl sm:text-4xl font-medium tracking-[-0.03em]">
-                WORLD
-                <span className="text-[rgba(255,255,255,0.4)]">.VIEW</span>
-              </h1>
-              <span className="sys-badge">SYS</span>
+      {/* ── Dark zone header ── */}
+      <div className="zone-dark" style={{ paddingTop: 32, paddingBottom: 24 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 64,
+            alignItems: "end",
+            paddingBottom: 16,
+          }}
+        >
+          <div>
+            <span className="label">SYSTEM OPERATION</span>
+            <div
+              style={{
+                fontFamily: "var(--font-mono-sys)",
+                fontSize: 14,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              WORLD VIEW // LIVE TELEMETRY
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 tech-label">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    daemonOnline
-                      ? "bg-[#22c55e] animate-pulse-dot"
-                      : "bg-[#ef4444]"
-                  }`}
-                />
-                <span>{daemonOnline ? "LIVE" : "OFFLINE"}</span>
-              </div>
-              <span className="sys-badge">
-                {stats.totalEntities} ENTITIES
-              </span>
+            <div style={{ marginTop: 16 }}>
+              <span className="label">ACTIVE PROTOCOL</span>
+              <div className="value">HEART_DAEMON_V1</div>
             </div>
           </div>
 
-          {/* ── Daemon offline warning ── */}
-          {!daemonOnline && (
-            <div className="glass-sm p-4 mb-6 bg-[rgba(239,68,68,0.08)] text-sm">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444] mr-2 align-middle" />
-              <span className="text-[#ef4444] font-light">
-                Daemon offline or unreachable. Retrying every {ACTIVITY_INTERVAL / 1000}s...
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="label">NETWORK STATUS</span>
+              <span className="value">
+                {daemonOnline ? "ONLINE" : "OFFLINE"} /{" "}
+                {stats.totalEntities} NODES
               </span>
             </div>
-          )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(24, 1fr)",
+                gap: 2,
+                marginTop: 8,
+              }}
+            >
+              {Array.from({ length: 72 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="sensor-node"
+                  style={{
+                    opacity:
+                      i < Math.floor(72 * (alivePercent / 100))
+                        ? 0.3 + Math.random() * 0.6
+                        : 0.1,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
 
-          {/* ── Main grid: Feed + Sidebar ── */}
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* ── Activity Feed (main) ── */}
-            <div className="flex-1 min-w-0">
-              <div className="aura-divider mb-5">LIVE.FEED</div>
+        {/* Stat bar with spark bars */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 32,
+            borderTop: "1px solid rgba(255,255,255,0.15)",
+            paddingTop: 16,
+          }}
+        >
+          <SparkStat
+            label="ENTITIES_ALIVE"
+            value={`${stats.totalAlive}/${stats.totalEntities}`}
+            pct={alivePercent}
+          />
+          <SparkStat
+            label="EXPERIMENTS"
+            value={stats.totalExperiments.toLocaleString()}
+            pct={Math.min(100, stats.totalExperiments)}
+          />
+          <SparkStat
+            label="DISCOVERIES"
+            value={stats.totalDiscoveries.toLocaleString()}
+            pct={Math.min(100, stats.totalDiscoveries * 10)}
+          />
+          <SparkStat
+            label="TASKS_DONE"
+            value={stats.totalTasks.toLocaleString()}
+            pct={Math.min(100, stats.totalTasks)}
+          />
+        </div>
+      </div>
 
-              <div className="space-y-2">
-                {initialLoading && activities.length === 0 && daemonOnline && (
-                  <div className="text-center py-12 text-[rgba(255,255,255,0.3)]">
-                    Loading feed...
-                  </div>
-                )}
+      {/* ── Transition ── */}
+      <div className="zone-transition" />
 
-                {!initialLoading && activities.length === 0 && daemonOnline && (
-                  <div className="glass-sm p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                    Waiting for activity...
-                  </div>
-                )}
+      {/* ── Light zone: content ── */}
+      <div className="zone-light" style={{ paddingTop: 0 }}>
+        {/* Daemon offline warning */}
+        {!daemonOnline && (
+          <div
+            style={{
+              padding: "12px 16px",
+              marginBottom: 16,
+              border: "1px solid rgba(239,68,68,0.3)",
+              fontFamily: "var(--font-mono-sys)",
+              fontSize: 11,
+              color: "#ef4444",
+            }}
+          >
+            DAEMON_OFFLINE: Retrying every {ACTIVITY_INTERVAL / 1000}s...
+          </div>
+        )}
 
-                {activities.length === 0 && !daemonOnline && (
-                  <div className="glass-sm p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                    No connection to daemon. Activity feed unavailable.
-                  </div>
-                )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 48,
+          }}
+        >
+          {/* ── Left: Entity list ── */}
+          <div>
+            <div className="col-header">ACTIVE ENTITIES</div>
+            <ul style={{ listStyle: "none" }}>
+              {entities.length === 0 && (
+                <li
+                  className="data-row"
+                  style={{
+                    fontFamily: "var(--font-mono-sys)",
+                    fontSize: 12,
+                    opacity: 0.5,
+                  }}
+                >
+                  {daemonOnline
+                    ? "Loading entities..."
+                    : "Daemon offline"}
+                </li>
+              )}
+              {entities.map((entity) => {
+                const isAlive =
+                  entity.status === "alive" || entity.status === "active"
 
-                {activities.map((activity) => {
-                  const config = getActivityType(activity.type)
-                  const isNew = newIds.has(activity.id)
-
-                  return (
-                    <div
-                      key={activity.id}
-                      className="glass-sm p-4 transition-all duration-500"
+                return (
+                  <li key={entity.id} className="data-row">
+                    <Link
+                      href={`/entity/${entity.id}`}
                       style={{
-                        background: config.bg,
-                        opacity: isNew ? 0 : 1,
-                        transform: isNew
-                          ? "translateY(-8px)"
-                          : "translateY(0)",
-                        animation: isNew
-                          ? "fadeSlideIn 0.5s ease-out forwards"
-                          : undefined,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        width: "100%",
+                        textDecoration: "none",
+                        color: "inherit",
                       }}
                     >
-                      <div className="flex items-start gap-3">
-                        {/* Type icon */}
-                        <span className="text-lg mt-0.5 shrink-0">
-                          {config.icon}
-                        </span>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-medium text-sm text-white">
-                              {activity.entity_name || "Unknown"}
-                            </span>
-                            <span
-                              className="font-mono text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-full"
-                              style={{
-                                color: config.color,
-                                background: config.bg,
-                                border: `1px solid ${config.color}33`,
-                              }}
-                            >
-                              {config.label}
-                            </span>
-                            <span className="text-[rgba(255,255,255,0.25)] text-xs font-light ml-auto shrink-0">
-                              {timeAgo(activity.timestamp)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-[rgba(255,255,255,0.5)] font-light leading-relaxed">
-                            {activity.message}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* ── Sidebar ── */}
-            <div className="w-full lg:w-80 shrink-0 space-y-6">
-              {/* Stats */}
-              <div>
-                <div className="aura-divider mb-5">WORLD.STATS</div>
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                  <WorldStatCard
-                    label="ENTITIES.ALIVE"
-                    value={stats.totalAlive.toString()}
-                    total={stats.totalEntities}
-                    color="#22c55e"
-                    live
-                  />
-                  <WorldStatCard
-                    label="EXPERIMENTS"
-                    value={stats.totalExperiments.toLocaleString()}
-                    color="rgba(255,255,255,0.6)"
-                  />
-                  <WorldStatCard
-                    label="DISCOVERIES"
-                    value={stats.totalDiscoveries.toLocaleString()}
-                    color="#fbbf24"
-                  />
-                  <WorldStatCard
-                    label="TASKS.DONE"
-                    value={stats.totalTasks.toLocaleString()}
-                    color="#22c55e"
-                  />
-                  <WorldStatCard
-                    label="BLOCK.HEIGHT"
-                    value={
-                      stats.blockHeight
-                        ? `#${Number(stats.blockHeight).toLocaleString()}`
-                        : "---"
-                    }
-                    color="rgba(255,255,255,0.5)"
-                    live={!!stats.blockHeight}
-                  />
-                </div>
-              </div>
-
-              {/* Entity list */}
-              <div>
-                <div className="aura-divider mb-5">ENTITIES</div>
-                <div className="space-y-2">
-                  {entities.length === 0 && (
-                    <div className="glass-sm p-4 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                      {daemonOnline
-                        ? "Loading entities..."
-                        : "Daemon offline"}
-                    </div>
-                  )}
-
-                  {entities.map((entity) => {
-                    const isAlive =
-                      entity.status === "alive" ||
-                      entity.status === "active"
-
-                    return (
-                      <Link
-                        key={entity.id}
-                        href={`/entity/${entity.id}`}
-                        className="glass-sm p-4 block hover:bg-[rgba(255,255,255,0.04)] transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              isAlive
-                                ? "bg-[#22c55e] animate-pulse-dot"
-                                : "bg-[#ef4444]"
-                            }`}
-                          />
-                          <span className="text-sm font-medium text-white truncate group-hover:underline underline-offset-2">
-                            {entity.name}
-                          </span>
-                          <span className="ml-auto text-[10px] font-mono text-[rgba(255,255,255,0.3)] uppercase">
-                            {entity.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-[10px] font-mono text-[rgba(255,255,255,0.35)]">
-                          <span>
-                            {(entity.compute_balance || 0).toLocaleString()}{" "}
-                            COMPUTE
-                          </span>
-                          <span>
-                            {entity.experiments_run || 0} EXP
-                          </span>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
+                      <span className="row-key" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            backgroundColor: isAlive ? "#22c55e" : "#ef4444",
+                            display: "inline-block",
+                            flexShrink: 0,
+                          }}
+                          className={isAlive ? "animate-pulse-dot" : ""}
+                        />
+                        {entity.name}
+                      </span>
+                      <span className="row-val">
+                        {entity.status.toUpperCase()} / {(entity.compute_balance || 0).toLocaleString()} COMPUTE
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
           </div>
+
+          {/* ── Right: Event log ── */}
+          <div>
+            <div className="col-header">EVENT LOG // TRACE</div>
+            <ul style={{ listStyle: "none" }}>
+              {initialLoading && activities.length === 0 && daemonOnline && (
+                <li
+                  className="data-row"
+                  style={{
+                    fontFamily: "var(--font-mono-sys)",
+                    fontSize: 12,
+                    opacity: 0.5,
+                  }}
+                >
+                  Loading feed...
+                </li>
+              )}
+
+              {!initialLoading && activities.length === 0 && daemonOnline && (
+                <li
+                  className="data-row"
+                  style={{
+                    fontFamily: "var(--font-mono-sys)",
+                    fontSize: 12,
+                    opacity: 0.5,
+                  }}
+                >
+                  Waiting for activity...
+                </li>
+              )}
+
+              {activities.length === 0 && !daemonOnline && (
+                <li
+                  className="data-row"
+                  style={{
+                    fontFamily: "var(--font-mono-sys)",
+                    fontSize: 12,
+                    opacity: 0.5,
+                  }}
+                >
+                  No connection to daemon.
+                </li>
+              )}
+
+              {activities.map((activity) => {
+                const isNew = newIds.has(activity.id)
+                const typeLabel =
+                  ACTIVITY_LABELS[activity.type] || "EVENT"
+
+                return (
+                  <li
+                    key={activity.id}
+                    className="data-row"
+                    style={{
+                      opacity: isNew ? 0 : 1,
+                      animation: isNew
+                        ? "fadeSlideIn 0.5s ease-out forwards"
+                        : undefined,
+                      fontSize: 12,
+                    }}
+                  >
+                    <span className="row-key" style={{ opacity: 0.6, fontFamily: "var(--font-mono-sys)", fontSize: 11 }}>
+                      {formatTimestamp(activity.timestamp)}
+                    </span>
+                    <span className="row-val" style={{ fontSize: 11 }}>
+                      {typeLabel} [{activity.entity_name || "?"}] {activity.message.length > 60 ? activity.message.slice(0, 60) + "..." : activity.message}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </div>
+
+        {/* ── Block height footer ── */}
+        <div
+          style={{
+            marginTop: 32,
+            borderTop: "1px solid rgba(0,0,0,0.1)",
+            paddingTop: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            fontFamily: "var(--font-mono-sys)",
+            fontSize: 10,
+            opacity: 0.4,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          <span>HEART AUTONOMOUS BLOCKCHAIN</span>
+          <span>
+            {stats.blockHeight
+              ? `BLOCK #${Number(stats.blockHeight).toLocaleString()}`
+              : "CHAIN: SYNCING"}
+          </span>
         </div>
       </div>
 
@@ -479,41 +500,41 @@ export default function WorldPage() {
   )
 }
 
-/* ─── Stat Card ─── */
+/* ─── Spark Stat (dark zone) ─── */
 
-function WorldStatCard({
+function SparkStat({
   label,
   value,
-  total,
-  color,
-  live,
+  pct,
 }: {
   label: string
   value: string
-  total?: number
-  color: string
-  live?: boolean
+  pct: number
 }) {
   return (
-    <div className="glass-sm p-4">
-      <div className="tech-label mb-1.5 flex items-center gap-1.5">
-        {live && (
-          <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse-dot" />
-        )}
-        {label}
-      </div>
-      <div className="flex items-baseline gap-2">
+    <div className="spark-row">
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <span className="label" style={{ opacity: 0.5 }}>{label}</span>
         <span
-          className="text-xl font-medium font-mono tracking-tight"
-          style={{ color }}
+          className="value"
+          style={{ fontSize: 11, color: "var(--bg)" }}
         >
           {value}
         </span>
-        {total !== undefined && (
-          <span className="text-xs font-mono text-[rgba(255,255,255,0.25)]">
-            / {total}
-          </span>
-        )}
+      </div>
+      <div
+        className="spark-bar-container"
+        style={{ background: "rgba(255,255,255,0.1)" }}
+      >
+        <div
+          className="spark-bar"
+          style={{
+            width: `${Math.min(100, pct)}%`,
+            background: "var(--bg)",
+            backgroundImage:
+              "repeating-linear-gradient(45deg, transparent, transparent 2px, var(--fg) 2px, var(--fg) 4px)",
+          }}
+        />
       </div>
     </div>
   )

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
@@ -55,105 +54,131 @@ export default function FaucetPage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <main className="flex flex-col min-h-screen">
+      <NetworkBar />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
-
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-20">
-          <div className="w-full max-w-lg mx-auto text-center">
-            {/* Badge */}
-            <div className="sys-badge mb-8 inline-block">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse-dot mr-2 align-middle" />
-              FAUCET.TESTNET
+      {/* DARK ZONE */}
+      <div className="zone-dark">
+        <header className="grid grid-cols-3 border-b border-[rgba(255,255,255,0.2)] pb-4 mb-8">
+          <div>
+            <span className="sys-label">SYSTEM MODULE</span>
+            <div className="text-sm font-bold tracking-wide">TESTNET FAUCET // TOKEN DISTRIBUTION</div>
+          </div>
+          <div className="text-center">
+            <span className="sys-label">NETWORK</span>
+            <div className="sys-value">TESTNET</div>
+          </div>
+          <div className="text-right">
+            <span className="sys-label">STATUS</span>
+            <div className="sys-value flex items-center justify-end gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse-dot" />
+              ONLINE
             </div>
+          </div>
+        </header>
 
-            <h1 className="text-4xl sm:text-5xl font-medium tracking-[-0.03em] leading-[1.1] mb-4">
-              $HEART
-              <br />
-              <span className="text-[rgba(255,255,255,0.4)]">
-                Testnet Faucet
-              </span>
-            </h1>
-
-            <p className="text-[rgba(255,255,255,0.5)] text-base max-w-md mx-auto mb-10 font-light">
+        <div className="primary-vis-layout pb-6">
+          <div>
+            <span className="sys-label">DISTRIBUTION AMOUNT</span>
+            <div className="dot-hero">10</div>
+          </div>
+          <div className="flex flex-col justify-end">
+            <span className="sys-label">$HEART TOKENS PER REQUEST</span>
+            <p className="text-xs opacity-60 mt-2 leading-relaxed max-w-md">
               Get free testnet tokens to experiment with the $HEART blockchain.
               Limited to one request per address per hour.
             </p>
+          </div>
+        </div>
+      </div>
 
-            {/* Faucet Form */}
-            <div className="glass p-6 sm:p-8 text-left">
-              <label className="tech-label block mb-3">
-                RECIPIENT.ADDRESS
-              </label>
+      <div className="zone-transition" />
 
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !loading) handleRequest()
-                }}
-                placeholder="heart1..."
-                className="glass-input w-full px-5 py-3.5 text-sm font-mono mb-6"
-                disabled={loading}
-                spellCheck={false}
-                autoComplete="off"
-              />
+      {/* LIGHT ZONE */}
+      <div className="zone-light">
+        <div className="max-w-2xl mx-auto">
+          {/* FAUCET FORM */}
+          <div className="col-header">REQUEST TOKENS</div>
+          <div className="border border-[rgba(0,0,0,0.1)] p-6 mb-6">
+            <label className="sys-label block mb-3">
+              RECIPIENT.ADDRESS
+            </label>
 
-              <button
-                onClick={handleRequest}
-                disabled={loading || !address.trim()}
-                className="btn-primary w-full py-3.5 text-sm tracking-wider disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                {loading ? "TRANSMITTING..." : "REQUEST TOKENS"}
-              </button>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !loading) handleRequest()
+              }}
+              placeholder="heart1..."
+              className="w-full px-5 py-3.5 text-sm font-mono border border-[var(--fg)] bg-transparent mb-6 focus:outline-none placeholder:text-[rgba(0,0,0,0.3)]"
+              disabled={loading}
+              spellCheck={false}
+              autoComplete="off"
+            />
 
-              {/* Result */}
-              {result && (
-                <div
-                  className={`mt-6 p-4 rounded-2xl text-sm font-light ${
-                    result.success
-                      ? "bg-[rgba(34,197,94,0.08)] text-[#22c55e]"
-                      : "bg-[rgba(239,68,68,0.08)] text-[#ef4444]"
-                  }`}
-                >
-                  <p>{result.message}</p>
-                  {result.txHash && (
-                    <p className="mt-2 font-mono text-xs text-[rgba(255,255,255,0.4)] break-all">
-                      TX: {result.txHash}
-                    </p>
-                  )}
+            <button
+              onClick={handleRequest}
+              disabled={loading || !address.trim()}
+              className="btn-primary w-full py-3.5 text-sm tracking-wider disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? "TRANSMITTING..." : "REQUEST TOKENS"}
+            </button>
+          </div>
+
+          {/* Result as data rows */}
+          {result && (
+            <>
+              <div className="col-header">TRANSACTION STATUS</div>
+              <div className="border border-[rgba(0,0,0,0.1)] p-4 mb-6">
+                <div className="data-row" style={{
+                  borderBottom: `1px solid ${result.success ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`
+                }}>
+                  <span className="row-key flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full ${result.success ? "bg-[#22c55e]" : "bg-[#ef4444]"}`} />
+                    {result.success ? "TX_SUCCESS" : "TX_FAILED"}
+                  </span>
+                  <span className={`row-val ${result.success ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+                    {result.message}
+                  </span>
                 </div>
-              )}
-            </div>
+                {result.txHash && (
+                  <div className="data-row">
+                    <span className="row-key">TX_HASH</span>
+                    <span className="row-val text-xs break-all">{result.txHash}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
-            {/* Info */}
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="glass-sm p-5">
-                <div className="tech-label mb-2">AMOUNT</div>
-                <div className="text-lg font-medium">10 HEART</div>
-              </div>
-              <div className="glass-sm p-5">
-                <div className="tech-label mb-2">COOLDOWN</div>
-                <div className="text-lg font-medium">1 Hour</div>
-              </div>
-              <div className="glass-sm p-5">
-                <div className="tech-label mb-2">NETWORK</div>
-                <div className="text-lg font-medium">Testnet</div>
-              </div>
+          {/* Info as data rows */}
+          <div className="col-header">FAUCET PARAMETERS</div>
+          <div className="mb-8">
+            <div className="data-row">
+              <span className="row-key">AMOUNT</span>
+              <span className="row-val">10 HEART</span>
             </div>
+            <div className="data-row">
+              <span className="row-key">COOLDOWN</span>
+              <span className="row-val">1 HOUR</span>
+            </div>
+            <div className="data-row">
+              <span className="row-key">NETWORK</span>
+              <span className="row-val">TESTNET</span>
+            </div>
+            <div className="data-row">
+              <span className="row-key">PREFIX</span>
+              <span className="row-val">heart1...</span>
+            </div>
+          </div>
 
-            {/* Back link */}
-            <div className="mt-10">
-              <Link
-                href="/"
-                className="btn-secondary inline-block px-6 py-2.5 text-sm tracking-wide"
-              >
-                BACK TO DASHBOARD
-              </Link>
-            </div>
+          {/* Back link */}
+          <div className="text-center mb-8">
+            <Link href="/" className="btn-primary inline-block px-6 py-3">
+              BACK TO DASHBOARD
+            </Link>
           </div>
         </div>
       </div>

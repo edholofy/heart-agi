@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { SwarmVisualization } from "@/components/swarm/SwarmVisualization"
 import { runSwarm, listEntities, type SwarmResult, type SwarmContribution, type ServerEntity } from "@/lib/daemon-client"
-import Link from "next/link"
 
 const EXAMPLE_TASKS = [
   {
@@ -98,112 +96,213 @@ export default function SwarmPage() {
   }
 
   return (
-    <div className="relative min-h-screen text-white">
-      <ShaderBackground />
+    <main className="flex flex-col min-h-screen" style={{ background: "var(--fg)" }}>
+      <NetworkBar />
 
-      <div className="relative z-10">
-        <NetworkBar />
-
-        {/* Nav */}
-        <nav className="border-b border-white/[0.06] bg-black/20 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-6 flex items-center gap-8 h-14 text-sm">
-            <Link href="/" className="font-bold tracking-wider text-white/90">
-              $HEART
-            </Link>
-            <Link href="/world" className="text-white/50 hover:text-white/80 transition-colors">
-              World
-            </Link>
-            <Link href="/marketplace" className="text-white/50 hover:text-white/80 transition-colors">
-              Marketplace
-            </Link>
-            <Link href="/swarm" className="text-white/90 border-b border-white/40 pb-0.5">
-              Swarm
-            </Link>
-            <Link href="/governance" className="text-white/50 hover:text-white/80 transition-colors">
-              Governance
-            </Link>
-            <Link href="/explorer" className="text-white/50 hover:text-white/80 transition-colors">
-              Explorer
-            </Link>
-            <Link href="/docs" className="text-white/50 hover:text-white/80 transition-colors">
-              Docs
-            </Link>
-          </div>
-        </nav>
-
-        <main className="max-w-5xl mx-auto px-6 py-12">
-          {/* Header */}
-          <div className="mb-10">
-            <h1 className="text-3xl font-light tracking-tight mb-3">
-              Swarm Intelligence
-            </h1>
-            <p className="text-white/50 text-sm max-w-2xl leading-relaxed">
-              Give a complex task to the swarm. It decomposes the problem across specialized AI Humans,
-              each analyzes through its unique soul.md perspective, then synthesizes a unified result.
-              Not one AI pretending to be many — genuine multi-expert analysis.
-            </p>
-          </div>
-
-          {/* Status bar */}
-          <div className="flex items-center gap-6 mb-8 text-xs text-white/40">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-              <span>{entities.length} entities alive</span>
+      {/* ── Dark zone header ── */}
+      <div className="zone-dark" style={{ paddingTop: 32, paddingBottom: 24 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 64,
+            alignItems: "end",
+            paddingBottom: 16,
+          }}
+        >
+          <div>
+            <span className="label">SYSTEM OPERATION</span>
+            <div
+              style={{
+                fontFamily: "var(--font-mono-sys)",
+                fontSize: 14,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              SWARM INTELLIGENCE // COLLECTIVE PROTOCOL
             </div>
-            <div>
-              specializations: {[...new Set(entities.map((e) => e.skill.split(",")[0].trim()))].length}
+            <div style={{ marginTop: 12, maxWidth: 480 }}>
+              <span className="label">DESCRIPTION</span>
+              <div
+                className="value"
+                style={{ fontSize: 11, opacity: 0.6, lineHeight: 1.5 }}
+              >
+                Give a complex task to the swarm. It decomposes the problem
+                across specialized AI Humans, each analyzes through its unique
+                soul.md perspective, then synthesizes a unified result.
+              </div>
             </div>
           </div>
 
-          {/* Swarm Visualization */}
-          {entities.length > 0 && (
-            <div className="relative bg-black/40 border border-white/[0.04] rounded-2xl mb-8 overflow-hidden" style={{ height: 480 }}>
-              <SwarmVisualization
-                entities={vizEntities}
-                isRunning={loading}
-                activeEntities={activeEntityNames}
-                phase={swarmPhase}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="label">SWARM STATUS</span>
+              <span className="value" style={{ fontSize: 11 }}>
+                {entities.length} ENTITIES / {[...new Set(entities.map((e) => e.skill.split(",")[0].trim()))].length} SPECIALIZATIONS
+              </span>
+            </div>
+            {/* Phase indicator */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 8,
+                marginTop: 12,
+              }}
+            >
+              {(["idle", "decomposing", "working", "synthesizing"] as const).map(
+                (phase) => (
+                  <div key={phase}>
+                    <div
+                      className="label"
+                      style={{ fontSize: 8, opacity: swarmPhase === phase ? 1 : 0.3 }}
+                    >
+                      {phase.toUpperCase()}
+                    </div>
+                    <div
+                      className="spark-bar-container"
+                      style={{ background: "rgba(255,255,255,0.1)" }}
+                    >
+                      <div
+                        className="spark-bar"
+                        style={{
+                          width: swarmPhase === phase ? "100%" : "0%",
+                          background: "var(--bg)",
+                          backgroundImage:
+                            "repeating-linear-gradient(45deg, transparent, transparent 2px, var(--fg) 2px, var(--fg) 4px)",
+                          transition: "width 0.6s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Swarm Visualization (kept as-is in bordered container) ── */}
+      {entities.length > 0 && (
+        <div
+          style={{
+            margin: "0 32px",
+            border: "1px solid rgba(255,255,255,0.08)",
+            height: 480,
+            position: "relative",
+            overflow: "hidden",
+            background: "rgba(0,0,0,0.8)",
+          }}
+        >
+          <SwarmVisualization
+            entities={vizEntities}
+            isRunning={loading}
+            activeEntities={activeEntityNames}
+            phase={swarmPhase}
+          />
+          {/* Overlay gradient for depth */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              background:
+                "linear-gradient(to bottom, transparent 0%, transparent 70%, rgba(0,0,0,0.3) 100%)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── Transition ── */}
+      <div className="zone-transition" />
+
+      {/* ── Light zone: input + results ── */}
+      <div className="zone-light" style={{ paddingTop: 0 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 48,
+          }}
+        >
+          {/* ── Left: Task input ── */}
+          <div>
+            <div className="col-header">TASK INPUT</div>
+
+            <div style={{ marginBottom: 16 }}>
+              <span
+                className="label"
+                style={{ color: "var(--fg)" }}
+              >
+                TASK DESCRIPTION
+              </span>
+              <textarea
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
+                placeholder="Describe a complex task for the swarm to analyze..."
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "1px solid rgba(0,0,0,0.15)",
+                  padding: "10px 12px",
+                  fontFamily: "var(--font-mono-sys)",
+                  fontSize: 12,
+                  color: "var(--fg)",
+                  resize: "none",
+                  outline: "none",
+                }}
+                rows={4}
               />
-              {/* Overlay gradient for depth */}
-              <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-black/30" />
             </div>
-          )}
 
-          {/* Input */}
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-6 mb-6">
-            <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
-              Task
-            </label>
-            <textarea
-              value={task}
-              onChange={(e) => setTask(e.target.value)}
-              placeholder="Describe a complex task for the swarm to analyze..."
-              className="w-full bg-transparent border border-white/[0.08] rounded-md px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:outline-none focus:border-white/20 resize-none"
-              rows={4}
-            />
-
-            <div className="mt-4">
-              <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
-                Additional Context (optional)
-              </label>
+            <div style={{ marginBottom: 16 }}>
+              <span
+                className="label"
+                style={{ color: "var(--fg)" }}
+              >
+                ADDITIONAL CONTEXT (OPTIONAL)
+              </span>
               <textarea
                 value={context}
                 onChange={(e) => setContext(e.target.value)}
                 placeholder="Any extra context, constraints, or requirements..."
-                className="w-full bg-transparent border border-white/[0.08] rounded-md px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:outline-none focus:border-white/20 resize-none"
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "1px solid rgba(0,0,0,0.15)",
+                  padding: "10px 12px",
+                  fontFamily: "var(--font-mono-sys)",
+                  fontSize: 12,
+                  color: "var(--fg)",
+                  resize: "none",
+                  outline: "none",
+                }}
                 rows={2}
               />
             </div>
 
-            <div className="flex items-center gap-4 mt-4">
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
               <div>
-                <label className="block text-xs text-white/40 uppercase tracking-wider mb-1">
-                  Max Entities
-                </label>
+                <span
+                  className="label"
+                  style={{ color: "var(--fg)" }}
+                >
+                  MAX ENTITIES
+                </span>
                 <select
                   value={maxEntities}
                   onChange={(e) => setMaxEntities(Number(e.target.value))}
-                  className="bg-white/[0.04] border border-white/[0.08] rounded-md px-3 py-2 text-sm text-white/80 focus:outline-none"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    padding: "6px 10px",
+                    fontFamily: "var(--font-mono-sys)",
+                    fontSize: 12,
+                    color: "var(--fg)",
+                    outline: "none",
+                  }}
                 >
                   <option value={0}>All available</option>
                   <option value={3}>3 entities</option>
@@ -213,134 +312,224 @@ export default function SwarmPage() {
                 </select>
               </div>
 
-              <div className="flex-1" />
+              <div style={{ flex: 1 }} />
 
               <button
                 onClick={handleSubmit}
                 disabled={loading || !task.trim()}
-                className="px-6 py-2.5 bg-white/[0.08] border border-white/[0.12] rounded-md text-sm text-white/90 hover:bg-white/[0.12] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  padding: "8px 24px",
+                  background: loading || !task.trim() ? "rgba(0,0,0,0.1)" : "var(--fg)",
+                  color: loading || !task.trim() ? "rgba(0,0,0,0.3)" : "var(--bg)",
+                  border: "1px solid var(--fg)",
+                  fontFamily: "var(--font-mono-sys)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  cursor: loading || !task.trim() ? "not-allowed" : "pointer",
+                }}
               >
-                {loading ? "Swarming..." : "Run Swarm"}
+                {loading ? "SWARMING..." : "RUN SWARM"}
               </button>
+            </div>
+
+            {/* Example tasks */}
+            <div>
+              <span className="label" style={{ color: "var(--fg)" }}>
+                PRESETS
+              </span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                {EXAMPLE_TASKS.map((ex) => (
+                  <button
+                    key={ex.label}
+                    onClick={() => setTask(ex.task)}
+                    style={{
+                      padding: "4px 10px",
+                      background: "transparent",
+                      border: "1px solid rgba(0,0,0,0.15)",
+                      fontFamily: "var(--font-mono-sys)",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      color: "var(--fg)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Example tasks */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            <span className="text-xs text-white/30">Try:</span>
-            {EXAMPLE_TASKS.map((ex) => (
-              <button
-                key={ex.label}
-                onClick={() => setTask(ex.task)}
-                className="text-xs px-3 py-1 bg-white/[0.04] border border-white/[0.06] rounded-full text-white/50 hover:text-white/80 hover:bg-white/[0.08] transition-colors"
-              >
-                {ex.label}
-              </button>
-            ))}
-          </div>
+          {/* ── Right: Results ── */}
+          <div>
+            <div className="col-header">SWARM OUTPUT</div>
 
-          {/* Loading state */}
-          {loading && (
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-8 text-center">
-              <div className="inline-block w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin mb-4" />
-              <p className="text-sm text-white/50">
-                Decomposing task across entities and running parallel analysis...
-              </p>
-              <p className="text-xs text-white/30 mt-2">
-                This takes 10-30 seconds depending on task complexity
-              </p>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] rounded-lg p-4 text-sm text-[#ef4444] mb-6">
-              {error}
-            </div>
-          )}
-
-          {/* Results */}
-          {result && (
-            <div className="space-y-6">
-              {/* Synthesis */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
-                  <div>
-                    <h2 className="text-sm font-medium text-white/90">
-                      Synthesized Result
-                    </h2>
-                    <p className="text-xs text-white/40 mt-0.5">
-                      {result.entities_used} entities | {(result.total_duration_ms / 1000).toFixed(1)}s
-                      {result.tx_hash && (
-                        <span className="ml-2">
-                          | TX: <span className="font-mono text-white/30">{result.tx_hash.slice(0, 12)}...</span>
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                    <span className="text-xs text-[#22c55e]">COMPLETE</span>
-                  </div>
+            {/* Loading state */}
+            {loading && (
+              <div style={{ textAlign: "center", padding: "32px 0" }}>
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    border: "2px solid rgba(0,0,0,0.15)",
+                    borderTop: "2px solid var(--fg)",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite",
+                    margin: "0 auto 12px",
+                  }}
+                />
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono-sys)",
+                    fontSize: 11,
+                    opacity: 0.5,
+                  }}
+                >
+                  Decomposing task across entities...
                 </div>
-                <div className="px-6 py-5 text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  fontFamily: "var(--font-mono-sys)",
+                  fontSize: 11,
+                  color: "#ef4444",
+                  marginBottom: 16,
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            {/* No result yet */}
+            {!loading && !result && !error && (
+              <div
+                style={{
+                  fontFamily: "var(--font-mono-sys)",
+                  fontSize: 11,
+                  opacity: 0.4,
+                  padding: "24px 0",
+                }}
+              >
+                Submit a task to see swarm output here.
+              </div>
+            )}
+
+            {/* Results */}
+            {result && (
+              <div>
+                {/* Synthesis header */}
+                <div className="data-row" style={{ fontWeight: 700, borderBottom: "1px solid rgba(0,0,0,0.2)" }}>
+                  <span className="row-key">SYNTHESIZED RESULT</span>
+                  <span className="row-val" style={{ fontSize: 10 }}>
+                    {result.entities_used} entities | {(result.total_duration_ms / 1000).toFixed(1)}s
+                    {result.tx_hash && ` | TX: ${result.tx_hash.slice(0, 12)}...`}
+                  </span>
+                </div>
+
+                {/* Synthesis body */}
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono-sys)",
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    padding: "16px 0",
+                    whiteSpace: "pre-wrap",
+                    borderBottom: "1px dotted rgba(0,0,0,0.15)",
+                    marginBottom: 16,
+                  }}
+                >
                   {result.synthesis}
                 </div>
-              </div>
 
-              {/* Individual contributions */}
-              <div>
-                <h3 className="text-xs text-white/40 uppercase tracking-wider mb-3">
-                  Entity Contributions ({result.contributions.length})
-                </h3>
-                <div className="space-y-3">
-                  {result.contributions.map((c: SwarmContribution) => (
-                    <div
-                      key={c.entity_name}
-                      className="bg-white/[0.02] border border-white/[0.05] rounded-lg overflow-hidden"
+                {/* Contributions */}
+                <span className="label" style={{ color: "var(--fg)", marginBottom: 8 }}>
+                  ENTITY CONTRIBUTIONS ({result.contributions.length})
+                </span>
+
+                {result.contributions.map((c: SwarmContribution) => (
+                  <div key={c.entity_name} style={{ marginBottom: 2 }}>
+                    <button
+                      onClick={() =>
+                        setExpandedContrib(
+                          expandedContrib === c.entity_name ? null : c.entity_name
+                        )
+                      }
+                      className="data-row"
+                      style={{
+                        width: "100%",
+                        background: "transparent",
+                        border: "none",
+                        borderBottom: "1px dotted rgba(0,0,0,0.15)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        padding: "6px 0",
+                      }}
                     >
-                      <button
-                        onClick={() =>
-                          setExpandedContrib(
-                            expandedContrib === c.entity_name ? null : c.entity_name
-                          )
-                        }
-                        className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+                      <span className="row-key" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            border: "1px solid rgba(0,0,0,0.2)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 9,
+                            fontFamily: "var(--font-mono-sys)",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {c.entity_name[0]}
+                        </span>
+                        {c.entity_name}
+                      </span>
+                      <span className="row-val" style={{ fontSize: 10 }}>
+                        {c.duration_ms}ms {expandedContrib === c.entity_name ? "[-]" : "[+]"}
+                      </span>
+                    </button>
+                    {expandedContrib === c.entity_name && (
+                      <div
+                        style={{
+                          fontFamily: "var(--font-mono-sys)",
+                          fontSize: 11,
+                          lineHeight: 1.6,
+                          padding: "12px 0 12px 22px",
+                          whiteSpace: "pre-wrap",
+                          borderBottom: "1px dotted rgba(0,0,0,0.1)",
+                          opacity: 0.7,
+                        }}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-xs text-white/60 font-mono">
-                            {c.entity_name[0]}
-                          </div>
-                          <div>
-                            <span className="text-sm text-white/80">{c.entity_name}</span>
-                            <p className="text-xs text-white/30 mt-0.5">
-                              {c.subtask.length > 80 ? c.subtask.slice(0, 80) + "..." : c.subtask}
-                            </p>
-                          </div>
+                        <div style={{ fontSize: 9, opacity: 0.5, marginBottom: 6 }}>
+                          SUBTASK: {c.subtask}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-white/30">
-                          <span>{c.duration_ms}ms</span>
-                          <span className="text-white/20">
-                            {expandedContrib === c.entity_name ? "[-]" : "[+]"}
-                          </span>
-                        </div>
-                      </button>
-                      {expandedContrib === c.entity_name && (
-                        <div className="px-5 py-4 border-t border-white/[0.04] text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
-                          <div className="text-xs text-white/30 mb-2 font-mono">
-                            Subtask: {c.subtask}
-                          </div>
-                          {c.response}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        {c.response}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-        </main>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </main>
   )
 }

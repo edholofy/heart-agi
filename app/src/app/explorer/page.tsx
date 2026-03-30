@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
@@ -186,10 +185,10 @@ export default function ExplorerPage() {
       const price = raw?.price ?? raw?.compute_price ?? raw
       if (price && typeof price === "object") {
         setComputePrice({
-          claudePrice: String(price.claude_price ?? price.claudePrice ?? "—"),
-          gptPrice: String(price.gpt_price ?? price.gptPrice ?? "—"),
-          geminiPrice: String(price.gemini_price ?? price.geminiPrice ?? "—"),
-          basketPrice: String(price.basket_price ?? price.basketPrice ?? price.weighted_price ?? "—"),
+          claudePrice: String(price.claude_price ?? price.claudePrice ?? "---"),
+          gptPrice: String(price.gpt_price ?? price.gptPrice ?? "---"),
+          geminiPrice: String(price.gemini_price ?? price.geminiPrice ?? "---"),
+          basketPrice: String(price.basket_price ?? price.basketPrice ?? price.weighted_price ?? "---"),
           lastUpdated: String(price.last_updated ?? price.lastUpdated ?? price.timestamp ?? ""),
         })
       }
@@ -257,278 +256,284 @@ export default function ExplorerPage() {
     }
   }
 
+  const topValidator = validators.length > 0 ? validators[0] : null
+  const totalVotingPower = validators.reduce((sum, v) => sum + v.votingPower, 0)
+
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <div className="flex flex-col min-h-screen">
+      <NetworkBar />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
-
-        <div className="flex-1 px-4 sm:px-6 py-8 max-w-7xl mx-auto w-full">
-          {/* Header + Search */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
-                $HEART{" "}
-                <span className="text-[rgba(255,255,255,0.4)]">Explorer</span>
-              </h1>
-            </div>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setSearchResult(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch()
-                }}
-                placeholder="Block height, tx hash, address..."
-                className="glass-input px-4 py-2.5 text-sm font-mono flex-1 sm:w-72"
-                spellCheck={false}
-                autoComplete="off"
-              />
-              <button
-                onClick={handleSearch}
-                className="btn-secondary px-4 py-2.5 text-sm tracking-wider"
-              >
-                SEARCH
-              </button>
+      {/* ── ZONE DARK ── */}
+      <div className="zone-dark">
+        <header style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 16, marginBottom: 32 }}>
+          <div>
+            <span className="sys-label">SYSTEM OPERATION</span>
+            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              CHAIN EXPLORER // TELEMETRY
             </div>
           </div>
-
-          {/* Search result */}
-          {searchResult && (
-            <div className="glass-sm p-4 mb-6 text-sm font-light">
-              <span className="font-mono text-[rgba(255,255,255,0.6)]">
-                {searchResult}
-              </span>
-              <button
-                onClick={() => setSearchResult(null)}
-                className="ml-3 text-[rgba(255,255,255,0.3)] hover:text-white transition-colors"
-              >
-                dismiss
-              </button>
-            </div>
-          )}
-
-          {/* Chain offline error */}
-          {error && (
-            <div className="glass-sm p-4 mb-6 bg-[rgba(239,68,68,0.08)] text-sm">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444] mr-2 align-middle" />
-              <span className="text-[#ef4444] font-light">
-                Chain offline or unreachable. Retrying...
-              </span>
-            </div>
-          )}
-
-          {/* Chain Overview Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <StatCard
-              label="BLOCK.HEIGHT"
-              value={
-                status ? status.latestHeight.toLocaleString() : "---"
-              }
-              live
-            />
-            <StatCard
-              label="CHAIN.ID"
-              value={status ? status.chainId : "---"}
-            />
-            <StatCard
-              label="VALIDATORS"
-              value={
-                validators.length > 0
-                  ? validators.length.toString()
-                  : "---"
-              }
-            />
-            <StatCard
-              label="BONDED.TOKENS"
-              value={
-                pool ? `${formatTokens(pool.bondedTokens)} HEART` : "---"
-              }
-            />
+          <div style={{ textAlign: "center" }}>
+            <span className="sys-label">CHAIN ID</span>
+            <div className="sys-value">{status ? status.chainId : "---"}</div>
           </div>
+          <div style={{ textAlign: "right" }}>
+            <span className="sys-label">VALIDATORS</span>
+            <div className="sys-value">{validators.length > 0 ? validators.length : "---"}</div>
+          </div>
+        </header>
 
-          {/* Latest Blocks */}
-          <div className="mb-8">
-            <div className="aura-divider mb-5">LATEST.BLOCKS</div>
-
-            <div className="glass p-1.5 sm:p-3">
-              {/* Table header */}
-              <div className="grid grid-cols-5 gap-2 px-3 sm:px-4 py-2.5 tech-label text-[9px] sm:text-[10px]">
-                <span>HEIGHT</span>
-                <span>HASH</span>
-                <span>TIME</span>
-                <span>TXS</span>
-                <span>PROPOSER</span>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "end", paddingBottom: 24 }}>
+          <div>
+            <span className="sys-label">BLOCK HEIGHT</span>
+            <div className="dot-hero">
+              {status ? status.latestHeight.toLocaleString() : "---"}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="sys-label">CHAIN OVERVIEW</span>
+              <span className="sys-value">{status ? timeAgo(status.latestTime) : "---"}</span>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <div className="data-row">
+                <span className="row-key">BONDED TOKENS</span>
+                <span className="row-val">{pool ? `${formatTokens(pool.bondedTokens)} HEART` : "---"}</span>
               </div>
-
-              {blocks.length === 0 && !error && (
-                <div className="px-4 py-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                  Loading blocks...
-                </div>
-              )}
-
-              {blocks.map((block) => (
-                <div
-                  key={block.height}
-                  className="grid grid-cols-5 gap-2 px-3 sm:px-4 py-3 rounded-xl hover:bg-[rgba(255,255,255,0.03)] transition-colors items-center"
-                >
-                  <span className="font-mono text-sm font-medium text-white">
-                    #{block.height.toLocaleString()}
-                  </span>
-                  <span className="font-mono text-xs text-[rgba(255,255,255,0.4)] truncate">
-                    {truncateHash(block.hash)}
-                  </span>
-                  <span className="text-xs text-[rgba(255,255,255,0.4)] font-light">
-                    {timeAgo(block.time)}
-                  </span>
-                  <span className="font-mono text-xs text-[rgba(255,255,255,0.5)]">
-                    {block.numTxs} {block.numTxs === 1 ? "tx" : "txs"}
-                  </span>
-                  <span className="font-mono text-xs text-[rgba(255,255,255,0.3)] truncate">
-                    {truncateHash(block.proposer)}
-                  </span>
-                </div>
-              ))}
+              <div className="data-row">
+                <span className="row-key">NOT BONDED</span>
+                <span className="row-val">{pool ? `${formatTokens(pool.notBondedTokens)} HEART` : "---"}</span>
+              </div>
+              <div className="data-row" style={{ color: "var(--bg)" }}>
+                <span className="row-key">TOP VALIDATOR</span>
+                <span className="row-val">{topValidator ? topValidator.moniker : "---"}</span>
+              </div>
+              <div className="data-row" style={{ color: "var(--bg)" }}>
+                <span className="row-key">TOTAL POWER</span>
+                <span className="row-val">{totalVotingPower >= 1_000_000 ? `${(totalVotingPower / 1_000_000).toFixed(1)}M` : totalVotingPower >= 1_000 ? `${(totalVotingPower / 1_000).toFixed(1)}K` : totalVotingPower.toFixed(0)} HEART</span>
+              </div>
             </div>
-          </div>
-
-          {/* Validators */}
-          <div className="mb-12">
-            <div className="aura-divider mb-5">VALIDATORS</div>
-
-            <div className="glass p-1.5 sm:p-3">
-              {/* Table header */}
-              <div className="grid grid-cols-3 gap-2 px-3 sm:px-4 py-2.5 tech-label text-[9px] sm:text-[10px]">
-                <span>MONIKER</span>
-                <span>VOTING.POWER</span>
-                <span>COMMISSION</span>
-              </div>
-
-              {validators.length === 0 && !error && (
-                <div className="px-4 py-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                  Loading validators...
-                </div>
-              )}
-
-              {validators.map((val) => (
-                <div
-                  key={val.operatorAddress}
-                  className="grid grid-cols-3 gap-2 px-3 sm:px-4 py-3 rounded-xl hover:bg-[rgba(255,255,255,0.03)] transition-colors items-center"
-                >
-                  <span className="text-sm font-medium text-white truncate">
-                    {val.moniker}
-                  </span>
-                  <span className="font-mono text-xs text-[rgba(255,255,255,0.5)]">
-                    {val.votingPower >= 1_000_000
-                      ? `${(val.votingPower / 1_000_000).toFixed(1)}M`
-                      : val.votingPower >= 1_000
-                        ? `${(val.votingPower / 1_000).toFixed(1)}K`
-                        : val.votingPower.toFixed(0)}{" "}
-                    HEART
-                  </span>
-                  <span className="font-mono text-xs text-[rgba(255,255,255,0.4)]">
-                    {val.commission}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Compute Oracle */}
-          <div className="mb-12">
-            <div className="aura-divider mb-5">COMPUTE.ORACLE</div>
-
-            {!computePrice ? (
-              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b] inline-block mr-2 align-middle animate-pulse-dot" />
-                Oracle initializing...
-              </div>
-            ) : (
-              <div className="glass p-1.5 sm:p-3">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 sm:p-4">
-                  <div className="glass-sm p-4">
-                    <div className="tech-label mb-2">CLAUDE.PRICE</div>
-                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight">
-                      {computePrice.claudePrice}
-                    </div>
-                    <div className="tech-label text-[9px] mt-1">HEART/TOKEN</div>
-                  </div>
-                  <div className="glass-sm p-4">
-                    <div className="tech-label mb-2">GPT.PRICE</div>
-                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight">
-                      {computePrice.gptPrice}
-                    </div>
-                    <div className="tech-label text-[9px] mt-1">HEART/TOKEN</div>
-                  </div>
-                  <div className="glass-sm p-4">
-                    <div className="tech-label mb-2">GEMINI.PRICE</div>
-                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight">
-                      {computePrice.geminiPrice}
-                    </div>
-                    <div className="tech-label text-[9px] mt-1">HEART/TOKEN</div>
-                  </div>
-                  <div className="glass-sm p-4">
-                    <div className="tech-label mb-2">BASKET.PRICE</div>
-                    <div className="text-lg sm:text-xl font-medium font-mono tracking-tight text-white">
-                      {computePrice.basketPrice}
-                    </div>
-                    <div className="tech-label text-[9px] mt-1">WEIGHTED AVG</div>
-                  </div>
-                </div>
-                {computePrice.lastUpdated && (
-                  <div className="px-4 pb-3 text-right">
-                    <span className="tech-label text-[9px]">
-                      LAST.UPDATED:{" "}
-                      <span className="font-mono text-[rgba(255,255,255,0.5)]">
-                        {timeAgo(computePrice.lastUpdated)}
-                      </span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Back link */}
-          <div className="text-center mb-8">
-            <Link
-              href="/"
-              className="btn-secondary inline-block px-6 py-2.5 text-sm tracking-wide"
-            >
-              BACK TO DASHBOARD
-            </Link>
           </div>
         </div>
       </div>
-    </main>
-  )
-}
 
-function StatCard({
-  label,
-  value,
-  live,
-}: {
-  label: string
-  value: string
-  live?: boolean
-}) {
-  return (
-    <div className="glass-sm p-5">
-      <div className="tech-label mb-2 flex items-center gap-1.5">
-        {live && (
-          <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse-dot" />
+      {/* ── ZONE TRANSITION ── */}
+      <div className="zone-transition" />
+
+      {/* ── ZONE LIGHT ── */}
+      <div className="zone-light">
+        {/* Search */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setSearchResult(null)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch()
+            }}
+            placeholder="Block height, tx hash, address..."
+            spellCheck={false}
+            autoComplete="off"
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              border: "1px solid rgba(0,0,0,0.2)",
+              background: "transparent",
+              color: "var(--fg)",
+              outline: "none",
+            }}
+          />
+          <button onClick={handleSearch} className="btn-primary">
+            SEARCH
+          </button>
+        </div>
+
+        {searchResult && (
+          <div className="data-row" style={{ marginBottom: 16 }}>
+            <span className="row-key" style={{ fontFamily: "var(--font-mono)", opacity: 0.6 }}>{searchResult}</span>
+            <button
+              onClick={() => setSearchResult(null)}
+              className="row-val"
+              style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.4 }}
+            >
+              DISMISS
+            </button>
+          </div>
         )}
-        {label}
-      </div>
-      <div className="text-xl sm:text-2xl font-medium font-mono tracking-tight">
-        {value}
+
+        {/* Chain offline error */}
+        {error && (
+          <div className="data-row" style={{ color: "#ef4444", marginBottom: 16, borderBottom: "1px solid rgba(239,68,68,0.3)" }}>
+            <span className="row-key" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+              CHAIN OFFLINE
+            </span>
+            <span className="row-val">RETRYING...</span>
+          </div>
+        )}
+
+        {/* Data Matrix */}
+        <div className="data-matrix">
+          {/* LATEST BLOCKS */}
+          <div className="data-col" style={{ gridColumn: "span 2" }}>
+            <div className="col-header">LATEST BLOCKS</div>
+
+            {/* Table header row */}
+            <div className="data-row" style={{ borderBottom: "1px solid rgba(0,0,0,0.1)" }}>
+              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>HEIGHT</span>
+              <span className="sys-label" style={{ flex: 2, marginBottom: 0 }}>HASH</span>
+              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>TIME</span>
+              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>TXS</span>
+              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>PROPOSER</span>
+            </div>
+
+            {blocks.length === 0 && !error && (
+              <div style={{ padding: "24px 0", textAlign: "center" }}>
+                <span className="sys-label" style={{ fontSize: 11 }}>LOADING BLOCKS...</span>
+              </div>
+            )}
+
+            {blocks.map((block) => (
+              <div key={block.height} className="data-row">
+                <span className="row-key" style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+                  #{block.height.toLocaleString()}
+                </span>
+                <span className="row-val" style={{ flex: 2, textAlign: "left", opacity: 0.5 }}>
+                  {truncateHash(block.hash)}
+                </span>
+                <span className="row-val" style={{ flex: 1, textAlign: "left", opacity: 0.5 }}>
+                  {timeAgo(block.time)}
+                </span>
+                <span className="row-val" style={{ flex: 1, textAlign: "left" }}>
+                  {block.numTxs} {block.numTxs === 1 ? "tx" : "txs"}
+                </span>
+                <span className="row-val" style={{ flex: 1, opacity: 0.4 }}>
+                  {truncateHash(block.proposer)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* VALIDATORS */}
+          <div className="data-col">
+            <div className="col-header">VALIDATORS</div>
+
+            {validators.length === 0 && !error && (
+              <div style={{ padding: "24px 0", textAlign: "center" }}>
+                <span className="sys-label" style={{ fontSize: 11 }}>LOADING VALIDATORS...</span>
+              </div>
+            )}
+
+            {validators.map((val) => (
+              <div key={val.operatorAddress}>
+                <div className="data-row">
+                  <span className="row-key">{val.moniker}</span>
+                  <span className="row-val">{val.commission}</span>
+                </div>
+                <div className="spark-bar-container">
+                  <div
+                    className="spark-bar"
+                    style={{
+                      width: totalVotingPower > 0 ? `${(val.votingPower / totalVotingPower) * 100}%` : "0%",
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", opacity: 0.4, marginBottom: 8, marginTop: 2 }}>
+                  {val.votingPower >= 1_000_000
+                    ? `${(val.votingPower / 1_000_000).toFixed(1)}M`
+                    : val.votingPower >= 1_000
+                      ? `${(val.votingPower / 1_000).toFixed(1)}K`
+                      : val.votingPower.toFixed(0)}{" "}
+                  HEART
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* COMPUTE ORACLE */}
+          <div className="data-col">
+            <div className="col-header">COMPUTE ORACLE</div>
+
+            {!computePrice ? (
+              <div style={{ padding: "24px 0", textAlign: "center" }}>
+                <span className="sys-label" style={{ fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} className="animate-pulse-dot" />
+                  ORACLE INITIALIZING
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="data-row">
+                  <span className="row-key">CLAUDE</span>
+                  <span className="row-val">{computePrice.claudePrice}</span>
+                </div>
+                <div className="data-row">
+                  <span className="row-key">GPT</span>
+                  <span className="row-val">{computePrice.gptPrice}</span>
+                </div>
+                <div className="data-row">
+                  <span className="row-key">GEMINI</span>
+                  <span className="row-val">{computePrice.geminiPrice}</span>
+                </div>
+                <div className="data-row" style={{ fontWeight: 700 }}>
+                  <span className="row-key">BASKET</span>
+                  <span className="row-val">{computePrice.basketPrice}</span>
+                </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <div className="spark-row">
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span className="row-key sys-label">CLAUDE_WEIGHT</span>
+                      <span className="row-val">40%</span>
+                    </div>
+                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "40%" }} /></div>
+                  </div>
+                  <div className="spark-row">
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span className="row-key sys-label">GPT_WEIGHT</span>
+                      <span className="row-val">25%</span>
+                    </div>
+                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "25%" }} /></div>
+                  </div>
+                  <div className="spark-row">
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span className="row-key sys-label">GEMINI_WEIGHT</span>
+                      <span className="row-val">20%</span>
+                    </div>
+                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "20%" }} /></div>
+                  </div>
+                  <div className="spark-row">
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span className="row-key sys-label">OPEN_SOURCE</span>
+                      <span className="row-val">15%</span>
+                    </div>
+                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "15%" }} /></div>
+                  </div>
+                </div>
+
+                {computePrice.lastUpdated && (
+                  <div style={{ marginTop: 8, textAlign: "right" }}>
+                    <span className="sys-label">
+                      LAST.UPDATED:{" "}
+                      <span className="sys-value">{timeAgo(computePrice.lastUpdated)}</span>
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Back link */}
+        <div style={{ textAlign: "center", marginTop: 48 }}>
+          <Link href="/" className="btn-primary" style={{ textDecoration: "none" }}>
+            BACK TO DASHBOARD
+          </Link>
+        </div>
       </div>
     </div>
   )

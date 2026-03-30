@@ -2,152 +2,348 @@
 @import "tailwindcss";
 
 :root {
-  /* AURA Design System — Dark Glass */
-  --bg-base: #030407;
-  --bg-surface-1: rgba(255, 255, 255, 0.02);
-  --bg-surface-2: rgba(255, 255, 255, 0.05);
-  --bg-surface-3: rgba(255, 255, 255, 0.10);
-  --bg-accent: #FFFFFF;
-  --bg-accent-hover: #E0EDFF;
+  /* System Monitor — Brutalist Light */
+  --bg: #f0f0f0;
+  --fg: #121212;
+  --dot-size: 1.5px;
+  --grid-size: 6px;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', 'Courier New', monospace;
+  --font-mono-sys: 'SF Mono', 'Roboto Mono', 'JetBrains Mono', 'Courier New', monospace;
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 
-  --text-primary: #FFFFFF;
-  --text-secondary: rgba(255, 255, 255, 0.5);
-  --text-accent: #030407;
-  --text-tech: rgba(255, 255, 255, 0.3);
-
+  /* Legacy compat tokens */
   --heart: #ef4444;
   --success: #22c55e;
   --warning: #f59e0b;
-  --glow-color: 255, 255, 255;
-
-  --radius-pill: 999px;
-  --radius-card: 32px;
-  --radius-panel: 24px;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
-  --color-background: var(--bg-base);
-  --color-foreground: var(--text-primary);
-  --color-accent: var(--bg-accent);
-  --color-accent-dim: var(--bg-accent-hover);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
   --color-heart: var(--heart);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --color-card: var(--bg-surface-1);
-  --color-card-border: var(--bg-surface-2);
-  --color-muted: var(--text-secondary);
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
 body {
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
-/* Scrollbar — barely visible */
+/* Scrollbar — minimal */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.35); }
 
-/* AURA Glass Panel */
-.glass {
-  background: var(--bg-surface-1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-card);
+/* ------------------------------------------------------------------ */
+/*  Zone System                                                        */
+/* ------------------------------------------------------------------ */
+
+.zone-dark {
+  background-color: var(--fg);
+  color: var(--bg);
+  padding: 24px 32px 0 32px;
+  flex-shrink: 0;
 }
 
-.glass-sm {
-  background: var(--bg-surface-1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-panel);
+.zone-transition {
+  height: 80px;
+  background-color: var(--bg);
+  position: relative;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 
-.glass-input {
-  background: var(--bg-surface-2);
-  border: none;
-  outline: none;
-  border-radius: var(--radius-pill);
-  color: var(--text-primary);
-  font-family: 'Space Grotesk', sans-serif;
-  transition: background-color 0.3s ease;
+.zone-transition::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--fg);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%);
 }
 
-.glass-input:focus {
-  background: var(--bg-surface-3);
+.zone-transition::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at center, var(--fg) var(--dot-size), transparent var(--dot-size));
+  background-size: var(--grid-size) var(--grid-size);
+  background-position: center top;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%);
 }
 
-.glass-input::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+.zone-light {
+  flex: 1;
+  background-color: var(--bg);
+  padding: 0 32px 32px 32px;
+  overflow-y: auto;
 }
 
-/* AURA Buttons */
-.btn-primary {
-  background: var(--bg-accent);
-  color: var(--text-accent);
-  border: none;
-  border-radius: var(--radius-pill);
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-  box-shadow: 0 0 40px rgba(var(--glow-color), 0.15);
+/* ------------------------------------------------------------------ */
+/*  Labels & Values                                                    */
+/* ------------------------------------------------------------------ */
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  margin-bottom: 4px;
+  display: block;
 }
 
-.btn-primary:hover {
-  background: var(--bg-accent-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 0 60px rgba(var(--glow-color), 0.25);
+.sys-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-bottom: 4px;
+  display: block;
 }
 
-.btn-secondary {
-  background: var(--bg-surface-2);
-  color: var(--text-primary);
-  border: none;
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+.value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
-.btn-secondary:hover {
-  background: var(--bg-surface-3);
-  transform: translateY(-1px);
+.sys-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
-/* Tech label */
+/* Tech label (legacy compat for NetworkBar etc.) */
 .tech-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.2em;
-  color: var(--text-tech);
+  color: rgba(0,0,0,0.3);
   text-transform: uppercase;
 }
 
-/* System badge */
-.sys-badge {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-primary);
-  background: var(--bg-surface-2);
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  letter-spacing: 0.1em;
-  display: inline-block;
+/* ------------------------------------------------------------------ */
+/*  Dot-matrix hero text                                               */
+/* ------------------------------------------------------------------ */
+
+.dot-hero {
+  font-size: 14vw;
+  font-family: Impact, "Arial Black", sans-serif;
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  margin-left: -0.05em;
+  background-image: radial-gradient(circle at center, var(--bg) 2px, transparent 2px);
+  background-size: 8px 8px;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  position: relative;
+  z-index: 10;
 }
 
-/* Glow effects */
-.glow { box-shadow: 0 0 40px rgba(var(--glow-color), 0.15); }
-.glow-heart { box-shadow: 0 0 30px rgba(239, 68, 68, 0.15); }
-.glow-success { box-shadow: 0 0 30px rgba(34, 197, 94, 0.15); }
+/* ------------------------------------------------------------------ */
+/*  Sensor grid                                                        */
+/* ------------------------------------------------------------------ */
 
-/* Pulse */
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(32, 1fr);
+  gap: 2px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.sensor-node {
+  aspect-ratio: 1;
+  background-color: var(--bg);
+  border-radius: 50%;
+  opacity: 0.1;
+  transition: opacity 0.4s ease;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Data matrix                                                        */
+/* ------------------------------------------------------------------ */
+
+.data-matrix {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+}
+
+.data-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.col-header {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-top: 1px solid var(--fg);
+  padding-top: 8px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 5;
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dotted rgba(0,0,0,0.15);
+  font-size: 12px;
+}
+
+.data-row:hover {
+  background-color: rgba(0,0,0,0.03);
+}
+
+.row-key {
+  font-weight: 500;
+}
+
+.row-val {
+  font-family: var(--font-mono);
+  text-align: right;
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Spark bars                                                         */
+/* ------------------------------------------------------------------ */
+
+.spark-row {
+  margin-bottom: 12px;
+}
+
+.spark-bar-container {
+  height: 4px;
+  background: rgba(0,0,0,0.1);
+  width: 100%;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.spark-bar {
+  height: 100%;
+  background: var(--fg);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    var(--bg) 2px,
+    var(--bg) 4px
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Buttons — brutalist                                                */
+/* ------------------------------------------------------------------ */
+
+.btn-primary {
+  background: var(--fg);
+  color: var(--bg);
+  border: none;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  padding: 12px 32px;
+  display: inline-block;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background: #333;
+  transform: translateY(-1px);
+}
+
+/* ------------------------------------------------------------------ */
+/*  NetworkBar — dark strip                                            */
+/* ------------------------------------------------------------------ */
+
+.network-bar-brutalist {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.network-bar-brutalist .tech-label {
+  color: rgba(240,240,240,0.4);
+}
+
+.network-bar-brutalist .tech-label:hover {
+  color: var(--bg);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Divider                                                            */
+/* ------------------------------------------------------------------ */
+
+.aura-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: rgba(0,0,0,0.35);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.aura-divider::before,
+.aura-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(0,0,0,0.15);
+}
+
+/* ------------------------------------------------------------------ */
+/*  How-it-works cards                                                 */
+/* ------------------------------------------------------------------ */
+
+.step-card {
+  border: 1px solid rgba(0,0,0,0.1);
+  padding: 20px;
+  transition: background-color 0.2s ease;
+}
+
+.step-card:hover {
+  background: rgba(0,0,0,0.03);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Animations                                                         */
+/* ------------------------------------------------------------------ */
+
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
@@ -159,22 +355,53 @@ body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Divider */
-.aura-divider {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: var(--text-tech);
-  font-family: 'JetBrains Mono', monospace;
+/* ------------------------------------------------------------------ */
+/*  Footer                                                             */
+/* ------------------------------------------------------------------ */
+
+.brutalist-footer {
+  border-top: 1px solid rgba(0,0,0,0.1);
+  padding: 24px 0;
+  font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  color: rgba(0,0,0,0.4);
 }
 
-.aura-divider::before,
-.aura-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--bg-surface-2);
+.brutalist-footer a {
+  color: rgba(0,0,0,0.4);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: color 0.2s ease;
+}
+
+.brutalist-footer a:hover {
+  color: var(--fg);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Responsive                                                         */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 1024px) {
+  .data-matrix {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 48px 32px;
+  }
+  .dot-hero {
+    font-size: 24vw;
+  }
+}
+
+@media (max-width: 640px) {
+  .zone-dark {
+    padding: 16px 16px 0 16px;
+  }
+  .zone-light {
+    padding: 0 16px 16px 16px;
+  }
+  .data-matrix {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
 }

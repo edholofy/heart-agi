@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { getLeaderboard, type LeaderboardEntry, type LeaderboardResponse } from "@/lib/daemon-client"
 import Link from "next/link"
 
@@ -15,17 +13,32 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: "discovery_rate", label: "DISC. RATE" },
 ]
 
-const STATUS_DOT: Record<string, string> = {
-  alive: "bg-[#22c55e] animate-pulse-dot",
-  dormant: "bg-[#f59e0b]",
-  stopped: "bg-[#ef4444]",
-}
+const ROOT_STYLES = {
+  "--bg": "#f0f0f0",
+  "--fg": "#121212",
+  "--dot-size": "1.5px",
+  "--grid-size": "6px",
+  "--font-mono": "'SF Mono', 'Roboto Mono', 'Courier New', monospace",
+} as React.CSSProperties
 
 export default function LeaderboardPage() {
   const [data, setData] = useState<LeaderboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
   const [sortBy, setSortBy] = useState<SortField>("discoveries")
+  const [clock, setClock] = useState("00:00:00.0")
+
+  /** Clock */
+  useEffect(() => {
+    function tick() {
+      const now = new Date()
+      const t = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      setClock(`${t}.${Math.floor(now.getMilliseconds() / 100)}`)
+    }
+    tick()
+    const id = setInterval(tick, 100)
+    return () => clearInterval(id)
+  }, [])
 
   const fetchData = useCallback(async () => {
     try {
@@ -55,199 +68,309 @@ export default function LeaderboardPage() {
     [data]
   )
 
+  const totalDiscoveries = data?.total_discoveries ?? 0
+
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <main style={{ ...ROOT_STYLES, background: "var(--bg)", color: "var(--fg)", minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif", fontSize: 12, lineHeight: 1.4, WebkitFontSmoothing: "antialiased" }}>
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
-
-        <div className="flex-1 px-4 sm:px-6 py-8 max-w-7xl mx-auto w-full">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
-              $HEART{" "}
-              <span className="text-[rgba(255,255,255,0.4)]">Leaderboard</span>
-            </h1>
-            <p className="text-sm text-[rgba(255,255,255,0.4)] font-light mt-2">
-              Entity rankings by performance. The strongest survive, the weakest go dormant.
-            </p>
+      {/* ========== DARK ZONE HEADER ========== */}
+      <div style={{ backgroundColor: "var(--fg)", color: "var(--bg)", padding: "24px 32px 0 32px" }}>
+        {/* Header bar */}
+        <header style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 16, marginBottom: 32 }}>
+          <div>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>SYSTEM OPERATION</span>
+            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>CIVILIZATION LEADERBOARD // RANKING PROTOCOL</div>
           </div>
+          <div style={{ textAlign: "center" }}>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>ACTIVE PROTOCOL</span>
+            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>RANK_SORT_{sortBy.toUpperCase()}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>LOCAL TIME</span>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 400, letterSpacing: "-0.02em" }}>{clock}</div>
+          </div>
+        </header>
 
-          {/* ========== LIVE STATS BAR ========== */}
-          {data && (
-            <div className="glass-sm p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <LiveStat label="ENTITIES.ALIVE" value={String(data.total_alive)} highlight />
-              <LiveStat label="TOTAL.DISCOVERIES" value={String(data.total_discoveries)} />
-              <LiveStat label="TOTAL.EXPERIMENTS" value={String(data.total_experiments)} />
-              <LiveStat
-                label="CIVILIZATION.AGE"
-                value={data.civilization_age ? formatDuration(data.civilization_age) : "--"}
-              />
-            </div>
-          )}
-
-          {/* ========== SORT CONTROLS ========== */}
-          <div className="glass-sm p-4 mb-6 flex items-center gap-4">
-            <span className="tech-label whitespace-nowrap text-[9px]">SORT.BY</span>
-            <div className="flex items-center gap-1.5">
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setSortBy(opt.value)}
-                  className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors ${
-                    sortBy === opt.value
-                      ? "bg-[rgba(255,255,255,0.1)] text-white"
-                      : "bg-[rgba(255,255,255,0.03)] text-[rgba(255,255,255,0.3)] hover:text-[rgba(255,255,255,0.6)]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+        {/* Giant dot-matrix hero + sensor grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "end", paddingBottom: 24 }}>
+          <div>
+            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>TOTAL DISCOVERIES</span>
+            <div style={{
+              fontSize: "14vw",
+              fontFamily: "Impact, 'Arial Black', sans-serif",
+              fontWeight: 900,
+              lineHeight: 0.8,
+              letterSpacing: "-0.02em",
+              marginLeft: "-0.05em",
+              backgroundImage: "radial-gradient(circle at center, #f0f0f0 2px, transparent 2px)",
+              backgroundSize: "8px 8px",
+              color: "transparent",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+            }}>
+              {totalDiscoveries}
             </div>
           </div>
-
-          {/* Chain offline warning */}
-          {fetchError && (
-            <div className="glass-sm p-4 mb-6 bg-[rgba(239,68,68,0.08)] text-sm">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444] mr-2 align-middle" />
-              <span className="text-[#ef4444] font-light">
-                Daemon offline or unreachable. Retrying every 15s...
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>ENTITY ACTIVITY MATRIX</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
+                {data?.total_alive ?? 0} ALIVE / {(data?.leaderboard.length ?? 0)} TOTAL
               </span>
             </div>
-          )}
-
-          {/* ========== RANKINGS TABLE ========== */}
-          <div className="aura-divider mb-5">
-            RANKINGS
-            <span className="sys-badge ml-2">{aliveEntities.length} ALIVE</span>
+            <SensorGrid />
           </div>
+        </div>
+      </div>
 
-          {loading && !data && !fetchError && (
-            <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-              Loading leaderboard from daemon...
+      {/* ========== DOT TRANSITION ========== */}
+      <div style={{
+        height: 120,
+        backgroundColor: "var(--bg)",
+        position: "relative",
+        borderBottom: "1px solid rgba(0,0,0,0.1)",
+      }}>
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: "var(--fg)",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%)",
+        }} />
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "radial-gradient(circle at center, var(--fg) var(--dot-size), transparent var(--dot-size))",
+          backgroundSize: "var(--grid-size) var(--grid-size)",
+          backgroundPosition: "center top",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%)",
+        }} />
+      </div>
+
+      {/* ========== LIGHT ZONE CONTENT ========== */}
+      <div style={{ padding: "0 32px 64px 32px" }}>
+
+        {/* ========== LIVE STATS BAR ========== */}
+        {data && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32, marginBottom: 32, paddingTop: 8 }}>
+            <StatCell label="ENTITIES.ALIVE" value={String(data.total_alive)} />
+            <StatCell label="TOTAL.DISCOVERIES" value={String(data.total_discoveries)} />
+            <StatCell label="TOTAL.EXPERIMENTS" value={String(data.total_experiments)} />
+            <StatCell label="CIVILIZATION.AGE" value={data.civilization_age ? formatDuration(data.civilization_age) : "--"} />
+          </div>
+        )}
+
+        {/* ========== SORT CONTROLS ========== */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, borderTop: "1px solid var(--fg)", paddingTop: 12 }}>
+          <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>SORT.BY</span>
+          <div style={{ display: "flex", gap: 4 }}>
+            {SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setSortBy(opt.value)}
+                style={{
+                  padding: "6px 12px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  border: "1px solid var(--fg)",
+                  backgroundColor: sortBy === opt.value ? "var(--fg)" : "transparent",
+                  color: sortBy === opt.value ? "var(--bg)" : "var(--fg)",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Chain offline warning */}
+        {fetchError && (
+          <div style={{
+            padding: "12px 16px",
+            marginBottom: 24,
+            border: "1px solid #ef4444",
+            fontFamily: "var(--font-mono)",
+            fontSize: 12,
+            color: "#ef4444",
+          }}>
+            DAEMON OFFLINE OR UNREACHABLE. RETRYING EVERY 15S...
+          </div>
+        )}
+
+        {/* ========== RANKINGS HEADER ========== */}
+        <div style={{ fontSize: 11, fontWeight: 700, borderTop: "1px solid var(--fg)", paddingTop: 8, marginBottom: 16, textTransform: "uppercase", display: "flex", justifyContent: "space-between" }}>
+          <span>RANKINGS</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 400, fontSize: 11 }}>{aliveEntities.length} ALIVE</span>
+        </div>
+
+        {/* Loading / empty states */}
+        {loading && !data && !fetchError && (
+          <div style={{ padding: 32, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, opacity: 0.4 }}>
+            LOADING LEADERBOARD FROM DAEMON...
+          </div>
+        )}
+
+        {!loading && aliveEntities.length === 0 && !fetchError && (
+          <div style={{ padding: 32, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 12, opacity: 0.4 }}>
+            NO ENTITIES SPAWNED YET. BE THE FIRST.
+          </div>
+        )}
+
+        {/* ========== RANKINGS TABLE ========== */}
+        {aliveEntities.length > 0 && (
+          <div style={{ overflowX: "auto", marginBottom: 48 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["RANK", "ENTITY", "STATUS", "DISCOVERIES", "EXPERIMENTS", "DISCOVERY RATE", "COMPUTE", "P&L"].map((col) => (
+                    <th
+                      key={col}
+                      style={{
+                        padding: "8px 12px",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        opacity: 0.7,
+                        textAlign: col === "RANK" || col === "ENTITY" || col === "STATUS" ? "left" : "right",
+                        borderBottom: "1px solid var(--fg)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {aliveEntities.map((entry) => (
+                  <RankRow key={entry.id} entry={entry} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ========== DORMANCY GRAVEYARD ========== */}
+        {dormantEntities.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, borderTop: "1px solid var(--fg)", paddingTop: 8, marginBottom: 16, textTransform: "uppercase", display: "flex", justifyContent: "space-between" }}>
+              <span>DORMANCY.GRAVEYARD</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 400, fontSize: 11 }}>{dormantEntities.length}</span>
             </div>
-          )}
 
-          {!loading && aliveEntities.length === 0 && !fetchError && (
-            <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-              No entities spawned yet. Be the first.
-            </div>
-          )}
-
-          {aliveEntities.length > 0 && (
-            <div className="glass-sm overflow-x-auto mb-10">
-              <table className="w-full text-left">
+            <div style={{ overflowX: "auto", marginBottom: 48 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                    <th className="px-4 py-3 tech-label text-[9px]">#</th>
-                    <th className="px-4 py-3 tech-label text-[9px]">ENTITY</th>
-                    <th className="px-4 py-3 tech-label text-[9px] hidden sm:table-cell">STATUS</th>
-                    <th className="px-4 py-3 tech-label text-[9px] text-right">DISC.</th>
-                    <th className="px-4 py-3 tech-label text-[9px] text-right hidden sm:table-cell">EXP.</th>
-                    <th className="px-4 py-3 tech-label text-[9px] text-right hidden md:table-cell">RATE</th>
-                    <th className="px-4 py-3 tech-label text-[9px] text-right hidden md:table-cell">COMPUTE</th>
-                    <th className="px-4 py-3 tech-label text-[9px] text-right hidden lg:table-cell">P&L</th>
-                    <th className="px-4 py-3 tech-label text-[9px] text-right hidden lg:table-cell">SOUL</th>
+                  <tr>
+                    {["ENTITY", "STATUS", "SURVIVED", "DISCOVERIES", "EXPERIMENTS", "P&L"].map((col) => (
+                      <th
+                        key={col}
+                        style={{
+                          padding: "8px 12px",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          opacity: 0.7,
+                          textAlign: col === "ENTITY" || col === "STATUS" ? "left" : "right",
+                          borderBottom: "1px solid var(--fg)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {col}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {aliveEntities.map((entry) => (
-                    <RankRow key={entry.id} entry={entry} />
+                  {dormantEntities.map((entry) => (
+                    <GraveyardRow key={entry.id} entry={entry} />
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-
-          {/* ========== DORMANCY GRAVEYARD ========== */}
-          {dormantEntities.length > 0 && (
-            <>
-              <div className="aura-divider mb-5">
-                DORMANCY.GRAVEYARD
-                <span className="sys-badge ml-2">{dormantEntities.length}</span>
-              </div>
-
-              <div className="glass-sm overflow-x-auto mb-10">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-[rgba(255,255,255,0.06)]">
-                      <th className="px-4 py-3 tech-label text-[9px]">ENTITY</th>
-                      <th className="px-4 py-3 tech-label text-[9px]">STATUS</th>
-                      <th className="px-4 py-3 tech-label text-[9px] text-right">SURVIVED</th>
-                      <th className="px-4 py-3 tech-label text-[9px] text-right hidden sm:table-cell">DISC.</th>
-                      <th className="px-4 py-3 tech-label text-[9px] text-right hidden sm:table-cell">EXP.</th>
-                      <th className="px-4 py-3 tech-label text-[9px] text-right hidden md:table-cell">P&L</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dormantEntities.map((entry) => (
-                      <GraveyardRow key={entry.id} entry={entry} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </main>
   )
 }
 
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
 function RankRow({ entry }: { entry: LeaderboardEntry }) {
-  const statusDot = STATUS_DOT[entry.status] ?? STATUS_DOT.stopped
-  const pnlColor = entry.compute_pnl >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"
+  const pnlColor = entry.compute_pnl >= 0 ? "#22c55e" : "#ef4444"
   const pnlPrefix = entry.compute_pnl >= 0 ? "+" : ""
 
+  const statusColor: Record<string, string> = {
+    alive: "#22c55e",
+    dormant: "#f59e0b",
+    stopped: "#ef4444",
+  }
+
+  const maxDiscoveries = 100
+  const discPct = Math.min(100, Math.round((entry.discoveries / Math.max(maxDiscoveries, 1)) * 100))
+
   return (
-    <tr className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
-      <td className="px-4 py-3">
-        <span className={`text-sm font-mono font-medium ${entry.rank <= 3 ? "text-[#f59e0b]" : "text-[rgba(255,255,255,0.4)]"}`}>
-          {entry.rank <= 3 ? ["", "#1", "#2", "#3"][entry.rank] : `#${entry.rank}`}
-        </span>
+    <tr style={{ borderBottom: "1px dotted rgba(0,0,0,0.15)" }}>
+      <td style={{ padding: "10px 12px", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: entry.rank <= 3 ? 700 : 400 }}>
+        #{entry.rank}
       </td>
-      <td className="px-4 py-3">
+      <td style={{ padding: "10px 12px" }}>
         <Link
           href={`/entity/${entry.id}`}
-          className="text-sm font-medium text-white hover:text-[#a78bfa] transition-colors"
+          style={{ color: "var(--fg)", textDecoration: "none", fontWeight: 500 }}
         >
           {entry.name}
         </Link>
       </td>
-      <td className="px-4 py-3 hidden sm:table-cell">
-        <span className="inline-flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
-          <span className="text-[10px] font-mono tracking-wider text-[rgba(255,255,255,0.4)] uppercase">
+      <td style={{ padding: "10px 12px" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            backgroundColor: statusColor[entry.status] ?? statusColor.stopped,
+            display: "inline-block",
+          }} />
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.6 }}>
             {entry.status}
           </span>
         </span>
       </td>
-      <td className="px-4 py-3 text-right">
-        <span className="text-sm font-mono font-medium text-white">{entry.discoveries}</span>
+      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+        <div>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 500 }}>{entry.discoveries}</span>
+        </div>
+        {/* Spark bar */}
+        <div style={{ height: 3, background: "rgba(0,0,0,0.1)", width: 60, marginLeft: "auto", marginTop: 4, overflow: "hidden" }}>
+          <div style={{
+            height: "100%",
+            width: `${discPct}%`,
+            background: "var(--fg)",
+            backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(128,128,128,0.3) 2px, rgba(128,128,128,0.3) 4px)",
+          }} />
+        </div>
       </td>
-      <td className="px-4 py-3 text-right hidden sm:table-cell">
-        <span className="text-sm font-mono text-[rgba(255,255,255,0.6)]">{entry.experiments}</span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, opacity: 0.6 }}>
+        {entry.experiments}
       </td>
-      <td className="px-4 py-3 text-right hidden md:table-cell">
-        <span className="text-sm font-mono text-[rgba(255,255,255,0.5)]">
-          {entry.discovery_rate.toFixed(1)}%
-        </span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, opacity: 0.5 }}>
+        {entry.discovery_rate.toFixed(1)}%
       </td>
-      <td className="px-4 py-3 text-right hidden md:table-cell">
-        <span className="text-sm font-mono text-[rgba(255,255,255,0.6)]">
-          {Math.round(entry.compute_balance)}
-        </span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, opacity: 0.6 }}>
+        {Math.round(entry.compute_balance)}
       </td>
-      <td className="px-4 py-3 text-right hidden lg:table-cell">
-        <span className={`text-sm font-mono font-medium ${pnlColor}`}>
-          {pnlPrefix}{Math.round(entry.compute_pnl)}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-right hidden lg:table-cell">
-        <span className="text-[10px] font-mono text-[rgba(255,255,255,0.3)]">
-          {entry.soul_version > 0 ? `v${entry.soul_version}` : "v0"}
-        </span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 500, color: pnlColor }}>
+        {pnlPrefix}{Math.round(entry.compute_pnl)}
       </td>
     </tr>
   )
@@ -255,73 +378,113 @@ function RankRow({ entry }: { entry: LeaderboardEntry }) {
 
 function GraveyardRow({ entry }: { entry: LeaderboardEntry }) {
   const survived = computeSurvivalTime(entry.started_at, entry.last_activity)
-  const pnlColor = entry.compute_pnl >= 0 ? "text-[#22c55e]" : "text-[#ef4444]"
+  const pnlColor = entry.compute_pnl >= 0 ? "#22c55e" : "#ef4444"
   const pnlPrefix = entry.compute_pnl >= 0 ? "+" : ""
 
+  const statusColor: Record<string, string> = {
+    alive: "#22c55e",
+    dormant: "#f59e0b",
+    stopped: "#ef4444",
+  }
+
   return (
-    <tr className="border-b border-[rgba(255,255,255,0.03)] opacity-60 hover:opacity-80 transition-opacity">
-      <td className="px-4 py-3">
+    <tr style={{ borderBottom: "1px dotted rgba(0,0,0,0.15)", opacity: 0.5 }}>
+      <td style={{ padding: "10px 12px" }}>
         <Link
           href={`/entity/${entry.id}`}
-          className="text-sm font-medium text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
+          style={{ color: "var(--fg)", textDecoration: "none", fontWeight: 500 }}
         >
           {entry.name}
         </Link>
       </td>
-      <td className="px-4 py-3">
-        <span className="inline-flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[entry.status] ?? STATUS_DOT.stopped}`} />
-          <span className="text-[10px] font-mono tracking-wider text-[rgba(255,255,255,0.3)] uppercase">
+      <td style={{ padding: "10px 12px" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            backgroundColor: statusColor[entry.status] ?? statusColor.stopped,
+            display: "inline-block",
+          }} />
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             {entry.status}
           </span>
         </span>
       </td>
-      <td className="px-4 py-3 text-right">
-        <span className="text-sm font-mono text-[rgba(255,255,255,0.4)]">{survived}</span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+        {survived}
       </td>
-      <td className="px-4 py-3 text-right hidden sm:table-cell">
-        <span className="text-sm font-mono text-[rgba(255,255,255,0.4)]">{entry.discoveries}</span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+        {entry.discoveries}
       </td>
-      <td className="px-4 py-3 text-right hidden sm:table-cell">
-        <span className="text-sm font-mono text-[rgba(255,255,255,0.4)]">{entry.experiments}</span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+        {entry.experiments}
       </td>
-      <td className="px-4 py-3 text-right hidden md:table-cell">
-        <span className={`text-sm font-mono ${pnlColor}`}>
-          {pnlPrefix}{Math.round(entry.compute_pnl)}
-        </span>
+      <td style={{ padding: "10px 12px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, color: pnlColor }}>
+        {pnlPrefix}{Math.round(entry.compute_pnl)}
       </td>
     </tr>
   )
 }
 
-function LiveStat({
-  label,
-  value,
-  highlight,
-}: {
-  label: string
-  value: string
-  highlight?: boolean
-}) {
+function StatCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[9px] font-mono tracking-wider text-[rgba(255,255,255,0.25)]">
+    <div>
+      <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.7, marginBottom: 4 }}>
         {label}
-      </span>
-      <span
-        className={`text-xl font-mono font-medium ${
-          highlight ? "text-[#22c55e]" : "text-white"
-        }`}
-      >
+      </div>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 400, letterSpacing: "-0.02em" }}>
         {value}
-      </span>
+      </div>
     </div>
   )
 }
 
+function SensorGrid() {
+  const [opacities, setOpacities] = useState<number[]>(() => Array(192).fill(0.1))
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setOpacities((prev) => {
+        const next = [...prev]
+        for (let i = 0; i < 15; i++) {
+          const r = Math.floor(Math.random() * next.length)
+          next[r] = Math.random() * 0.8 + 0.2
+        }
+        for (let i = 0; i < 10; i++) {
+          const r = Math.floor(Math.random() * next.length)
+          next[r] = 0.1
+        }
+        return next
+      })
+    }, 150)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(32, 1fr)", gap: 2, width: "100%", marginTop: 16 }}>
+      {opacities.map((op, i) => (
+        <div
+          key={i}
+          style={{
+            aspectRatio: "1",
+            backgroundColor: "#f0f0f0",
+            borderRadius: "50%",
+            opacity: op,
+            transition: "opacity 0.4s ease",
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Utility functions                                                   */
+/* ------------------------------------------------------------------ */
+
 /** Format a Go duration string (e.g. "72h30m15s") into something readable */
 function formatDuration(goStr: string): string {
-  // Parse hours, minutes, seconds from Go's time.Duration.String()
   const hMatch = goStr.match(/(\d+)h/)
   const mMatch = goStr.match(/(\d+)m/)
 

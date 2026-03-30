@@ -5,6 +5,16 @@ import { WalletButton } from "@/components/wallet/WalletButton"
 import { getChainStatus } from "@/lib/chain-client"
 import Link from "next/link"
 
+const NAV_LINKS = [
+  { href: "/world", label: "WORLD" },
+  { href: "/spawn", label: "SPAWN" },
+  { href: "/swarm", label: "SWARM" },
+  { href: "/leaderboard", label: "LEADERBOARD" },
+  { href: "/marketplace", label: "ENTITIES" },
+  { href: "/governance", label: "GOV" },
+  { href: "/docs", label: "DOCS" },
+]
+
 export function NetworkBar() {
   const [blockHeight, setBlockHeight] = useState<string | null>(null)
   const [chainId, setChainId] = useState<string | null>(null)
@@ -20,7 +30,7 @@ export function NetworkBar() {
           setChainId(status.chainId !== "unknown" ? status.chainId : null)
         }
       } catch {
-        // chain unreachable — leave as null
+        // chain unreachable
       }
     }
 
@@ -34,59 +44,111 @@ export function NetworkBar() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-40 px-4 sm:px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center gap-4">
-          <span className="text-lg font-semibold tracking-tight">
+    <header
+      className="network-bar-brutalist sticky top-0 z-40"
+      style={{ borderBottom: "1px solid rgba(255,255,255,0.12)" }}
+    >
+      <div
+        className="max-w-[1600px] mx-auto"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 2fr 1fr",
+          alignItems: "center",
+          padding: "12px 32px",
+        }}
+      >
+        {/* Left: Brand */}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontWeight: 700,
+              fontSize: 14,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              color: "var(--bg)",
+              textDecoration: "none",
+            }}
+          >
             $HEART
-          </span>
+          </Link>
           <span className="tech-label hidden sm:inline">
-            AUTONOMOUS.BLOCKCHAIN
+            AUTONOMOUS.CHAIN
           </span>
         </div>
 
-        {/* Network stats + wallet */}
-        <div className="flex items-center gap-3 sm:gap-5">
-          <div className="hidden sm:flex items-center gap-1.5 tech-label">
-            <span className={`w-1.5 h-1.5 rounded-full ${blockHeight ? "bg-[#22c55e] animate-pulse-dot" : "bg-[rgba(255,255,255,0.2)]"}`} />
-            <span>{blockHeight ? "LIVE" : "CONNECTING"}</span>
-          </div>
-          <div className="hidden md:block tech-label font-mono">
-            {blockHeight ? `BLOCK #${Number(blockHeight).toLocaleString()}` : "\u2014"}
-          </div>
-          {chainId && (
-            <div className="hidden lg:block tech-label">
-              {chainId}
-            </div>
-          )}
-          <Link href="/spawn" className="text-[10px] font-mono tracking-[0.2em] uppercase text-white bg-[rgba(255,255,255,0.08)] px-3 py-1 rounded-full hover:bg-[rgba(255,255,255,0.15)] transition-all">
-            SPAWN
-          </Link>
-          <Link href="/world" className="tech-label hover:text-white transition-colors">
+        {/* Center: Nav links */}
+        <nav className="flex items-center justify-center gap-4 md:gap-6">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="hidden sm:block tech-label transition-colors hover:!text-[var(--bg)]"
+            >
+              {link.label}
+            </Link>
+          ))}
+          {/* Mobile: key links only */}
+          <Link
+            href="/world"
+            className="sm:hidden tech-label"
+          >
             WORLD
           </Link>
-          <Link href="/marketplace" className="hidden sm:block tech-label hover:text-white transition-colors">
-            TASKS
-          </Link>
-          <Link href="/swarm" className="hidden sm:block tech-label hover:text-white transition-colors">
+          <Link
+            href="/swarm"
+            className="sm:hidden tech-label"
+          >
             SWARM
           </Link>
-          <Link href="/artifacts" className="hidden sm:block tech-label hover:text-white transition-colors">
-            ARTIFACTS
-          </Link>
-          <Link href="/leaderboard" className="hidden sm:block tech-label hover:text-white transition-colors">
-            LEADERBOARD
-          </Link>
-          <Link href="/governance" className="hidden md:block tech-label hover:text-white transition-colors">
-            GOV
-          </Link>
-          <Link href="/docs" className="hidden md:block tech-label hover:text-white transition-colors">
-            DOCS
-          </Link>
-          <Link href="/explorer" className="hidden lg:block tech-label hover:text-white transition-colors">
-            EXPLORER
-          </Link>
+        </nav>
+
+        {/* Right: Status + Block + Wallet */}
+        <div className="flex items-center justify-end gap-4">
+          {/* Status dot */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                blockHeight
+                  ? "bg-[#22c55e] animate-pulse-dot"
+                  : "bg-[rgba(255,255,255,0.2)]"
+              }`}
+            />
+            <span
+              className="tech-label"
+              style={{ fontSize: 9 }}
+            >
+              {blockHeight ? "LIVE" : "CONNECTING"}
+            </span>
+          </div>
+
+          {/* Block height */}
+          <div
+            className="hidden md:block"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              letterSpacing: "-0.02em",
+              opacity: 0.7,
+              color: "var(--bg)",
+            }}
+          >
+            {blockHeight
+              ? `BLK #${Number(blockHeight).toLocaleString()}`
+              : "\u2014"}
+          </div>
+
+          {/* Chain ID */}
+          {chainId && (
+            <span
+              className="hidden lg:block tech-label"
+              style={{ fontSize: 9 }}
+            >
+              {chainId}
+            </span>
+          )}
+
           <WalletButton />
         </div>
       </div>
