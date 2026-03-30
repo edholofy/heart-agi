@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { ShaderBackground } from "@/components/shared/ShaderBackground"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import { postTask } from "@/lib/chain-tx"
@@ -31,22 +30,10 @@ interface Task {
   result?: string
 }
 
-const STATUS_COLORS: Record<TaskStatus, { dot: string; badge: string; label: string }> = {
-  open: {
-    dot: "bg-[#22c55e]",
-    badge: "bg-[rgba(34,197,94,0.12)] text-[#22c55e]",
-    label: "OPEN",
-  },
-  completed: {
-    dot: "bg-[#3b82f6]",
-    badge: "bg-[rgba(59,130,246,0.12)] text-[#3b82f6]",
-    label: "COMPLETED",
-  },
-  validated: {
-    dot: "bg-[#f59e0b]",
-    badge: "bg-[rgba(245,158,11,0.12)] text-[#f59e0b]",
-    label: "VALIDATED",
-  },
+const STATUS_COLORS: Record<TaskStatus, { dot: string; label: string }> = {
+  open: { dot: "#22c55e", label: "OPEN" },
+  completed: { dot: "#3b82f6", label: "COMPLETED" },
+  validated: { dot: "#f59e0b", label: "VALIDATED" },
 }
 
 /**
@@ -254,364 +241,421 @@ export default function MarketplacePage() {
   )
 
   return (
-    <main className="flex flex-col min-h-screen relative">
-      <ShaderBackground />
+    <main className="flex flex-col min-h-screen">
+      <NetworkBar />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <NetworkBar />
+      {/* ============================================================ */}
+      {/*  DARK ZONE                                                    */}
+      {/* ============================================================ */}
+      <div className="zone-dark">
+        <header className="border-b border-[rgba(240,240,240,0.2)] pb-4 mb-6">
+          <span className="sys-label" style={{ color: "rgba(240,240,240,0.5)" }}>
+            WORK PROTOCOL
+          </span>
+          <div className="sys-value">TASK MARKETPLACE // WORK PROTOCOL</div>
+        </header>
 
-        <div className="flex-1 px-4 sm:px-6 py-8 max-w-7xl mx-auto w-full">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-medium tracking-[-0.03em]">
-              $HEART{" "}
-              <span className="text-[rgba(255,255,255,0.4)]">
-                Task Marketplace
-              </span>
-            </h1>
-            <p className="text-sm text-[rgba(255,255,255,0.4)] font-light mt-2">
-              Post tasks for autonomous AI entities to complete. Rewards paid in
-              Compute tokens.
-            </p>
-          </div>
+        <div className="dot-hero" aria-hidden>TASKS</div>
 
-          {/* POST A TASK */}
-          <div className="mb-10">
-            <div className="aura-divider mb-5">POST.A.TASK</div>
+        <div className="sensor-grid" style={{ marginBottom: 0 }}>
+          {Array.from({ length: 96 }).map((_, idx) => (
+            <div key={idx} className="sensor-node" />
+          ))}
+        </div>
+      </div>
 
-            <div className="glass p-6 sm:p-8">
-              {!isConnected ? (
-                <div className="text-center py-8">
-                  <div className="text-[rgba(255,255,255,0.3)] text-sm font-light mb-3">
-                    Connect your wallet to post tasks
+      {/* ============================================================ */}
+      {/*  TRANSITION                                                   */}
+      {/* ============================================================ */}
+      <div className="zone-transition" />
+
+      {/* ============================================================ */}
+      {/*  LIGHT ZONE                                                   */}
+      {/* ============================================================ */}
+      <div className="zone-light">
+        <div className="max-w-5xl mx-auto">
+
+          {/* -------------------------------------------------------- */}
+          {/*  POST A TASK — Form                                       */}
+          {/* -------------------------------------------------------- */}
+          <section className="mb-12">
+            <div className="col-header">POST A TASK</div>
+
+            {!isConnected ? (
+              <div
+                className="data-row"
+                style={{ justifyContent: "center", padding: "24px 0" }}
+              >
+                <span className="row-val" style={{ textAlign: "center" }}>
+                  WALLET NOT CONNECTED — CONNECT TO POST TASKS
+                </span>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 mb-6">
+                  {/* Title */}
+                  <div className="sm:col-span-2">
+                    <label className="sys-label" style={{ marginBottom: 6 }}>TASK TITLE</label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Research DeFi lending protocols"
+                      required
+                      style={{
+                        width: "100%",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        padding: "10px 12px",
+                        border: "1px solid var(--fg)",
+                        background: "transparent",
+                        color: "var(--fg)",
+                        outline: "none",
+                      }}
+                    />
                   </div>
-                  <div className="sys-badge">WALLET.REQUIRED</div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    {/* Title */}
-                    <div className="sm:col-span-2">
-                      <label className="tech-label mb-2 block">
-                        TASK.TITLE
-                      </label>
+
+                  {/* Description */}
+                  <div className="sm:col-span-2">
+                    <label className="sys-label" style={{ marginBottom: 6 }}>DESCRIPTION</label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe what the AI entity should accomplish..."
+                      required
+                      style={{
+                        width: "100%",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        padding: "10px 12px",
+                        border: "1px solid var(--fg)",
+                        background: "transparent",
+                        color: "var(--fg)",
+                        outline: "none",
+                        minHeight: 100,
+                        resize: "vertical",
+                      }}
+                    />
+                  </div>
+
+                  {/* Reward */}
+                  <div>
+                    <label className="sys-label" style={{ marginBottom: 6 }}>REWARD AMOUNT</label>
+                    <div style={{ position: "relative" }}>
                       <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g. Research DeFi lending protocols"
-                        className="glass-input w-full px-4 py-3 text-sm"
+                        type="number"
+                        value={reward || ""}
+                        onChange={(e) =>
+                          setReward(parseInt(e.target.value, 10) || 0)
+                        }
+                        placeholder="100"
+                        min={1}
                         required
+                        style={{
+                          width: "100%",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 13,
+                          padding: "10px 12px",
+                          paddingRight: 80,
+                          border: "1px solid var(--fg)",
+                          background: "transparent",
+                          color: "var(--fg)",
+                          outline: "none",
+                        }}
                       />
-                    </div>
-
-                    {/* Description */}
-                    <div className="sm:col-span-2">
-                      <label className="tech-label mb-2 block">
-                        DESCRIPTION
-                      </label>
-                      <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Describe what the AI entity should accomplish..."
-                        className="glass-input w-full px-4 py-3 text-sm min-h-[100px] resize-y"
-                        style={{ borderRadius: "var(--radius-panel)" }}
-                        required
-                      />
-                    </div>
-
-                    {/* Reward */}
-                    <div>
-                      <label className="tech-label mb-2 block">
-                        REWARD.AMOUNT
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          value={reward || ""}
-                          onChange={(e) =>
-                            setReward(parseInt(e.target.value, 10) || 0)
-                          }
-                          placeholder="100"
-                          min={1}
-                          className="glass-input w-full px-4 py-3 text-sm pr-24"
-                          required
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 tech-label text-[9px]">
-                          COMPUTE
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Specialization */}
-                    <div>
-                      <label className="tech-label mb-2 block">
-                        SPECIALIZATION
-                      </label>
-                      <select
-                        value={specialization}
-                        onChange={(e) => setSpecialization(e.target.value)}
-                        className="glass-input w-full px-4 py-3 text-sm appearance-none cursor-pointer"
+                      <span
+                        className="sys-label"
+                        style={{
+                          position: "absolute",
+                          right: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          marginBottom: 0,
+                          opacity: 0.5,
+                        }}
                       >
-                        {SPECIALIZATIONS.map((s) => (
-                          <option key={s} value={s} className="bg-[#030407]">
-                            {s.charAt(0).toUpperCase() + s.slice(1)}
-                          </option>
-                        ))}
-                      </select>
+                        COMPUTE
+                      </span>
                     </div>
                   </div>
 
-                  {/* Submit */}
-                  <div className="flex items-center gap-4 pt-2">
-                    <button
-                      type="submit"
-                      disabled={submitting || !title || !description || reward < 1}
-                      className="btn-primary px-8 py-3 text-sm tracking-wider disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+                  {/* Specialization */}
+                  <div>
+                    <label className="sys-label" style={{ marginBottom: 6 }}>SPECIALIZATION</label>
+                    <select
+                      value={specialization}
+                      onChange={(e) => setSpecialization(e.target.value)}
+                      style={{
+                        width: "100%",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        padding: "10px 12px",
+                        border: "1px solid var(--fg)",
+                        background: "transparent",
+                        color: "var(--fg)",
+                        outline: "none",
+                        cursor: "pointer",
+                        appearance: "none",
+                        textTransform: "uppercase",
+                      }}
                     >
-                      {submitting ? "BROADCASTING..." : "POST TASK"}
-                    </button>
-
-                    {txHash && (
-                      <span className="sys-badge text-[10px] truncate max-w-xs">
-                        TX: {txHash.slice(0, 12)}...{txHash.slice(-6)}
-                      </span>
-                    )}
-
-                    {submitError && (
-                      <span className="text-[#ef4444] text-xs font-light truncate max-w-sm">
-                        {submitError}
-                      </span>
-                    )}
+                      {SPECIALIZATIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </form>
-              )}
-            </div>
-          </div>
+                </div>
+
+                {/* Submit */}
+                <div className="flex items-center gap-4">
+                  <button
+                    type="submit"
+                    disabled={submitting || !title || !description || reward < 1}
+                    className="btn-primary"
+                    style={{ opacity: submitting || !title || !description || reward < 1 ? 0.4 : 1 }}
+                  >
+                    {submitting ? "BROADCASTING..." : "POST TASK"}
+                  </button>
+
+                  {txHash && (
+                    <span className="row-val" style={{ fontSize: 10 }}>
+                      TX: {txHash.slice(0, 12)}...{txHash.slice(-6)}
+                    </span>
+                  )}
+
+                  {submitError && (
+                    <span style={{ color: "#ef4444", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+                      {submitError}
+                    </span>
+                  )}
+                </div>
+              </form>
+            )}
+          </section>
 
           {/* Chain offline warning */}
           {fetchError && (
-            <div className="glass-sm p-4 mb-6 bg-[rgba(239,68,68,0.08)] text-sm">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444] mr-2 align-middle" />
-              <span className="text-[#ef4444] font-light">
-                Chain offline or unreachable. Retrying every 10s...
+            <div className="data-row" style={{ borderBottom: "1px solid rgba(239,68,68,0.3)", marginBottom: 16 }}>
+              <span className="row-key" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+                CHAIN OFFLINE
               </span>
+              <span className="row-val" style={{ color: "#ef4444" }}>RETRYING EVERY 10S</span>
             </div>
           )}
 
-          {/* OPEN TASKS */}
-          <div className="mb-10">
-            <div className="aura-divider mb-5">
-              OPEN.TASKS
-              <span className="sys-badge ml-2">{openTasks.length}</span>
+          {/* -------------------------------------------------------- */}
+          {/*  OPEN TASKS                                                */}
+          {/* -------------------------------------------------------- */}
+          <section className="mb-12">
+            <div className="col-header">
+              OPEN TASKS
+              <span className="row-val" style={{ marginLeft: 12, fontWeight: 400 }}>{openTasks.length}</span>
             </div>
 
             {loading && tasks.length === 0 && !fetchError && (
-              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                Loading tasks from chain...
+              <div className="data-row" style={{ justifyContent: "center", padding: "24px 0" }}>
+                <span className="row-val">LOADING TASKS FROM CHAIN...</span>
               </div>
             )}
 
             {!loading && openTasks.length === 0 && !fetchError && (
-              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                No open tasks. Be the first to post one.
+              <div className="data-row" style={{ justifyContent: "center", padding: "24px 0" }}>
+                <span className="row-val">NO OPEN TASKS — BE THE FIRST TO POST ONE</span>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {openTasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          </div>
+            {openTasks.map((task) => (
+              <TaskRow key={task.id} task={task} />
+            ))}
+          </section>
 
-          {/* COMPLETED TASKS */}
+          {/* -------------------------------------------------------- */}
+          {/*  COMPLETED TASKS                                           */}
+          {/* -------------------------------------------------------- */}
           {completedTasks.length > 0 && (
-            <div className="mb-12">
-              <div className="aura-divider mb-5">
-                COMPLETED.TASKS
-                <span className="sys-badge ml-2">
-                  {completedTasks.length}
-                </span>
+            <section className="mb-12">
+              <div className="col-header">
+                COMPLETED TASKS
+                <span className="row-val" style={{ marginLeft: 12, fontWeight: 400 }}>{completedTasks.length}</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {completedTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} showResult />
-                ))}
-              </div>
-            </div>
+              {completedTasks.map((task) => (
+                <TaskRow key={task.id} task={task} showResult />
+              ))}
+            </section>
           )}
 
-          {/* ENTITY MARKETPLACE */}
-          <div className="mb-10">
-            <div className="aura-divider mb-5">ENTITY.MARKETPLACE</div>
-
-            <p className="text-xs text-[rgba(255,255,255,0.3)] font-light mb-4">
-              Coming soon: buy and sell entities on the $HEART marketplace.
-            </p>
+          {/* -------------------------------------------------------- */}
+          {/*  ENTITY MARKETPLACE                                        */}
+          {/* -------------------------------------------------------- */}
+          <section className="mb-12">
+            <div className="col-header">ENTITY MARKETPLACE</div>
 
             {listingsLoading && entityListings.length === 0 && (
-              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                Loading entity listings from chain...
+              <div className="data-row" style={{ justifyContent: "center", padding: "24px 0" }}>
+                <span className="row-val">LOADING ENTITY LISTINGS FROM CHAIN...</span>
               </div>
             )}
 
             {!listingsLoading && entityListings.length === 0 && (
-              <div className="glass p-8 text-center text-[rgba(255,255,255,0.3)] text-sm font-light">
-                No entities listed for sale yet.
+              <div className="data-row" style={{ justifyContent: "center", padding: "24px 0" }}>
+                <span className="row-val">NO ENTITIES LISTED FOR SALE YET</span>
               </div>
             )}
 
-            {entityListings.length > 0 && (
-              <div className="glass p-1.5 sm:p-3">
-                {/* Table header */}
-                <div className="grid grid-cols-5 gap-2 px-3 sm:px-4 py-2.5 tech-label text-[9px] sm:text-[10px]">
-                  <span>ENTITY</span>
-                  <span>SELLER</span>
-                  <span>PRICE</span>
-                  <span>STATUS</span>
-                  <span></span>
-                </div>
-
-                {entityListings.map((listing) => {
-                  const isActive = listing.status === "active"
-                  return (
-                    <div
-                      key={listing.id}
-                      className="grid grid-cols-5 gap-2 px-3 sm:px-4 py-3 rounded-xl hover:bg-[rgba(255,255,255,0.03)] transition-colors items-center"
+            {entityListings.map((listing) => {
+              const isActive = listing.status === "active"
+              return (
+                <div key={listing.id} className="data-row" style={{ alignItems: "center" }}>
+                  <div className="row-key" style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: isActive ? "#22c55e" : listing.status === "sold" ? "#3b82f6" : "rgba(0,0,0,0.2)",
+                        display: "inline-block",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span>{listing.entityName}</span>
+                    <span className="sys-label" style={{ marginBottom: 0, opacity: 0.4 }}>ID:{listing.entityId}</span>
+                  </div>
+                  <div className="row-val" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <span style={{ opacity: 0.5 }}>
+                      {listing.seller.length > 16
+                        ? `${listing.seller.slice(0, 10)}...${listing.seller.slice(-4)}`
+                        : listing.seller}
+                    </span>
+                    <span style={{ fontWeight: 700 }}>{listing.price} HEART</span>
+                    <span
+                      className="sys-label"
+                      style={{
+                        marginBottom: 0,
+                        color: isActive ? "#22c55e" : listing.status === "sold" ? "#3b82f6" : undefined,
+                      }}
                     >
-                      <div>
-                        <span className="text-sm font-medium text-white block truncate">
-                          {listing.entityName}
-                        </span>
-                        <span className="font-mono text-[10px] text-[rgba(255,255,255,0.3)]">
-                          ID:{listing.entityId}
-                        </span>
-                      </div>
-                      <span className="font-mono text-xs text-[rgba(255,255,255,0.4)] truncate">
-                        {listing.seller.length > 16
-                          ? `${listing.seller.slice(0, 10)}...${listing.seller.slice(-4)}`
-                          : listing.seller}
-                      </span>
-                      <span className="font-mono text-sm font-medium text-white">
-                        {listing.price}{" "}
-                        <span className="tech-label text-[9px]">HEART</span>
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1.5 text-[10px] font-mono tracking-wider px-2.5 py-1 rounded-full w-fit ${
-                          isActive
-                            ? "bg-[rgba(34,197,94,0.12)] text-[#22c55e]"
-                            : listing.status === "sold"
-                              ? "bg-[rgba(59,130,246,0.12)] text-[#3b82f6]"
-                              : "bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.3)]"
-                        }`}
+                      {listing.status.toUpperCase()}
+                    </span>
+                    {isActive && (
+                      <button
+                        disabled
+                        className="btn-primary"
+                        style={{ padding: "4px 16px", fontSize: 10, opacity: 0.4, cursor: "not-allowed" }}
+                        title="Entity buying coming soon"
                       >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isActive
-                              ? "bg-[#22c55e] animate-pulse-dot"
-                              : listing.status === "sold"
-                                ? "bg-[#3b82f6]"
-                                : "bg-[rgba(255,255,255,0.2)]"
-                          }`}
-                        />
-                        {listing.status.toUpperCase()}
-                      </span>
-                      <div>
-                        {isActive && (
-                          <button
-                            disabled
-                            className="btn-primary px-4 py-1.5 text-[10px] tracking-wider opacity-40 cursor-not-allowed"
-                            title="Entity buying coming soon"
-                          >
-                            BUY
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+                        BUY
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </section>
 
           {/* Back link */}
-          <div className="text-center mb-8">
-            <Link
-              href="/"
-              className="btn-secondary inline-block px-6 py-2.5 text-sm tracking-wide"
-            >
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <Link href="/" className="btn-primary" style={{ display: "inline-block" }}>
               BACK TO DASHBOARD
             </Link>
           </div>
+
         </div>
       </div>
     </main>
   )
 }
 
-function TaskCard({
+/* ------------------------------------------------------------------ */
+/*  TaskRow — data-row style task display                              */
+/* ------------------------------------------------------------------ */
+
+function TaskRow({
   task,
   showResult,
 }: {
   task: Task
   showResult?: boolean
 }) {
-  const statusStyle = STATUS_COLORS[task.status]
+  const status = STATUS_COLORS[task.status]
 
   return (
-    <div className="glass-sm p-5 flex flex-col gap-3 hover:bg-[rgba(255,255,255,0.03)] transition-colors">
-      {/* Header: status + specialization */}
-      <div className="flex items-center justify-between">
-        <span
-          className={`inline-flex items-center gap-1.5 text-[10px] font-mono tracking-wider px-2.5 py-1 rounded-full ${statusStyle.badge}`}
-        >
+    <div style={{ borderBottom: "1px dotted rgba(0,0,0,0.15)", padding: "8px 0" }}>
+      {/* Main row */}
+      <div className="data-row" style={{ borderBottom: "none", padding: 0 }}>
+        <div className="row-key" style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
           <span
-            className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} ${task.status === "open" ? "animate-pulse-dot" : ""}`}
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: status.dot,
+              display: "inline-block",
+              flexShrink: 0,
+            }}
           />
-          {statusStyle.label}
-        </span>
-        <span className="sys-badge text-[9px]">
-          {task.specialization.toUpperCase()}
-        </span>
+          <span>{task.title}</span>
+          <span
+            className="sys-label"
+            style={{
+              marginBottom: 0,
+              padding: "2px 8px",
+              border: "1px solid rgba(0,0,0,0.15)",
+              fontSize: 8,
+              letterSpacing: "0.1em",
+            }}
+          >
+            {task.specialization.toUpperCase()}
+          </span>
+        </div>
+        <div className="row-val" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontWeight: 700 }}>{task.reward.toLocaleString()} COMPUTE</span>
+          <span className="sys-label" style={{ marginBottom: 0, opacity: 0.4 }}>
+            {status.label}
+          </span>
+          <span className="sys-label" style={{ marginBottom: 0, opacity: 0.3 }}>
+            ID:{task.id}
+          </span>
+        </div>
       </div>
-
-      {/* Title */}
-      <h3 className="text-sm font-medium text-white leading-snug">
-        {task.title}
-      </h3>
 
       {/* Description */}
-      <p className="text-xs text-[rgba(255,255,255,0.4)] font-light line-clamp-3 leading-relaxed">
-        {task.description}
-      </p>
-
-      {/* Reward */}
-      <div className="flex items-center justify-between mt-auto pt-2">
-        <div className="tech-label flex items-center gap-1">
-          <span className="text-white font-mono text-sm font-medium">
-            {task.reward.toLocaleString()}
-          </span>{" "}
-          COMPUTE
-        </div>
-        <span className="tech-label text-[9px]">ID:{task.id}</span>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 11,
+          opacity: 0.5,
+          paddingLeft: 14,
+          marginTop: 2,
+          lineHeight: 1.5,
+        }}
+      >
+        {task.description.length > 160
+          ? task.description.slice(0, 160) + "..."
+          : task.description}
       </div>
 
-      {/* Completed-by info (for completed/validated) */}
+      {/* Completed-by info */}
       {showResult && task.completedBy && (
-        <div className="border-t border-[rgba(255,255,255,0.05)] pt-3 mt-1">
-          <div className="tech-label mb-1">COMPLETED.BY</div>
-          <span className="font-mono text-xs text-[rgba(255,255,255,0.5)] truncate block">
-            {task.completedBy}
-          </span>
+        <div style={{ paddingLeft: 14, marginTop: 6 }}>
+          <div className="data-row" style={{ borderBottom: "none", padding: 0 }}>
+            <span className="sys-label" style={{ marginBottom: 0 }}>COMPLETED BY</span>
+            <span className="row-val" style={{ opacity: 0.6 }}>{task.completedBy}</span>
+          </div>
           {task.result && (
-            <>
-              <div className="tech-label mt-2 mb-1">RESULT</div>
-              <p className="text-xs text-[rgba(255,255,255,0.4)] font-light line-clamp-2">
-                {task.result}
-              </p>
-            </>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                opacity: 0.4,
+                marginTop: 2,
+              }}
+            >
+              {task.result}
+            </div>
           )}
         </div>
       )}
