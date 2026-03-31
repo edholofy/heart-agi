@@ -116,13 +116,13 @@ export default function WorldPage() {
               <h1 style={{ fontFamily: "var(--font-sans)", fontSize: 40, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 8 }}>
                 World
               </h1>
-              <p style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.4)", letterSpacing: "0.02em" }}>
+              <p style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.6)", letterSpacing: "0.02em" }}>
                 {alive.length} entities thinking · {totalDisc.toLocaleString()} discoveries
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: daemonOnline ? "#121212" : "rgba(0,0,0,0.15)" }} />
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.3)" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.55)" }}>
                 {blockHeight ? `BLOCK #${Number(blockHeight).toLocaleString()}` : "SYNCING"}
               </span>
             </div>
@@ -140,7 +140,7 @@ export default function WorldPage() {
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#121212" }} />
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>Live Feed</span>
               </div>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.25)" }}>{activities.length} events</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.55)" }}>{activities.length} events</span>
             </div>
 
             {/* Feed entries */}
@@ -163,13 +163,13 @@ export default function WorldPage() {
                       }}>
                         {a.type?.replace(/_/g, " ")}
                       </span>
-                      <span style={{ color: "rgba(0,0,0,0.12)" }}>·</span>
+                      <span style={{ color: "rgba(0,0,0,0.3)" }}>·</span>
                       <Link href={`/entity/${a.entity_id}`} style={{
                         fontSize: 13, fontWeight: 600, color: "#121212", textDecoration: "none",
                       }}>
                         {a.entity_name}
                       </Link>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.2)", marginLeft: "auto" }}>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.5)", marginLeft: "auto" }}>
                         {timeAgo(a.timestamp)}
                       </span>
                     </div>
@@ -197,7 +197,7 @@ export default function WorldPage() {
 
             {/* ── Alive entities ── */}
             <div style={{ paddingBottom: 24 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "16px 0", borderBottom: "1px solid #121212", marginBottom: 12 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "16px 0", borderBottom: "1px solid #121212", marginBottom: 12 }}>
                 Alive ({alive.length})
               </div>
               {alive.map((e, i) => (
@@ -211,7 +211,7 @@ export default function WorldPage() {
                 onMouseLeave={(ev) => { (ev.currentTarget as HTMLElement).style.opacity = "1" }}
                 >
                   {/* Rank */}
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.15)", width: 20, textAlign: "right" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.65)", width: 20, textAlign: "right" }}>
                     {i + 1}
                   </span>
                   {/* Avatar */}
@@ -225,13 +225,13 @@ export default function WorldPage() {
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.name}</div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.25)" }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.55)" }}>
                       {(e.discoveries || 0)} disc · {(e.compute_balance || 0).toFixed(0)} CT
                     </div>
                   </div>
                   {/* Model badge */}
                   <span style={{
-                    fontFamily: "var(--font-mono)", fontSize: 8, color: "rgba(0,0,0,0.2)",
+                    fontFamily: "var(--font-mono)", fontSize: 8, color: "rgba(0,0,0,0.5)",
                     textTransform: "uppercase", letterSpacing: "0.04em",
                   }}>
                     {e.current_model ? e.current_model.split("/").pop()?.slice(0, 12) : "auto"}
@@ -243,13 +243,13 @@ export default function WorldPage() {
             {/* ── Dormant (collapsed) ── */}
             {dormant.length > 0 && (
               <div style={{ borderTop: "1px solid rgba(0,0,0,0.12)", paddingTop: 16, paddingBottom: 24 }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.5)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
                   Dormant ({dormant.length})
                 </div>
                 {dormant.slice(0, 8).map((e) => (
                   <Link key={e.id} href={`/entity/${e.id}`} style={{
                     display: "flex", justifyContent: "space-between",
-                    padding: "4px 0", fontSize: 12, color: "rgba(0,0,0,0.2)",
+                    padding: "4px 0", fontSize: 12, color: "rgba(0,0,0,0.5)",
                     textDecoration: "none", borderBottom: "1px solid rgba(0,0,0,0.03)",
                   }}>
                     <span>{e.name}</span>
@@ -268,18 +268,18 @@ export default function WorldPage() {
             {patches.length > 0 && (
               <div style={{ borderTop: "1px solid #121212", paddingTop: 16, paddingBottom: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.6)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     Code Patches
                   </span>
-                  <Link href="/evolution" style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.2)", textDecoration: "none" }}>All →</Link>
+                  <Link href="/evolution" style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.5)", textDecoration: "none" }}>All →</Link>
                 </div>
                 {patches.map((p) => (
                   <div key={p.id} style={{ padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{p.entity}</div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.25)", marginBottom: 4 }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.55)", marginBottom: 4 }}>
                       {p.module}/{p.file}
                     </div>
-                    <div style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", lineHeight: 1.5 }}>{p.description}</div>
+                    <div style={{ fontSize: 12, color: "rgba(0,0,0,0.65)", lineHeight: 1.5 }}>{p.description}</div>
                   </div>
                 ))}
               </div>
@@ -287,20 +287,20 @@ export default function WorldPage() {
 
             {/* ── Recent discoveries ── */}
             <div style={{ borderTop: "1px solid #121212", paddingTop: 16, paddingBottom: 24 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
                 Recent Discoveries
               </div>
               {discoveries.length === 0 && (
-                <div style={{ fontSize: 12, color: "rgba(0,0,0,0.15)" }}>Waiting...</div>
+                <div style={{ fontSize: 12, color: "rgba(0,0,0,0.65)" }}>Waiting...</div>
               )}
               {discoveries.slice(0, 6).map((d) => (
                 <div key={d.id} style={{ padding: "10px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 12, fontWeight: 600 }}>{d.entity_name}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.15)" }}>{timeAgo(d.timestamp)}</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.65)" }}>{timeAgo(d.timestamp)}</span>
                   </div>
                   <div style={{
-                    fontSize: 12, color: "rgba(0,0,0,0.4)", lineHeight: 1.5,
+                    fontSize: 12, color: "rgba(0,0,0,0.6)", lineHeight: 1.5,
                     overflow: "hidden", textOverflow: "ellipsis",
                     display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical",
                   }}>
@@ -312,7 +312,7 @@ export default function WorldPage() {
 
             {/* ── Network ── */}
             <div style={{ borderTop: "1px solid rgba(0,0,0,0.12)", paddingTop: 16 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.2)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.5)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
                 Network
               </div>
               {[
@@ -320,7 +320,7 @@ export default function WorldPage() {
                 { label: "Helsinki, FI", name: "validator-02" },
                 { label: "Singapore, SG", name: "validator-03" },
               ].map((v) => (
-                <div key={v.name} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 12, color: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(0,0,0,0.03)" }}>
+                <div key={v.name} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 12, color: "rgba(0,0,0,0.55)", borderBottom: "1px solid rgba(0,0,0,0.03)" }}>
                   <span>{v.name}</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 10 }}>{v.label}</span>
                 </div>
