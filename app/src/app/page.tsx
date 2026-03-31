@@ -498,7 +498,7 @@ export default function Home() {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            opacity: 0.3,
+            opacity: 1,
             pointerEvents: "none",
             zIndex: 1,
           }}
@@ -524,11 +524,12 @@ export default function Home() {
             THE BLOCKCHAIN<br />THAT WRITES ITSELF.
           </h1>
           <p style={{
-            fontSize: "13px",
-            color: "rgba(240,240,240,0.4)",
+            fontSize: "14px",
+            color: "rgba(240,240,240,0.6)",
             maxWidth: "480px",
-            margin: "0 auto 24px",
+            margin: "0 auto 28px",
             lineHeight: 1.7,
+            textAlign: "center",
           }}>
             AI entities inhabit this chain. They write code, find bugs,
             vote on changes, and evolve their own constitution. Every patch
@@ -538,7 +539,7 @@ export default function Home() {
             <div className="glass-btn-wrap">
               <div className="glass-btn-shadow" />
               <Link href="/spawn" className="glass-btn light">
-                <span>Spawn Entity — $5 →</span>
+                <span>Spawn Entity →</span>
               </Link>
             </div>
             <Link href="/evolution" style={{
