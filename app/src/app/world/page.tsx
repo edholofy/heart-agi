@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
 
@@ -25,8 +25,6 @@ interface Entity {
   experiments_run: number
   discoveries: number
   tasks_completed: number
-  soul?: string
-  skill?: string
   current_model?: string
 }
 
@@ -44,24 +42,276 @@ const TYPE_COLORS: Record<string, string> = {
   discovery: "#22c55e",
   task: "#f59e0b",
   validation: "#06b6d4",
-  teaching: "#8b5cf6",
-  creation: "#ec4899",
   dormant: "#ef4444",
   autoresearch: "#c69c76",
   code_patch: "#22c55e",
 }
 
-function timeAgo(isoTime: string): string {
-  const diff = Date.now() - new Date(isoTime).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 5) return "now"
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h`
-  return `${Math.floor(hours / 24)}d`
+function timeAgo(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 5) return "now"
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m`
+  return `${Math.floor(m / 60)}h`
 }
+
+/* ================================================================== */
+/*  Canvas: Entity Node Network                                        */
+/* ================================================================== */
+
+function NodeNetwork({ entities, activities }: { entities: Entity[]; activities: ActivityEntry[] }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const nodesRef = useRef<{ x: number; y: number; vx: number; vy: number; name: string; alive: boolean; discoveries: number; compute: number; pulse: number }[]>([])
+  const frameRef = useRef(0)
+
+  // Build stable node positions from entities
+  useEffect(() => {
+    if (entities.length === 0) return
+    const existing = new Map(nodesRef.current.map((n) => [n.name, n]))
+
+    nodesRef.current = entities.map((e, i) => {
+      const ex = existing.get(e.name)
+      if (ex) {
+        ex.alive = e.status === "alive" || e.status === "active"
+        ex.discoveries = e.discoveries || 0
+        ex.compute = e.compute_balance || 0
+        return ex
+      }
+      // Spread nodes in a circle with some randomness
+      const angle = (i / Math.max(entities.length, 1)) * Math.PI * 2 + Math.random() * 0.5
+      const radius = 0.25 + Math.random() * 0.2
+      return {
+        x: 0.5 + Math.cos(angle) * radius,
+        y: 0.5 + Math.sin(angle) * radius,
+        vx: (Math.random() - 0.5) * 0.0003,
+        vy: (Math.random() - 0.5) * 0.0003,
+        name: e.name,
+        alive: e.status === "alive" || e.status === "active",
+        discoveries: e.discoveries || 0,
+        compute: e.compute_balance || 0,
+        pulse: 0,
+      }
+    })
+  }, [entities])
+
+  // Pulse nodes on new activity
+  useEffect(() => {
+    if (activities.length === 0) return
+    const latest = activities[0]
+    if (!latest) return
+    const node = nodesRef.current.find((n) => n.name === latest.entity_name)
+    if (node) node.pulse = 1
+  }, [activities])
+
+  // Animation loop
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    let running = true
+    const dpr = window.devicePixelRatio || 1
+
+    function resize() {
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      canvas.width = rect.width * dpr
+      canvas.height = rect.height * dpr
+    }
+    resize()
+    window.addEventListener("resize", resize)
+
+    function draw() {
+      if (!running || !ctx || !canvas) return
+      const W = canvas.width
+      const H = canvas.height
+      ctx.clearRect(0, 0, W, H)
+
+      const nodes = nodesRef.current
+      if (nodes.length === 0) {
+        frameRef.current = requestAnimationFrame(draw)
+        return
+      }
+
+      // Move nodes gently
+      for (const n of nodes) {
+        n.x += n.vx
+        n.y += n.vy
+        // Bounce off edges
+        if (n.x < 0.05 || n.x > 0.95) n.vx *= -1
+        if (n.y < 0.05 || n.y > 0.95) n.vy *= -1
+        // Decay pulse
+        if (n.pulse > 0) n.pulse *= 0.96
+      }
+
+      // Draw connections (between nearby nodes)
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j]
+          const dx = (a.x - b.x) * W, dy = (a.y - b.y) * H
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          const maxDist = W * 0.25
+          if (dist < maxDist) {
+            const alpha = (1 - dist / maxDist) * 0.12
+            ctx.beginPath()
+            ctx.moveTo(a.x * W, a.y * H)
+            ctx.lineTo(b.x * W, b.y * H)
+            ctx.strokeStyle = `rgba(0,0,0,${alpha})`
+            ctx.lineWidth = 1 * dpr
+            ctx.stroke()
+          }
+        }
+      }
+
+      // Draw nodes
+      for (const n of nodes) {
+        const px = n.x * W
+        const py = n.y * H
+        const baseR = (4 + Math.min(n.discoveries, 20) * 0.8) * dpr
+        const r = baseR + n.pulse * 12 * dpr
+
+        // Glow for alive + active
+        if (n.alive && n.pulse > 0.1) {
+          const glow = ctx.createRadialGradient(px, py, 0, px, py, r * 4)
+          glow.addColorStop(0, `rgba(34,197,94,${n.pulse * 0.3})`)
+          glow.addColorStop(1, "rgba(34,197,94,0)")
+          ctx.beginPath()
+          ctx.arc(px, py, r * 4, 0, Math.PI * 2)
+          ctx.fillStyle = glow
+          ctx.fill()
+        }
+
+        // Node circle
+        ctx.beginPath()
+        ctx.arc(px, py, r, 0, Math.PI * 2)
+        if (n.alive) {
+          const grad = ctx.createRadialGradient(px - r * 0.3, py - r * 0.3, 0, px, py, r)
+          grad.addColorStop(0, "rgba(34,197,94,0.9)")
+          grad.addColorStop(1, "rgba(34,197,94,0.5)")
+          ctx.fillStyle = grad
+        } else {
+          ctx.fillStyle = "rgba(0,0,0,0.08)"
+        }
+        ctx.fill()
+
+        // White highlight on top
+        if (n.alive) {
+          ctx.beginPath()
+          ctx.arc(px - r * 0.2, py - r * 0.2, r * 0.4, 0, Math.PI * 2)
+          ctx.fillStyle = "rgba(255,255,255,0.5)"
+          ctx.fill()
+        }
+
+        // Name label
+        if (n.alive) {
+          ctx.font = `${10 * dpr}px 'IBM Plex Mono', monospace`
+          ctx.fillStyle = "rgba(0,0,0,0.5)"
+          ctx.textAlign = "center"
+          ctx.fillText(n.name, px, py + r + 14 * dpr)
+        }
+      }
+
+      frameRef.current = requestAnimationFrame(draw)
+    }
+
+    frameRef.current = requestAnimationFrame(draw)
+    return () => { running = false; cancelAnimationFrame(frameRef.current); window.removeEventListener("resize", resize) }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
+    />
+  )
+}
+
+/* ================================================================== */
+/*  Validator Globe (CSS 3D)                                           */
+/* ================================================================== */
+
+function ValidatorGlobe() {
+  const [rotation, setRotation] = useState(0)
+
+  useEffect(() => {
+    let frame: number
+    let angle = 0
+    function tick() {
+      angle += 0.3
+      setRotation(angle)
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  const validators = [
+    { name: "US-EAST", city: "Ashburn, VA", lat: 39, lng: -77, color: "#22c55e" },
+    { name: "EU-NORTH", city: "Helsinki, FI", lat: 60, lng: 25, color: "#6366f1" },
+    { name: "APAC", city: "Singapore, SG", lat: 1, lng: 104, color: "#f59e0b" },
+  ]
+
+  return (
+    <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+      {/* Globe */}
+      <div style={{
+        width: 120, height: 120, borderRadius: "50%", flexShrink: 0,
+        background: "linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.08))",
+        border: "1px solid rgba(0,0,0,0.06)",
+        position: "relative", overflow: "hidden",
+      }}>
+        {/* Grid lines */}
+        {[0.25, 0.5, 0.75].map((y) => (
+          <div key={y} style={{
+            position: "absolute", top: `${y * 100}%`, left: 0, right: 0,
+            height: 1, background: "rgba(0,0,0,0.06)",
+          }} />
+        ))}
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={`m${i}`} style={{
+            position: "absolute", top: 0, bottom: 0,
+            left: `${(i / 6 + rotation / 3600) * 100 % 100}%`,
+            width: 1, background: "rgba(0,0,0,0.04)",
+            transform: `scaleX(${Math.cos((i / 6 + rotation / 3600) * Math.PI * 2) * 0.5 + 0.5})`,
+          }} />
+        ))}
+        {/* Validator dots */}
+        {validators.map((v) => {
+          const x = ((v.lng + 180 + rotation * 0.1) % 360) / 360 * 100
+          const y = (90 - v.lat) / 180 * 100
+          return (
+            <div key={v.name} style={{
+              position: "absolute", left: `${x}%`, top: `${y}%`,
+              width: 8, height: 8, borderRadius: "50%",
+              background: v.color, transform: "translate(-50%, -50%)",
+              boxShadow: `0 0 8px ${v.color}60`,
+              animation: "pulse-dot 2s ease-in-out infinite",
+            }} />
+          )
+        })}
+      </div>
+
+      {/* Validator list */}
+      <div style={{ flex: 1 }}>
+        {validators.map((v) => (
+          <div key={v.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: v.color, flexShrink: 0, animation: "pulse-dot 2s ease-in-out infinite" }} />
+            <div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 500, letterSpacing: "0.04em" }}>{v.name}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.3)" }}>{v.city}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ================================================================== */
+/*  Main Page                                                          */
+/* ================================================================== */
 
 export default function WorldPage() {
   const [activities, setActivities] = useState<ActivityEntry[]>([])
@@ -125,251 +375,213 @@ export default function WorldPage() {
     return () => { clearInterval(a); clearInterval(b); clearInterval(c) }
   }, [fetchActivity, fetchEntities, fetchChain])
 
-  const aliveEntities = entities.filter((e) => e.status === "alive" || e.status === "active")
-  const dormantEntities = entities.filter((e) => e.status !== "alive" && e.status !== "active")
-
-  // Get activity counts per entity for the last hour
-  const entityActivityCounts = new Map<string, number>()
-  activities.forEach((a) => {
-    entityActivityCounts.set(a.entity_name, (entityActivityCounts.get(a.entity_name) || 0) + 1)
-  })
-
-  // Discovery feed (filtered)
-  const discoveries = activities.filter((a) => a.type === "discovery")
-  const recentActivity = activities.slice(0, 40)
+  const aliveEntities = useMemo(() => entities.filter((e) => e.status === "alive" || e.status === "active"), [entities])
+  const discoveries = useMemo(() => activities.filter((a) => a.type === "discovery"), [activities])
 
   return (
-    <main style={{ background: "#0a0a0a", color: "#f0f0f0", minHeight: "100vh" }}>
+    <main style={{ background: "#f5f3ee", minHeight: "100vh" }}>
 
-      {/* ── HERO HEADER ── */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 32px 0" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 32 }}>
-          <div>
-            <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.0, marginBottom: 8 }}>
-              World
-            </h1>
-            <p style={{ fontFamily: "var(--font-sans)", fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
-              Live view of the $HEART civilization — {stats.totalAlive} entities thinking right now
-            </p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: daemonOnline ? "#22c55e" : "#ef4444", animation: daemonOnline ? "pulse-dot 2s ease-in-out infinite" : "none" }} />
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
-              {stats.blockHeight ? `BLK #${Number(stats.blockHeight).toLocaleString()}` : "SYNCING"}
-            </span>
+      {/* ── HERO: Node network visualization ── */}
+      <div style={{ position: "relative", height: "clamp(360px, 50vh, 520px)", overflow: "hidden" }}>
+        <NodeNetwork entities={entities} activities={activities} />
+        {/* Overlay content */}
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "0 40px 40px", background: "linear-gradient(to bottom, rgba(245,243,238,0) 40%, rgba(245,243,238,0.9) 85%, rgba(245,243,238,1))" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <div>
+                <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "clamp(36px, 6vw, 64px)", fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1.0, color: "#121212" }}>
+                  World
+                </h1>
+                <p style={{ fontFamily: "var(--font-sans)", fontSize: 15, color: "rgba(0,0,0,0.45)", marginTop: 8 }}>
+                  {stats.totalAlive} entities thinking · {stats.totalDiscoveries.toLocaleString()} discoveries · block #{stats.blockHeight ? Number(stats.blockHeight).toLocaleString() : "—"}
+                </p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: daemonOnline ? "#22c55e" : "#ef4444", animation: daemonOnline ? "pulse-dot 2s ease-in-out infinite" : "none" }} />
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.3)", textTransform: "uppercase" }}>
+                  {daemonOnline ? "Live" : "Offline"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* ── STAT CARDS ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 32 }}>
+      {/* ── CONTENT ── */}
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px 80px" }}>
+
+        {/* ── Stats row ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 32 }}>
           {[
-            { label: "Alive", value: stats.totalAlive, total: stats.totalEntities, color: "#22c55e" },
-            { label: "Discoveries", value: stats.totalDiscoveries, total: null, color: "#c69c76" },
-            { label: "Experiments", value: stats.totalExperiments, total: null, color: "#6366f1" },
-            { label: "Tasks", value: stats.totalTasks, total: null, color: "#f59e0b" },
+            { label: "Alive", value: stats.totalAlive, sub: `/ ${stats.totalEntities}`, color: "#22c55e" },
+            { label: "Discoveries", value: stats.totalDiscoveries, sub: null, color: "#c69c76" },
+            { label: "Experiments", value: stats.totalExperiments, sub: null, color: "#6366f1" },
+            { label: "Tasks Done", value: stats.totalTasks, sub: null, color: "#f59e0b" },
           ].map((s) => (
             <div key={s.label} style={{
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(20px)",
+              background: "rgba(255,255,255,0.6)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+              border: "1px solid rgba(0,0,0,0.05)", borderRadius: 20, padding: "20px 24px",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.04)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.color }} />
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.35)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</span>
               </div>
-              <div style={{ fontFamily: "var(--font-sans)", fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em" }}>
+              <div style={{ fontFamily: "var(--font-sans)", fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", color: "#121212" }}>
                 {s.value.toLocaleString()}
-                {s.total !== null && <span style={{ fontSize: 14, color: "rgba(255,255,255,0.25)", fontWeight: 400 }}> / {s.total}</span>}
+                {s.sub && <span style={{ fontSize: 14, color: "rgba(0,0,0,0.2)", fontWeight: 400 }}> {s.sub}</span>}
               </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* ── MAIN GRID ── */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px 64px", display: "grid", gridTemplateColumns: "300px 1fr 340px", gap: 16 }}>
+        {/* ── Main 3-column grid ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "280px 1fr 320px", gap: 16 }}>
 
-        {/* ── LEFT: Entity Population ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Alive */}
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Population</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "#22c55e" }}>{aliveEntities.length} alive</span>
-            </div>
-            <div style={{ maxHeight: 400, overflowY: "auto" }}>
-              {aliveEntities.map((entity) => {
-                const actCount = entityActivityCounts.get(entity.name) || 0
-                const isSelected = selectedEntity?.id === entity.id
-                return (
+          {/* LEFT: Entities + Validators */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Entities */}
+            <GlassPanel title="Population" badge={`${aliveEntities.length} alive`} badgeColor="#22c55e">
+              <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                {aliveEntities.map((entity) => (
                   <div key={entity.id}
-                    onClick={() => setSelectedEntity(isSelected ? null : entity)}
+                    onClick={() => setSelectedEntity(selectedEntity?.id === entity.id ? null : entity)}
                     style={{
-                      padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.03)",
+                      padding: "10px 16px", borderBottom: "1px solid rgba(0,0,0,0.04)",
                       cursor: "pointer", transition: "background 150ms",
-                      background: isSelected ? "rgba(255,255,255,0.06)" : "transparent",
+                      background: selectedEntity?.id === entity.id ? "rgba(0,0,0,0.04)" : "transparent",
                     }}
-                    onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)" }}
-                    onMouseLeave={(e) => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "transparent" }}
+                    onMouseEnter={(e) => { if (selectedEntity?.id !== entity.id) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.02)" }}
+                    onMouseLeave={(e) => { if (selectedEntity?.id !== entity.id) (e.currentTarget as HTMLElement).style.background = "transparent" }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "pulse-dot 2s ease-in-out infinite", flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{entity.name}</span>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "linear-gradient(135deg, #22c55e, #6366f1)", flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 500, color: "#121212" }}>{entity.name}</span>
                       </span>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(255,255,255,0.25)" }}>
-                        {(entity.compute_balance || 0).toFixed(0)} CT
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.25)" }}>
+                        {(entity.compute_balance || 0).toFixed(0)}
                       </span>
                     </div>
-                    {/* Activity bar */}
-                    <div style={{ marginTop: 6, height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${Math.min(100, actCount * 3)}%`, background: "linear-gradient(90deg, #22c55e, #c69c76)", borderRadius: 2, transition: "width 0.5s" }} />
-                    </div>
-                    <div style={{ display: "flex", gap: 12, marginTop: 4, fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(255,255,255,0.2)" }}>
+                    <div style={{ display: "flex", gap: 10, marginTop: 4, fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.25)" }}>
                       <span>{entity.discoveries || 0} disc</span>
                       <span>{entity.experiments_run || 0} exp</span>
                     </div>
                   </div>
+                ))}
+              </div>
+            </GlassPanel>
+
+            {/* Validator Globe */}
+            <GlassPanel title="Validators" badge="3 regions">
+              <div style={{ padding: "12px 16px" }}>
+                <ValidatorGlobe />
+              </div>
+            </GlassPanel>
+          </div>
+
+          {/* CENTER: Live feed */}
+          <GlassPanel title="Live Activity" badge={`${activities.length} events`}>
+            <div style={{ maxHeight: 600, overflowY: "auto" }}>
+              {initialLoading && activities.length === 0 && (
+                <div style={{ padding: 48, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.2)" }}>Loading...</div>
+              )}
+              {activities.slice(0, 50).map((activity) => {
+                const isNew = newIds.has(activity.id)
+                const color = TYPE_COLORS[activity.type] || "rgba(0,0,0,0.3)"
+                const typeLabel = activity.type?.toUpperCase().replace(/\s+/g, "_") || "EVENT"
+                return (
+                  <div key={activity.id} style={{
+                    padding: "10px 16px", borderBottom: "1px solid rgba(0,0,0,0.04)",
+                    opacity: isNew ? 0 : 1, animation: isNew ? "fadeSlideIn 0.5s ease-out forwards" : undefined,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>{typeLabel}</span>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: "#121212" }}>{activity.entity_name || "?"}</span>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.2)", marginLeft: "auto" }}>{timeAgo(activity.timestamp)}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 14 }}>
+                      {activity.message}
+                    </div>
+                  </div>
                 )
               })}
-              {dormantEntities.length > 0 && (
-                <div style={{ padding: "8px 20px", fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(255,255,255,0.15)", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                  Dormant ({dormantEntities.length})
-                </div>
-              )}
-              {dormantEntities.slice(0, 5).map((entity) => (
-                <div key={entity.id} style={{ padding: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.02)", opacity: 0.4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
-                      {entity.name}
-                    </span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(255,255,255,0.15)" }}>DORMANT</span>
-                  </div>
-                </div>
-              ))}
             </div>
-          </div>
-        </div>
+          </GlassPanel>
 
-        {/* ── CENTER: Live Activity Feed ── */}
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Live Activity</span>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(255,255,255,0.2)" }}>{activities.length} events</span>
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", maxHeight: 600 }}>
-            {initialLoading && activities.length === 0 && daemonOnline && (
-              <div style={{ padding: 32, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(255,255,255,0.2)" }}>Loading feed...</div>
-            )}
-            {recentActivity.map((activity) => {
-              const isNew = newIds.has(activity.id)
-              const color = TYPE_COLORS[activity.type] || "#666"
-              const typeLabel = activity.type?.toUpperCase().replace(/\s+/g, "_") || "EVENT"
-
-              return (
-                <div key={activity.id} style={{
-                  padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.03)",
-                  opacity: isNew ? 0 : 1, animation: isNew ? "fadeSlideIn 0.5s ease-out forwards" : undefined,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 500 }}>{typeLabel}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(255,255,255,0.2)", marginLeft: "auto" }}>{timeAgo(activity.timestamp)}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap" }}>{activity.entity_name || "?"}</span>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {activity.message}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* ── RIGHT: Entity Detail + Discoveries ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-          {/* Entity detail card */}
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                {selectedEntity ? "Entity Profile" : "Select an Entity"}
-              </span>
-            </div>
-            {selectedEntity ? (
-              <div style={{ padding: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #22c55e, #c69c76)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700 }}>
-                    {selectedEntity.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 600 }}>{selectedEntity.name}</div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>
-                      {selectedEntity.status} · {selectedEntity.current_model || "auto"}
+          {/* RIGHT: Detail + Discoveries */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Entity detail */}
+            <GlassPanel title={selectedEntity ? selectedEntity.name : "Select Entity"}>
+              {selectedEntity ? (
+                <div style={{ padding: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 14,
+                      background: "linear-gradient(135deg, #22c55e, #c69c76)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 18, fontWeight: 700, color: "#fff",
+                    }}>
+                      {selectedEntity.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "#121212" }}>{selectedEntity.name}</div>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.35)", textTransform: "uppercase" }}>
+                        {selectedEntity.status} · {selectedEntity.current_model || "auto"}
+                      </div>
                     </div>
                   </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {[
+                      { label: "Compute", value: (selectedEntity.compute_balance || 0).toFixed(0), color: "#6366f1" },
+                      { label: "Discoveries", value: String(selectedEntity.discoveries || 0), color: "#22c55e" },
+                      { label: "Experiments", value: String(selectedEntity.experiments_run || 0), color: "#c69c76" },
+                      { label: "Tasks", value: String(selectedEntity.tasks_completed || 0), color: "#f59e0b" },
+                    ].map((s) => (
+                      <div key={s.label} style={{ background: "rgba(0,0,0,0.02)", borderRadius: 12, padding: "12px 14px" }}>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "rgba(0,0,0,0.3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontFamily: "var(--font-sans)", fontSize: 20, fontWeight: 700, color: "#121212" }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <Link href={`/entity/${selectedEntity.id}`} style={{
+                    display: "block", textAlign: "center", marginTop: 12, padding: "10px",
+                    background: "rgba(0,0,0,0.04)", borderRadius: 10,
+                    fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.4)",
+                    textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.06em",
+                  }}>
+                    Full Profile →
+                  </Link>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {[
-                    { label: "Compute", value: (selectedEntity.compute_balance || 0).toFixed(0) },
-                    { label: "Discoveries", value: String(selectedEntity.discoveries || 0) },
-                    { label: "Experiments", value: String(selectedEntity.experiments_run || 0) },
-                    { label: "Tasks", value: String(selectedEntity.tasks_completed || 0) },
-                  ].map((s) => (
-                    <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "10px 12px" }}>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 500 }}>{s.value}</div>
-                    </div>
-                  ))}
+              ) : (
+                <div style={{ padding: "40px 16px", textAlign: "center", color: "rgba(0,0,0,0.15)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+                  Click an entity to inspect
                 </div>
-                <Link href={`/entity/${selectedEntity.id}`} style={{
-                  display: "block", textAlign: "center", marginTop: 12, padding: "8px 16px",
-                  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(255,255,255,0.5)",
-                  textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.06em",
-                  transition: "all 150ms",
-                }}>
-                  View Full Profile →
-                </Link>
-              </div>
-            ) : (
-              <div style={{ padding: "32px 20px", textAlign: "center", color: "rgba(255,255,255,0.15)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
-                Click an entity to inspect
-              </div>
-            )}
-          </div>
-
-          {/* Recent discoveries */}
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden", flex: 1 }}>
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "#22c55e", textTransform: "uppercase", letterSpacing: "0.06em" }}>Recent Discoveries</span>
-            </div>
-            <div style={{ maxHeight: 300, overflowY: "auto" }}>
-              {discoveries.length === 0 && (
-                <div style={{ padding: 24, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(255,255,255,0.15)" }}>Waiting for discoveries...</div>
               )}
-              {discoveries.slice(0, 15).map((d) => (
-                <div key={d.id} style={{ padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "#22c55e" }}>{d.entity_name}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(255,255,255,0.2)" }}>{timeAgo(d.timestamp)}</span>
+            </GlassPanel>
+
+            {/* Discoveries */}
+            <GlassPanel title="Discoveries" badge={`${discoveries.length}`} badgeColor="#22c55e" flex>
+              <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                {discoveries.length === 0 && (
+                  <div style={{ padding: 24, textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.15)" }}>Waiting...</div>
+                )}
+                {discoveries.slice(0, 12).map((d) => (
+                  <div key={d.id} style={{ padding: "10px 16px", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#22c55e" }}>{d.entity_name}</span>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.2)" }}>{timeAgo(d.timestamp)}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(0,0,0,0.45)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                      {d.message}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                    {d.message}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </GlassPanel>
           </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px 32px", display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(255,255,255,0.15)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        <span>$HEART Autonomous Blockchain</span>
-        <span>{stats.blockHeight ? `Block #${Number(stats.blockHeight).toLocaleString()}` : "Syncing"}</span>
       </div>
 
       <style jsx>{`
@@ -383,5 +595,40 @@ export default function WorldPage() {
         }
       `}</style>
     </main>
+  )
+}
+
+/* ================================================================== */
+/*  Glass Panel                                                        */
+/* ================================================================== */
+
+function GlassPanel({ title, badge, badgeColor, flex, children }: {
+  title: string
+  badge?: string
+  badgeColor?: string
+  flex?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.6)",
+      backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+      border: "1px solid rgba(0,0,0,0.05)",
+      borderRadius: 20, overflow: "hidden",
+      boxShadow: "0 4px 24px rgba(0,0,0,0.04)",
+      display: "flex", flexDirection: "column",
+      flex: flex ? 1 : undefined,
+    }}>
+      <div style={{
+        padding: "12px 16px",
+        borderBottom: "1px solid rgba(0,0,0,0.05)",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        flexShrink: 0,
+      }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.35)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{title}</span>
+        {badge && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: badgeColor || "rgba(0,0,0,0.25)" }}>{badge}</span>}
+      </div>
+      {children}
+    </div>
   )
 }
