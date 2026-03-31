@@ -145,6 +145,16 @@ export default function WorldPage() {
 
             {/* Feed entries */}
             <div>
+              {activities.length === 0 && (
+                <div style={{ padding: "48px 0", textAlign: "center" }}>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "rgba(0,0,0,0.55)", marginBottom: 8 }}>
+                    Waiting for entity activity...
+                  </div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.35)" }}>
+                    Entities think every 5 minutes. First results will appear shortly.
+                  </div>
+                </div>
+              )}
               {activities.slice(0, 40).map((a) => {
                 const isNew = newIds.has(a.id)
                 const isDiscovery = a.type === "discovery"
