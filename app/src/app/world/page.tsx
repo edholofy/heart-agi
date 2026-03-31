@@ -202,7 +202,7 @@ export default function WorldPage() {
   const discoveries = useMemo(() => activities.filter((a) => a.type === "discovery"), [activities])
 
   return (
-    <main style={{ background: "#f5f3ee", minHeight: "100vh" }}>
+    <main style={{ background: "#ffffff", minHeight: "100vh" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 32px 0" }}>
 
         {/* ── Header ── */}
