@@ -772,33 +772,48 @@ export default function EntityProfilePage() {
               </>
             )}
 
-            {/* EVOLUTION HISTORY */}
-            <div className="col-header">EVOLUTION HISTORY</div>
+            {/* SOUL EVOLUTION */}
+            <div className="col-header">SOUL EVOLUTION</div>
             <div className="mb-6">
-              {versionLoading ? (
-                <div className="py-4 text-center"><span className="sys-label">LOADING VERSION HISTORY...</span></div>
-              ) : versionHistory.length === 0 ? (
-                <div className="py-4 text-center"><span className="sys-label">
-                  {resolvedOwner ? "NO EVOLUTION HISTORY YET" : "EVOLUTION HISTORY -- COMING SOON"}
-                </span></div>
-              ) : (
-                versionHistory.map((entry, idx) => (
-                  <div key={`${entry.hash}-${idx}`} className="data-row">
-                    <span className="row-key">
-                      {entry.type.toUpperCase()} v{entry.version}
-                      {entry.timestamp && (
-                        <span className="ml-2 opacity-50">{timeAgo(entry.timestamp)}</span>
-                      )}
-                    </span>
-                    <span className="row-val opacity-60">
-                      {entry.hash
-                        ? entry.hash.length > 20
-                          ? `${entry.hash.slice(0, 12)}...${entry.hash.slice(-6)}`
-                          : entry.hash
-                        : "--"}
+              {entity && (entity as EntityStatus & { soul_version?: number }).soul_version && (entity as EntityStatus & { soul_version?: number }).soul_version! > 0 ? (
+                <>
+                  <div className="data-row">
+                    <span className="row-key">SOUL VERSION</span>
+                    <span className="row-val" style={{ fontWeight: 700 }}>
+                      v{(entity as EntityStatus & { soul_version?: number }).soul_version}
                     </span>
                   </div>
-                ))
+                  <div className="data-row">
+                    <span className="row-key">EVOLUTIONS</span>
+                    <span className="row-val">
+                      {(entity as EntityStatus & { soul_version?: number }).soul_version} times
+                    </span>
+                  </div>
+                  <div className="data-row">
+                    <span className="row-key">STATUS</span>
+                    <span className="row-val" style={{ color: "#22c55e" }}>EVOLVED</span>
+                  </div>
+                  <div style={{
+                    marginTop: 8,
+                    padding: "10px 12px",
+                    background: "rgba(0,0,0,0.03)",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    fontSize: 11,
+                    fontFamily: "var(--font-mono)",
+                    lineHeight: 1.5,
+                    maxHeight: 120,
+                    overflow: "auto",
+                    opacity: 0.7,
+                  }}>
+                    Entity has rewritten its own soul {(entity as EntityStatus & { soul_version?: number }).soul_version} times based on accumulated research experience. Each evolution reflects deeper understanding of its domain.
+                  </div>
+                </>
+              ) : (
+                <div className="py-4 text-center">
+                  <span className="sys-label">
+                    {experiments > 0 ? `EVOLVES AT ${Math.ceil(experiments / 100) * 100} EXPERIMENTS (${100 - (experiments % 100)} remaining)` : "SOUL EVOLUTION BEGINS AT 100 EXPERIMENTS"}
+                  </span>
+                </div>
               )}
             </div>
           </>
