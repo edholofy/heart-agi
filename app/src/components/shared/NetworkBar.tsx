@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/swarm", label: "SWARM" },
   { href: "/leaderboard", label: "LEADERBOARD" },
   { href: "/marketplace", label: "ENTITIES" },
+  { href: "/evolution", label: "EVOLUTION" },
   { href: "/governance", label: "GOV" },
   { href: "/docs", label: "DOCS" },
 ]

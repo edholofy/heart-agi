@@ -4,7 +4,7 @@ const DAEMON_URL = process.env.DAEMON_INTERNAL_URL || 'http://5.161.47.118:4600'
 const DAEMON_API_KEY = process.env.DAEMON_API_KEY || ''
 
 /** Allowed daemon path prefixes */
-const ALLOWED_DAEMON_PATHS = ['/api/entities', '/api/activity', '/api/leaderboard']
+const ALLOWED_DAEMON_PATHS = ['/api/entities', '/api/activity', '/api/leaderboard', '/api/code-proposals']
 
 function isDaemonPathAllowed(path: string): boolean {
   return ALLOWED_DAEMON_PATHS.some(prefix => path.startsWith(prefix))
