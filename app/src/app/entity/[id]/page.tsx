@@ -407,12 +407,13 @@ export default function EntityProfilePage() {
 
   const handleTransfer = async () => {
     if (!transferTargetId || !transferAmount) return
+    if (!wallet.address) { setTxError("Connect wallet first"); return }
     setTransferLoading(true)
     try {
-      const res = await proxyFetch("/api/entities/transfer", "daemon", {
+      const res = await fetch("/api/transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from_id: id, to_id: transferTargetId, amount: parseFloat(transferAmount) }),
+        body: JSON.stringify({ fromId: id, toId: transferTargetId, amount: parseFloat(transferAmount), walletAddress: wallet.address }),
       })
       const data = await res.json()
       if (data.success) {

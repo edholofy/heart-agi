@@ -49,11 +49,19 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/** Write paths that are BLOCKED from the public proxy (security-sensitive) */
+const BLOCKED_WRITE_PATHS = ['/api/entities/transfer', '/api/entities/stop', '/api/entities/spawn']
+
 export async function POST(req: NextRequest) {
   const path = req.nextUrl.searchParams.get('path') || '/api/entities/spawn'
 
   if (!isDaemonPathAllowed(path)) {
     return NextResponse.json({ error: 'Path not allowed' }, { status: 403 })
+  }
+
+  // Block security-sensitive write operations from the public proxy
+  if (BLOCKED_WRITE_PATHS.some(blocked => path.startsWith(blocked))) {
+    return NextResponse.json({ error: 'This operation requires authentication' }, { status: 403 })
   }
 
   try {
