@@ -14,7 +14,7 @@ import Link from "next/link"
  *  click   Navigate to entity profile
  * ───────────────────────────────────────────────────────── */
 
-interface ActivityEntry { id: string; entity_id: string; entity_name: string; type: string; message: string; timestamp: string }
+interface ActivityEntry { id: string; entity_id: string; entity_name: string; type: string; message: string; model?: string; timestamp: string }
 interface Entity { id: string; name: string; status: string; compute_balance: number; experiments_run: number; discoveries: number; tasks_completed: number; current_model?: string; soul_version?: number }
 interface Patch { id: string; entity: string; module: string; file: string; description: string; diff: string; status: string; timestamp: string }
 
@@ -169,6 +169,11 @@ export default function WorldPage() {
                       }}>
                         {a.entity_name}
                       </Link>
+                      {a.model && (
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.35)", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 4, padding: "1px 6px" }}>
+                          {a.model.split("/").pop()?.replace(/-/g, " ").slice(0, 20)}
+                        </span>
+                      )}
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.5)", marginLeft: "auto" }}>
                         {timeAgo(a.timestamp)}
                       </span>
