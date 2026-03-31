@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { NetworkBar } from "@/components/shared/NetworkBar"
+import { MetaballViz } from "@/components/shared/MetaballViz"
 import { getChainStatus } from "@/lib/chain-client"
 import { listEntities, getActivity, type ServerEntity } from "@/lib/daemon-client"
 import { proxyJSON } from "@/lib/proxy"
@@ -380,6 +381,11 @@ export default function Home() {
               SEE THE CODE →
             </Link>
           </div>
+        </div>
+
+        {/* Metallic metaball entity visualization */}
+        <div style={{ width: "100%", maxWidth: "720px", margin: "0 auto", position: "relative", zIndex: 5 }}>
+          <MetaballViz entityCount={aliveEntities.length > 0 ? Math.min(aliveEntities.length, 8) : 5} height={280} />
         </div>
 
         {/* Floating code block as centerpiece */}
