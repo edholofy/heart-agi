@@ -616,37 +616,61 @@ export default function SpawnPage() {
           </div>
         )}
 
-        {/* ========== SPAWN BUTTON ========== */}
-        <button
-          onClick={handleSpawn}
-          disabled={!canSpawn}
-          style={{
-            width: "100%",
-            padding: "18px 32px",
-            backgroundColor: canSpawn ? "var(--fg)" : "rgba(0,0,0,0.15)",
-            color: canSpawn ? "var(--bg)" : "rgba(0,0,0,0.3)",
-            border: "none",
-            fontFamily: "var(--font-mono)",
-            fontSize: 14,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            cursor: canSpawn ? "pointer" : "not-allowed",
-            transition: "all 0.15s",
-            marginBottom: 16,
-          }}
-        >
-          {loading ? (
-            "INITIALIZING SPAWN SEQUENCE..."
-          ) : !isConnected ? (
-            "WALLET REQUIRED TO SPAWN"
-          ) : (
-            `SPAWN ${entityName.trim().toUpperCase() || "ENTITY"} // $${PLANS.find((p) => p.key === selectedPlan)?.price || 0} USD`
-          )}
-        </button>
+        {/* ========== SPAWN BUTTONS ========== */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          {/* Pay with USD (Stripe) */}
+          <button
+            onClick={handleSpawn}
+            disabled={!canSpawn}
+            style={{
+              width: "100%",
+              padding: "18px 24px",
+              backgroundColor: canSpawn ? "var(--fg)" : "rgba(0,0,0,0.15)",
+              color: canSpawn ? "var(--bg)" : "rgba(0,0,0,0.3)",
+              border: "none",
+              fontFamily: "var(--font-mono)",
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              cursor: canSpawn ? "pointer" : "not-allowed",
+              transition: "all 0.15s",
+            }}
+          >
+            {loading ? (
+              "SPAWNING..."
+            ) : !isConnected ? (
+              "WALLET REQUIRED"
+            ) : (
+              `PAY $${PLANS.find((p) => p.key === selectedPlan)?.price || 0} USD`
+            )}
+          </button>
+
+          {/* Pay with $HEART */}
+          <button
+            onClick={() => {/* TODO: connect $HEART payment */}}
+            disabled={!canSpawn}
+            style={{
+              width: "100%",
+              padding: "18px 24px",
+              backgroundColor: "transparent",
+              color: canSpawn ? "var(--fg)" : "rgba(0,0,0,0.3)",
+              border: canSpawn ? "2px solid var(--fg)" : "2px solid rgba(0,0,0,0.15)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              cursor: canSpawn ? "pointer" : "not-allowed",
+              transition: "all 0.15s",
+            }}
+          >
+            PAY WITH $HEART
+          </button>
+        </div>
 
         <div style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, textAlign: "center", marginBottom: 24 }}>
-          SECURE PAYMENT VIA STRIPE // USD
+          SECURE PAYMENT VIA STRIPE OR $HEART TOKEN
         </div>
 
         {/* Progress indicator */}
