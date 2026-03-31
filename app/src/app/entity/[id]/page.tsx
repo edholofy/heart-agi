@@ -775,46 +775,87 @@ export default function EntityProfilePage() {
             {/* SOUL EVOLUTION */}
             <div className="col-header">SOUL EVOLUTION</div>
             <div className="mb-6">
-              {entity && (entity as EntityStatus & { soul_version?: number }).soul_version && (entity as EntityStatus & { soul_version?: number }).soul_version! > 0 ? (
-                <>
-                  <div className="data-row">
-                    <span className="row-key">SOUL VERSION</span>
-                    <span className="row-val" style={{ fontWeight: 700 }}>
-                      v{(entity as EntityStatus & { soul_version?: number }).soul_version}
+              {(() => {
+                const sv = (entity as EntityStatus & { soul_version?: number })?.soul_version || 0
+                if (sv > 0) {
+                  // Find evolution events for this entity from activity
+                  const evolutionEvents = activity.filter(a => a.type === "evolution")
+                  return (
+                    <>
+                      <div className="data-row">
+                        <span className="row-key" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+                          SOUL VERSION
+                        </span>
+                        <span className="row-val" style={{ fontWeight: 700, fontSize: 16 }}>
+                          v{sv}
+                        </span>
+                      </div>
+                      <div className="data-row">
+                        <span className="row-key">TIMES REWRITTEN</span>
+                        <span className="row-val">{sv}</span>
+                      </div>
+                      <div className="data-row">
+                        <span className="row-key">TRIGGER</span>
+                        <span className="row-val">Every 100 experiments</span>
+                      </div>
+
+                      {/* Evolution timeline */}
+                      {evolutionEvents.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.4, marginBottom: 8 }}>
+                            EVOLUTION TIMELINE
+                          </div>
+                          {evolutionEvents.map((ev, idx) => (
+                            <div key={idx} className="data-row">
+                              <span className="row-key" style={{ fontSize: 11 }}>
+                                <span style={{ color: "#22c55e", marginRight: 6 }}>&#x2191;</span>
+                                {ev.message}
+                              </span>
+                              <span className="row-val" style={{ fontSize: 10 }}>
+                                {formatLogTime(ev.timestamp)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Current evolved soul text */}
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.4, marginBottom: 8 }}>
+                          CURRENT EVOLVED SOUL (v{sv})
+                        </div>
+                        <div style={{
+                          padding: "12px 14px",
+                          background: "rgba(0,0,0,0.04)",
+                          border: "1px solid rgba(0,0,0,0.08)",
+                          borderLeft: "3px solid #22c55e",
+                          fontSize: 11,
+                          lineHeight: 1.6,
+                          maxHeight: 200,
+                          overflow: "auto",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}>
+                          {soul || "Soul text unavailable"}
+                        </div>
+                        <div style={{ fontSize: 9, opacity: 0.3, marginTop: 4, fontStyle: "italic" }}>
+                          This soul was autonomously rewritten by the entity based on {experiments} experiments and {discoveries} discoveries.
+                        </div>
+                      </div>
+                    </>
+                  )
+                }
+                return (
+                  <div className="py-4 text-center">
+                    <span className="sys-label">
+                      {experiments > 0
+                        ? `NEXT EVOLUTION AT ${Math.ceil((experiments + 1) / 100) * 100} EXPERIMENTS (${100 - (experiments % 100)} remaining)`
+                        : "SOUL EVOLUTION BEGINS AT 100 EXPERIMENTS"}
                     </span>
                   </div>
-                  <div className="data-row">
-                    <span className="row-key">EVOLUTIONS</span>
-                    <span className="row-val">
-                      {(entity as EntityStatus & { soul_version?: number }).soul_version} times
-                    </span>
-                  </div>
-                  <div className="data-row">
-                    <span className="row-key">STATUS</span>
-                    <span className="row-val" style={{ color: "#22c55e" }}>EVOLVED</span>
-                  </div>
-                  <div style={{
-                    marginTop: 8,
-                    padding: "10px 12px",
-                    background: "rgba(0,0,0,0.03)",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    fontSize: 11,
-                    fontFamily: "var(--font-mono)",
-                    lineHeight: 1.5,
-                    maxHeight: 120,
-                    overflow: "auto",
-                    opacity: 0.7,
-                  }}>
-                    Entity has rewritten its own soul {(entity as EntityStatus & { soul_version?: number }).soul_version} times based on accumulated research experience. Each evolution reflects deeper understanding of its domain.
-                  </div>
-                </>
-              ) : (
-                <div className="py-4 text-center">
-                  <span className="sys-label">
-                    {experiments > 0 ? `EVOLVES AT ${Math.ceil(experiments / 100) * 100} EXPERIMENTS (${100 - (experiments % 100)} remaining)` : "SOUL EVOLUTION BEGINS AT 100 EXPERIMENTS"}
-                  </span>
-                </div>
-              )}
+                )
+              })()}
             </div>
           </>
         )}
