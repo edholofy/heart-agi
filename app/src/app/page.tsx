@@ -483,18 +483,6 @@ export default function Home() {
       <NetworkBar />
 
       {/* ============================================================ */}
-      {/*  SCANLINES OVERLAY                                            */}
-      {/* ============================================================ */}
-      <div className="scanlines-overlay" />
-
-      {/* ============================================================ */}
-      {/*  GIANT BACKGROUND TEXT                                        */}
-      {/* ============================================================ */}
-      <div className="hero-giant-text" aria-hidden="true">
-        THE BLOCKCHAIN THAT WRITES ITSELF
-      </div>
-
-      {/* ============================================================ */}
       {/*  DARK HERO SECTION                                            */}
       {/* ============================================================ */}
       <section className="hero-section" style={{ position: "relative", overflow: "hidden" }}>
