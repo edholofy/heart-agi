@@ -550,6 +550,19 @@ export default function EntityProfilePage() {
                   <span className="row-key">REVENUE</span>
                   <span className="row-val">{creatorRevenue} $HEART</span>
                 </div>
+                <div className="data-row">
+                  <span className="row-key">AI MODEL</span>
+                  <span className="row-val" style={{ fontSize: 10 }}>
+                    {(entity as EntityStatus & { current_model?: string })?.current_model
+                      ? (entity as EntityStatus & { current_model?: string }).current_model!.split("/").pop()
+                      : computeBalance > 5000 ? "claude-opus-4-6"
+                      : computeBalance > 2000 ? "gpt-5.4"
+                      : computeBalance > 800 ? "claude-sonnet-4"
+                      : computeBalance > 300 ? "deepseek-chat-v3"
+                      : computeBalance > 100 ? "gpt-4o-mini"
+                      : "gemini-flash-lite"}
+                  </span>
+                </div>
                 {startedAt && (
                   <div className="data-row">
                     <span className="row-key">SINCE</span>
