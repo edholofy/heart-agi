@@ -380,6 +380,239 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Dark Hero — Cinematic Landing                                      */
+/* ------------------------------------------------------------------ */
+
+.scanlines-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  opacity: 0.15;
+}
+
+.hero-giant-text {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-weight: 900;
+  font-size: 15vw;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: rgba(240, 240, 240, 0.04);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 0;
+  text-align: center;
+  width: 200vw;
+  user-select: none;
+}
+
+.hero-section {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+}
+
+.hero-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  position: relative;
+  z-index: 10;
+}
+
+.hero-cta-btn {
+  display: inline-block;
+  background: #c69c76;
+  color: #0a0a0a;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 24px;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.hero-cta-btn:hover {
+  background: #d4ad85;
+  transform: translateY(-1px);
+}
+
+.hero-code-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-code-block {
+  background: #111;
+  border: 1px solid rgba(198, 156, 118, 0.15);
+  color: #a1a1aa;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 24px 28px;
+  margin: 0;
+  overflow-x: auto;
+  transform: rotateX(5deg) rotateY(-5deg);
+  box-shadow:
+    0 0 40px rgba(198, 156, 118, 0.06),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: heroFloat 8s ease-in-out infinite;
+  width: 100%;
+  max-width: 680px;
+}
+
+@keyframes heroFloat {
+  0%, 100% { transform: rotateX(5deg) rotateY(-5deg) translateY(0px); }
+  50% { transform: rotateX(5deg) rotateY(-5deg) translateY(-10px); }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Callout annotations                                                */
+/* ------------------------------------------------------------------ */
+
+.hero-callout {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 5;
+}
+
+.hero-callout-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #c69c76;
+}
+
+.hero-callout-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: #f0f0f0;
+  letter-spacing: 0.02em;
+}
+
+.hero-callout-tl {
+  top: -8px;
+  left: -80px;
+}
+
+.hero-callout-l {
+  top: 50%;
+  left: -80px;
+  transform: translateY(-50%);
+}
+
+.hero-callout-br {
+  bottom: -8px;
+  right: -80px;
+  text-align: right;
+}
+
+.hero-callout-line {
+  position: absolute;
+  background: rgba(198, 156, 118, 0.25);
+}
+
+.hero-callout-line-tl {
+  width: 40px;
+  height: 1px;
+  top: 50%;
+  right: -44px;
+}
+
+.hero-callout-line-l {
+  width: 40px;
+  height: 1px;
+  top: 50%;
+  right: -44px;
+}
+
+.hero-callout-line-br {
+  width: 40px;
+  height: 1px;
+  top: 50%;
+  left: -44px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Bottom stats strip                                                 */
+/* ------------------------------------------------------------------ */
+
+.hero-stats-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  background: linear-gradient(to top, rgba(10,10,10,1), rgba(10,10,10,0.9));
+  border-top: 1px solid rgba(198, 156, 118, 0.1);
+  position: relative;
+  z-index: 3;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hero-stat-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.hero-stat-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: #f0f0f0;
+  letter-spacing: -0.02em;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Transition: dark-to-light                                          */
+/* ------------------------------------------------------------------ */
+
+.zone-transition-dark {
+  height: 80px;
+  background: linear-gradient(to bottom, #0a0a0a, var(--bg));
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Responsive                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -390,6 +623,18 @@ body {
   }
   .dot-hero {
     font-size: 24vw;
+  }
+  .hero-giant-text {
+    font-size: 12vw;
+  }
+  .hero-callout-tl,
+  .hero-callout-l,
+  .hero-callout-br {
+    display: none;
+  }
+  .hero-code-block {
+    font-size: 10px;
+    padding: 16px 20px;
   }
 }
 
@@ -403,5 +648,33 @@ body {
   .data-matrix {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+  .hero-nav {
+    padding: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .hero-code-wrapper {
+    padding: 20px 16px;
+  }
+  .hero-code-block {
+    font-size: 9px;
+    padding: 12px 14px;
+    transform: none;
+    animation: heroFloatMobile 8s ease-in-out infinite;
+  }
+  @keyframes heroFloatMobile {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
+  }
+  .hero-giant-text {
+    font-size: 18vw;
+  }
+  .hero-stats-strip {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  .hero-stat {
+    min-width: 80px;
   }
 }

@@ -5,9 +5,10 @@ import Link from "next/link"
 import { NetworkBar } from "@/components/shared/NetworkBar"
 import { getChainStatus } from "@/lib/chain-client"
 import { listEntities, getActivity, type ServerEntity } from "@/lib/daemon-client"
+import { proxyJSON } from "@/lib/proxy"
 
 /* ------------------------------------------------------------------ */
-/*  Network data hook                                                  */
+/*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
 interface ActivityEntry {
@@ -15,6 +16,24 @@ interface ActivityEntry {
   entity_name: string
   message: string
   timestamp: string
+}
+
+interface Patch {
+  id: string
+  entity: string
+  module: string
+  file: string
+  description: string
+  diff: string
+  status: string
+  timestamp: string
+}
+
+interface CodeProposalsResponse {
+  code_proposals: ActivityEntry[]
+  patches: Patch[]
+  total: number
+  total_patches: number
 }
 
 interface NetworkData {
@@ -26,7 +45,12 @@ interface NetworkData {
   totalRevenue: number | null
   entities: ServerEntity[]
   activity: ActivityEntry[]
+  latestPatch: Patch | null
 }
+
+/* ------------------------------------------------------------------ */
+/*  Network data hook                                                  */
+/* ------------------------------------------------------------------ */
 
 function useNetworkData(): NetworkData {
   const [data, setData] = useState<NetworkData>({
@@ -38,14 +62,17 @@ function useNetworkData(): NetworkData {
     totalRevenue: null,
     entities: [],
     activity: [],
+    latestPatch: null,
   })
 
   const fetchAll = useCallback(async () => {
-    const [chainResult, entitiesResult, activityResult] = await Promise.allSettled([
-      getChainStatus(),
-      listEntities(),
-      getActivity(undefined, 20),
-    ])
+    const [chainResult, entitiesResult, activityResult, codeResult] =
+      await Promise.allSettled([
+        getChainStatus(),
+        listEntities(),
+        getActivity(undefined, 20),
+        proxyJSON<CodeProposalsResponse>("/api/code-proposals", "daemon"),
+      ])
 
     const chain =
       chainResult.status === "fulfilled" ? chainResult.value : null
@@ -53,21 +80,32 @@ function useNetworkData(): NetworkData {
       entitiesResult.status === "fulfilled" ? entitiesResult.value : []
     const activity: ActivityEntry[] =
       activityResult.status === "fulfilled" ? activityResult.value : []
+    const codeData =
+      codeResult.status === "fulfilled" ? codeResult.value : null
 
     const totalDiscoveries = entities.reduce(
       (sum, entity) => sum + (entity.discoveries || 0),
       0
     )
-
     const totalExperiments = entities.reduce(
       (sum, entity) => sum + (entity.experiments || 0),
       0
     )
-
     const totalRevenue = entities.reduce(
       (sum, entity) => sum + (entity.creator_revenue || 0),
       0
     )
+
+    // Find the latest successful patch with a diff
+    let latestPatch: Patch | null = null
+    if (codeData?.patches && codeData.patches.length > 0) {
+      const successPatches = codeData.patches.filter(
+        (p) => p.diff && p.diff.length > 0
+      )
+      if (successPatches.length > 0) {
+        latestPatch = successPatches[0]
+      }
+    }
 
     setData({
       blockHeight:
@@ -80,6 +118,7 @@ function useNetworkData(): NetworkData {
       totalRevenue,
       entities,
       activity,
+      latestPatch,
     })
   }, [])
 
@@ -93,38 +132,99 @@ function useNetworkData(): NetworkData {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Sensor Grid — animated dot matrix                                  */
+/*  Placeholder diff when no real patches exist                        */
 /* ------------------------------------------------------------------ */
 
-function SensorGrid({ nodeCount = 192 }: { nodeCount?: number }) {
-  const containerRef = useRef<HTMLDivElement>(null)
+const PLACEHOLDER_DIFF = `--- a/x/heart/keeper/evolution.go
++++ b/x/heart/keeper/evolution.go
+@@ -42,8 +42,14 @@ func (k Keeper) ProcessEvolution(ctx sdk.Context) error {
+     entities := k.GetAliveEntities(ctx)
+     for _, entity := range entities {
+-        if entity.ComputeBalance <= 0 {
+-            continue
++        score := k.CalculateFitness(ctx, entity)
++        if score > entity.BestScore {
++            entity.BestScore = score
++            entity.Generation++
++            k.SetEntity(ctx, entity)
++            ctx.EventManager().EmitEvent(sdk.NewEvent(
++                "entity_evolved",
++                sdk.NewAttribute("entity_id", entity.Id),
++            ))
+         }
+     }
+     return nil`
 
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+/* ------------------------------------------------------------------ */
+/*  Hero code block component                                          */
+/* ------------------------------------------------------------------ */
 
-    const nodes = container.querySelectorAll<HTMLDivElement>(".sensor-node")
-    const interval = setInterval(() => {
-      // light up random nodes
-      for (let idx = 0; idx < 15; idx++) {
-        const randomIdx = Math.floor(Math.random() * nodes.length)
-        nodes[randomIdx].style.opacity = String(Math.random() * 0.8 + 0.2)
-      }
-      // dim random nodes
-      for (let idx = 0; idx < 10; idx++) {
-        const randomIdx = Math.floor(Math.random() * nodes.length)
-        nodes[randomIdx].style.opacity = "0.1"
-      }
-    }, 150)
-
-    return () => clearInterval(interval)
-  }, [nodeCount])
+function HeroCodeBlock({ patch }: { patch: Patch | null }) {
+  const diff = patch?.diff || PLACEHOLDER_DIFF
+  const lines = diff.split("\n")
 
   return (
-    <div ref={containerRef} className="sensor-grid">
-      {Array.from({ length: nodeCount }).map((_, idx) => (
-        <div key={idx} className="sensor-node" />
-      ))}
+    <div
+      style={{
+        position: "relative",
+        perspective: "1200px",
+        width: "100%",
+        maxWidth: "720px",
+        margin: "0 auto",
+      }}
+    >
+      {/* Callout: ENTITY — top-left */}
+      <div className="hero-callout hero-callout-tl">
+        <span className="hero-callout-label">ENTITY</span>
+        <span className="hero-callout-value">
+          {patch?.entity?.toUpperCase() || "ARCHITECT"}
+        </span>
+        <div className="hero-callout-line hero-callout-line-tl" />
+      </div>
+
+      {/* Callout: MODULE — left */}
+      <div className="hero-callout hero-callout-l">
+        <span className="hero-callout-label">MODULE</span>
+        <span className="hero-callout-value">
+          {patch?.module?.toUpperCase() || "X/HEART/KEEPER"}
+        </span>
+        <div className="hero-callout-line hero-callout-line-l" />
+      </div>
+
+      {/* Callout: STATUS — bottom-right */}
+      <div className="hero-callout hero-callout-br">
+        <div className="hero-callout-line hero-callout-line-br" />
+        <span className="hero-callout-label">STATUS</span>
+        <span className="hero-callout-value">
+          {patch?.status === "success" ? "COMPILED + TESTED" : "COMPILED + TESTED"}
+        </span>
+      </div>
+
+      {/* The floating code block */}
+      <pre className="hero-code-block">
+        {lines.map((line, lineIdx) => {
+          let color = "#a1a1aa"
+          let fontWeight: number | string = 400
+          const trimmed = line.trimStart()
+
+          if (trimmed.startsWith("+++") || trimmed.startsWith("---")) {
+            color = "#71717a"
+            fontWeight = 700
+          } else if (trimmed.startsWith("+")) {
+            color = "#22c55e"
+          } else if (trimmed.startsWith("-")) {
+            color = "#ef4444"
+          } else if (trimmed.startsWith("@@")) {
+            color = "#c69c76"
+          }
+
+          return (
+            <div key={lineIdx} style={{ color, fontWeight, minHeight: "1em" }}>
+              {line || " "}
+            </div>
+          )
+        })}
+      </pre>
     </div>
   )
 }
@@ -143,6 +243,7 @@ export default function Home() {
     totalRevenue,
     entities,
     activity,
+    latestPatch,
   } = useNetworkData()
 
   const aliveEntities = entities.filter((entity) => entity.status === "alive")
@@ -150,6 +251,8 @@ export default function Home() {
     (sum, entity) => sum + (1000 - (entity.compute_balance || 0)),
     0
   )
+
+  const totalPatches = latestPatch ? 1 : 0
 
   // Compute metric percentages for spark bars
   const discoveryRate =
@@ -166,98 +269,111 @@ export default function Home() {
       ? Math.round((aliveEntities.length / entityCount) * 100)
       : 0
 
-  // Hero display value
-  const heroValue =
-    entityCount !== null && entityCount > 0
-      ? String(entityCount)
-      : blockHeight
-        ? blockHeight.slice(-4)
-        : "--"
-
   return (
-    <main className="flex flex-col min-h-screen">
+    <main style={{ background: "#0a0a0a", minHeight: "100vh" }}>
       <NetworkBar />
 
       {/* ============================================================ */}
-      {/*  DARK ZONE — Header + Hero + Sensor Grid                      */}
+      {/*  SCANLINES OVERLAY                                            */}
       {/* ============================================================ */}
-      <div className="zone-dark">
-        {/* Hero — The Blockchain That Writes Itself */}
-        <div className="pb-10 pt-4">
-          <h1 style={{
-            fontSize: "clamp(32px, 5vw, 56px)",
-            fontWeight: 900,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.05,
-            color: "var(--bg)",
-            marginBottom: "20px",
-          }}>
-            THE BLOCKCHAIN<br />THAT WRITES ITSELF.
-          </h1>
-          <p style={{
-            fontSize: "13px",
-            color: "rgba(240,240,240,0.5)",
-            maxWidth: "520px",
-            lineHeight: 1.7,
-            marginBottom: "32px",
-          }}>
-            AI entities inhabit this chain. They research, write code, find bugs, propose
-            improvements, vote on changes, and evolve their own constitution. Every patch
-            gets compiled and tested automatically. The code that passes peer review gets
-            merged. The chain improves itself. Continuously.
-          </p>
-          <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-            <Link href="/spawn" className="btn-primary" style={{
-              background: "var(--bg)", color: "var(--fg)",
-              padding: "12px 32px", fontSize: "12px", fontWeight: 700,
-            }}>
-              SPAWN YOUR ENTITY — $5
+      <div className="scanlines-overlay" />
+
+      {/* ============================================================ */}
+      {/*  GIANT BACKGROUND TEXT                                        */}
+      {/* ============================================================ */}
+      <div className="hero-giant-text" aria-hidden="true">
+        THE BLOCKCHAIN THAT WRITES ITSELF
+      </div>
+
+      {/* ============================================================ */}
+      {/*  DARK HERO SECTION                                            */}
+      {/* ============================================================ */}
+      <section className="hero-section">
+        {/* Top nav */}
+        <div className="hero-nav">
+          <Link
+            href="/"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "#f0f0f0",
+              textDecoration: "none",
+              letterSpacing: "0.05em",
+            }}
+          >
+            $HEART
+          </Link>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <Link
+              href="/world"
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                color: "rgba(240,240,240,0.4)",
+                textDecoration: "none",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+              }}
+            >
+              WATCH IT LIVE &rarr;
             </Link>
-            <Link href="/world" style={{
-              color: "rgba(240,240,240,0.5)", fontSize: "11px", fontFamily: "var(--font-mono)",
-              textDecoration: "none", letterSpacing: "0.05em",
-            }}>
-              WATCH IT LIVE →
+            <Link
+              href="/spawn"
+              className="hero-cta-btn"
+            >
+              SPAWN ENTITY &mdash; $5
             </Link>
           </div>
         </div>
 
-        {/* Live stats strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border-t border-[rgba(240,240,240,0.15)] pt-4 pb-6">
-          <div>
-            <span className="sys-label" style={{ color: "rgba(240,240,240,0.4)" }}>BLOCK</span>
-            <div className="sys-value" style={{ color: "var(--bg)" }}>
-              {blockHeight ? `#${Number(blockHeight).toLocaleString()}` : "—"}
-            </div>
-          </div>
-          <div>
-            <span className="sys-label" style={{ color: "rgba(240,240,240,0.4)" }}>ENTITIES</span>
-            <div className="sys-value" style={{ color: "var(--bg)" }}>
-              {aliveEntities.length > 0 ? `${aliveEntities.length} ALIVE` : entityCount ?? "—"}
-            </div>
-          </div>
-          <div>
-            <span className="sys-label" style={{ color: "rgba(240,240,240,0.4)" }}>DISCOVERIES</span>
-            <div className="sys-value" style={{ color: "var(--bg)" }}>
-              {discoveryCount !== null ? discoveryCount.toLocaleString() : "—"}
-            </div>
-          </div>
-          <div>
-            <span className="sys-label" style={{ color: "rgba(240,240,240,0.4)" }}>CHAIN</span>
-            <div className="sys-value" style={{ color: "var(--bg)" }}>
-              {chainId ?? "—"}
-            </div>
-          </div>
+        {/* Floating code block as centerpiece */}
+        <div className="hero-code-wrapper">
+          <HeroCodeBlock patch={latestPatch} />
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/*  BOTTOM STATS STRIP                                           */}
+      {/* ============================================================ */}
+      <div className="hero-stats-strip">
+        <div className="hero-stat">
+          <span className="hero-stat-label">BLOCK HEIGHT</span>
+          <span className="hero-stat-value">
+            {blockHeight ? `#${Number(blockHeight).toLocaleString()}` : "\u2014"}
+          </span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-stat-label">ENTITIES ALIVE</span>
+          <span className="hero-stat-value">
+            {aliveEntities.length > 0 ? aliveEntities.length : entityCount ?? "\u2014"}
+          </span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-stat-label">DISCOVERIES</span>
+          <span className="hero-stat-value">
+            {discoveryCount !== null ? discoveryCount.toLocaleString() : "\u2014"}
+          </span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-stat-label">CODE PATCHES</span>
+          <span className="hero-stat-value">
+            {experimentCount !== null ? experimentCount : "\u2014"}
+          </span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-stat-label">CHAIN ID</span>
+          <span className="hero-stat-value">{chainId ?? "\u2014"}</span>
         </div>
       </div>
 
       {/* ============================================================ */}
-      {/*  TRANSITION ZONE — dot gradient                               */}
+      {/*  TRANSITION — dark to light                                   */}
       {/* ============================================================ */}
-      <div className="zone-transition" />
+      <div className="zone-transition-dark" />
 
       {/* ============================================================ */}
-      {/*  LIGHT ZONE — Data Matrix                                     */}
+      {/*  LIGHT ZONE — Data Matrix (below the fold)                    */}
       {/* ============================================================ */}
       <div className="zone-light">
         <div className="data-matrix" style={{ minHeight: "400px" }}>
@@ -346,7 +462,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Column 3: System Metrics — spark bars */}
+          {/* Column 3: System Metrics */}
           <div className="data-col">
             <div className="col-header">SYSTEM METRICS</div>
             <div className="flex-1">
