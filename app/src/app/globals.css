@@ -2,21 +2,22 @@
 @property --angle-1 { syntax: "<angle>"; inherits: false; initial-value: -75deg; }
 @property --angle-2 { syntax: "<angle>"; inherits: false; initial-value: -45deg; }
 
-/* ── Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=IBM+Plex+Mono:wght@400;500&display=swap');
+/* ── Fonts (all local — no CDN latency) ── */
 @import url('https://api.fontshare.com/v2/css?f[]=monument-grotesk@400,500&display=swap');
 @import "tailwindcss";
 
-/* ── Alliance No.2 (local) ── */
-@font-face { font-family: 'Alliance No.2'; src: url('/fonts/AllianceNo2-Light.otf') format('opentype'); font-weight: 300; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Alliance No.2'; src: url('/fonts/AllianceNo2-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Alliance No.2'; src: url('/fonts/AllianceNo2-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Alliance No.1'; src: url('/fonts/alliance-regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Alliance No.1'; src: url('/fonts/alliance-bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/fonts/DMSans-normal.woff2') format('woff2'); font-weight: 100 1000; font-style: normal; font-display: swap; }
+@font-face { font-family: 'DM Sans'; src: url('/fonts/DMSans-italic.woff2') format('woff2'); font-weight: 100 1000; font-style: italic; font-display: swap; }
+@font-face { font-family: 'IBM Plex Mono'; src: url('/fonts/IBMPlexMono-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Mono'; src: url('/fonts/IBMPlexMono-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
 
 :root {
   --bg: #f0f0f0;
   --fg: #121212;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-sans: 'Alliance No.2', 'DM Sans', system-ui, sans-serif;
+  --font-sans: 'Alliance No.1', 'DM Sans', system-ui, sans-serif;
   --font-display: 'Monument Grotesk', 'DM Sans', system-ui, sans-serif;
 
   --heart: #ef4444;
@@ -31,7 +32,7 @@
   --color-heart: var(--heart);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --font-sans: 'Alliance No.2', 'DM Sans', system-ui, sans-serif;
+  --font-sans: 'Alliance No.1', 'DM Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
 }
 
