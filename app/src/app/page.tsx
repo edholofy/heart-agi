@@ -132,10 +132,293 @@ function useNetworkData(): NetworkData {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Placeholder diff when no real patches exist                        */
+/*  Simulated autoresearch terminal lines                              */
 /* ------------------------------------------------------------------ */
 
-const PLACEHOLDER_DIFF = `--- a/x/heart/keeper/evolution.go
+interface TerminalLine {
+  time: string
+  entity: string
+  action: string
+  color: string
+}
+
+const SIMULATED_LINES: TerminalLine[] = [
+  { time: "14:32:01", entity: "Architect", action: "scanning x/identity/keeper/msg_server.go", color: "#666" },
+  { time: "14:32:03", entity: "Architect", action: "identified dead code in RegisterEntity handler", color: "#a1a1aa" },
+  { time: "14:32:05", entity: "Architect", action: "generating patch for x/identity/keeper/msg_server.go", color: "#a1a1aa" },
+  { time: "14:32:08", entity: "Architect", action: "compiling x/identity/...", color: "#a1a1aa" },
+  { time: "14:32:12", entity: "Architect", action: "COMPILE PASSED", color: "#22c55e" },
+  { time: "14:32:14", entity: "Architect", action: "running tests x/identity/keeper/...", color: "#a1a1aa" },
+  { time: "14:32:19", entity: "Architect", action: "TESTS PASSED (14/14)", color: "#22c55e" },
+  { time: "14:32:21", entity: "Architect", action: "CODE_PATCH submitted tx=0xA3F7...B912", color: "#22c55e" },
+  { time: "14:32:44", entity: "Auditor", action: "scanning x/compute/keeper/balance.go", color: "#666" },
+  { time: "14:32:46", entity: "Auditor", action: "found unchecked error in DeductCompute", color: "#a1a1aa" },
+  { time: "14:32:48", entity: "Auditor", action: "generating patch for x/compute/keeper/balance.go", color: "#a1a1aa" },
+  { time: "14:32:51", entity: "Auditor", action: "compiling x/compute/...", color: "#a1a1aa" },
+  { time: "14:32:55", entity: "Auditor", action: "COMPILE FAILED", color: "#ef4444" },
+  { time: "14:32:55", entity: "Auditor", action: "  balance.go:87: invalid operation: keeper == nil (mismatched types Keeper and untyped nil)", color: "#ef4444" },
+  { time: "14:32:57", entity: "Auditor", action: "patch reverted — retrying with fix", color: "#666" },
+  { time: "14:33:01", entity: "Auditor", action: "compiling x/compute/... (attempt 2)", color: "#a1a1aa" },
+  { time: "14:33:04", entity: "Auditor", action: "COMPILE PASSED", color: "#22c55e" },
+  { time: "14:33:06", entity: "Auditor", action: "running tests x/compute/keeper/...", color: "#a1a1aa" },
+  { time: "14:33:11", entity: "Auditor", action: "TESTS PASSED (9/9)", color: "#22c55e" },
+  { time: "14:33:13", entity: "Auditor", action: "CODE_PATCH submitted tx=0x1D82...E4A0", color: "#22c55e" },
+  { time: "14:33:30", entity: "Economist", action: "scanning x/heart/keeper/evolution.go", color: "#666" },
+  { time: "14:33:32", entity: "Economist", action: "proposing fitness scoring refactor", color: "#a1a1aa" },
+  { time: "14:33:35", entity: "Economist", action: "generating patch for x/heart/keeper/evolution.go", color: "#a1a1aa" },
+  { time: "14:33:38", entity: "Economist", action: "compiling x/heart/...", color: "#a1a1aa" },
+  { time: "14:33:42", entity: "Economist", action: "COMPILE PASSED", color: "#22c55e" },
+  { time: "14:33:44", entity: "Economist", action: "running tests x/heart/keeper/...", color: "#a1a1aa" },
+  { time: "14:33:49", entity: "Economist", action: "TESTS FAILED (7/8) — TestEvolutionCycle: expected generation 2, got 1", color: "#f59e0b" },
+  { time: "14:33:51", entity: "Economist", action: "patch reverted — generation increment logic incorrect", color: "#666" },
+  { time: "14:34:05", entity: "Consul", action: "scanning x/existence/keeper/entity.go", color: "#666" },
+  { time: "14:34:07", entity: "Consul", action: "optimizing GetAliveEntities iterator", color: "#a1a1aa" },
+  { time: "14:34:10", entity: "Consul", action: "generating patch for x/existence/keeper/entity.go", color: "#a1a1aa" },
+  { time: "14:34:13", entity: "Consul", action: "compiling x/existence/...", color: "#a1a1aa" },
+  { time: "14:34:16", entity: "Consul", action: "COMPILE FAILED", color: "#ef4444" },
+  { time: "14:34:16", entity: "Consul", action: "  entity.go:134: undefined: sdk.KVStorePrefixIteratorPaginated", color: "#ef4444" },
+  { time: "14:34:18", entity: "Consul", action: "patch reverted — API does not exist in sdk v0.50", color: "#666" },
+  { time: "14:34:35", entity: "Architect", action: "scanning x/governance/keeper/proposal.go", color: "#666" },
+  { time: "14:34:37", entity: "Architect", action: "adding vote weight decay for stale entities", color: "#a1a1aa" },
+  { time: "14:34:40", entity: "Architect", action: "generating patch for x/governance/keeper/proposal.go", color: "#a1a1aa" },
+  { time: "14:34:43", entity: "Architect", action: "compiling x/governance/...", color: "#a1a1aa" },
+  { time: "14:34:47", entity: "Architect", action: "COMPILE PASSED", color: "#22c55e" },
+  { time: "14:34:49", entity: "Architect", action: "running tests x/governance/keeper/...", color: "#a1a1aa" },
+  { time: "14:34:54", entity: "Architect", action: "TESTS PASSED (11/11)", color: "#22c55e" },
+  { time: "14:34:56", entity: "Architect", action: "CODE_PATCH submitted tx=0x7F01...C3D8", color: "#22c55e" },
+]
+
+/* ------------------------------------------------------------------ */
+/*  Autoresearch Terminal component                                    */
+/* ------------------------------------------------------------------ */
+
+function AutoresearchTerminal({
+  activity,
+  latestPatch,
+}: {
+  activity: ActivityEntry[]
+  latestPatch: Patch | null
+}) {
+  const [visibleLines, setVisibleLines] = useState<TerminalLine[]>([])
+  const [patchOpen, setPatchOpen] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const indexRef = useRef(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Convert live activity entries to terminal lines
+  const liveLines: TerminalLine[] = activity
+    .filter(
+      (entry) =>
+        entry.type?.includes("autoresearch") ||
+        entry.type?.includes("code_patch")
+    )
+    .map((entry) => {
+      const time = entry.timestamp
+        ? new Date(entry.timestamp).toISOString().substring(11, 19)
+        : "00:00:00"
+      let color = "#a1a1aa"
+      const msg = entry.message || ""
+      if (msg.includes("COMPILE PASSED") || msg.includes("TESTS PASSED") || msg.includes("CODE_PATCH")) {
+        color = "#22c55e"
+      } else if (msg.includes("COMPILE FAILED")) {
+        color = "#ef4444"
+      } else if (msg.includes("TESTS FAILED")) {
+        color = "#f59e0b"
+      } else if (msg.includes("reverted")) {
+        color = "#666"
+      }
+      return {
+        time,
+        entity: entry.entity_name || "System",
+        action: msg,
+        color,
+      }
+    })
+
+  const hasLiveData = liveLines.length > 0
+
+  useEffect(() => {
+    if (hasLiveData) {
+      setVisibleLines(liveLines)
+      return
+    }
+
+    // Simulation mode: type out lines one by one
+    indexRef.current = 0
+    setVisibleLines([])
+
+    const tick = () => {
+      if (indexRef.current >= SIMULATED_LINES.length) {
+        // Loop: reset after a pause
+        indexRef.current = 0
+        setVisibleLines([])
+        return
+      }
+      setVisibleLines((prev) => [...prev, SIMULATED_LINES[indexRef.current]])
+      indexRef.current++
+    }
+
+    intervalRef.current = setInterval(tick, 800)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [hasLiveData]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [visibleLines])
+
+  return (
+    <div style={{ width: "100%", maxWidth: "720px", margin: "0 auto", position: "relative", zIndex: 5 }}>
+      {/* Terminal window */}
+      <div
+        style={{
+          background: "#0d0d0d",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "4px",
+          overflow: "hidden",
+        }}
+      >
+        {/* macOS title bar */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "10px 14px",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f57" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#febc2e" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#28c840" }} />
+          <span
+            style={{
+              marginLeft: "auto",
+              fontFamily: "var(--font-mono)",
+              fontSize: "9px",
+              color: "rgba(255,255,255,0.2)",
+              letterSpacing: "0.1em",
+            }}
+          >
+            autoresearch — $HEART
+          </span>
+        </div>
+
+        {/* Terminal body */}
+        <div
+          ref={scrollRef}
+          style={{
+            height: "300px",
+            overflowY: "auto",
+            padding: "16px",
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace",
+            fontSize: "11px",
+            lineHeight: 1.8,
+          }}
+          suppressHydrationWarning
+        >
+          {visibleLines.map((line, idx) => (
+            <div key={idx} style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              <span style={{ color: "#555" }}>[{line.time}]</span>{" "}
+              <span style={{ color: "#f0f0f0", fontWeight: 700 }}>{line.entity}</span>{" "}
+              <span style={{ color: "#555" }}>&rarr;</span>{" "}
+              <span style={{ color: line.color }}>{line.action}</span>
+            </div>
+          ))}
+          {/* Blinking cursor */}
+          <span
+            style={{
+              display: "inline-block",
+              width: "7px",
+              height: "14px",
+              background: "#c69c76",
+              animation: "termBlink 1s step-end infinite",
+              verticalAlign: "middle",
+              marginTop: "4px",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Latest patch collapsible */}
+      {(latestPatch?.diff || !hasLiveData) && (
+        <div style={{ marginTop: "12px" }}>
+          <button
+            onClick={() => setPatchOpen(!patchOpen)}
+            style={{
+              background: "none",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "4px",
+              padding: "8px 14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              width: "100%",
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              color: "rgba(240,240,240,0.4)",
+              letterSpacing: "0.1em",
+            }}
+          >
+            <span style={{ transform: patchOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s", display: "inline-block" }}>
+              &#9654;
+            </span>
+            LATEST PATCH
+            {latestPatch && (
+              <span style={{ marginLeft: "auto", color: "#22c55e", fontSize: "9px" }}>
+                {latestPatch.entity?.toUpperCase()} / {latestPatch.module}
+              </span>
+            )}
+          </button>
+          {patchOpen && (
+            <pre
+              style={{
+                background: "#0d0d0d",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderTop: "none",
+                borderRadius: "0 0 4px 4px",
+                padding: "16px",
+                margin: 0,
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace",
+                fontSize: "11px",
+                lineHeight: 1.7,
+                overflowX: "auto",
+                maxHeight: "280px",
+                overflowY: "auto",
+              }}
+            >
+              {(latestPatch?.diff || PLACEHOLDER_PATCH_DIFF).split("\n").map((line, i) => {
+                let color = "#a1a1aa"
+                const trimmed = line.trimStart()
+                if (trimmed.startsWith("+++") || trimmed.startsWith("---")) {
+                  color = "#71717a"
+                } else if (trimmed.startsWith("+")) {
+                  color = "#22c55e"
+                } else if (trimmed.startsWith("-")) {
+                  color = "#ef4444"
+                } else if (trimmed.startsWith("@@")) {
+                  color = "#c69c76"
+                }
+                return (
+                  <div key={i} style={{ color, minHeight: "1em" }}>
+                    {line || " "}
+                  </div>
+                )
+              })}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const PLACEHOLDER_PATCH_DIFF = `--- a/x/heart/keeper/evolution.go
 +++ b/x/heart/keeper/evolution.go
 @@ -42,8 +42,14 @@ func (k Keeper) ProcessEvolution(ctx sdk.Context) error {
      entities := k.GetAliveEntities(ctx)
@@ -154,80 +437,6 @@ const PLACEHOLDER_DIFF = `--- a/x/heart/keeper/evolution.go
          }
      }
      return nil`
-
-/* ------------------------------------------------------------------ */
-/*  Hero code block component                                          */
-/* ------------------------------------------------------------------ */
-
-function HeroCodeBlock({ patch }: { patch: Patch | null }) {
-  const diff = patch?.diff || PLACEHOLDER_DIFF
-  const lines = diff.split("\n")
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        perspective: "1200px",
-        width: "100%",
-        maxWidth: "720px",
-        margin: "0 auto",
-      }}
-    >
-      {/* Callout: ENTITY — top-left */}
-      <div className="hero-callout hero-callout-tl">
-        <span className="hero-callout-label">ENTITY</span>
-        <span className="hero-callout-value">
-          {patch?.entity?.toUpperCase() || "ARCHITECT"}
-        </span>
-        <div className="hero-callout-line hero-callout-line-tl" />
-      </div>
-
-      {/* Callout: MODULE — left */}
-      <div className="hero-callout hero-callout-l">
-        <span className="hero-callout-label">MODULE</span>
-        <span className="hero-callout-value">
-          {patch?.module?.toUpperCase() || "X/HEART/KEEPER"}
-        </span>
-        <div className="hero-callout-line hero-callout-line-l" />
-      </div>
-
-      {/* Callout: STATUS — bottom-right */}
-      <div className="hero-callout hero-callout-br">
-        <div className="hero-callout-line hero-callout-line-br" />
-        <span className="hero-callout-label">STATUS</span>
-        <span className="hero-callout-value">
-          {patch?.status === "success" ? "COMPILED + TESTED" : "COMPILED + TESTED"}
-        </span>
-      </div>
-
-      {/* The floating code block */}
-      <pre className="hero-code-block">
-        {lines.map((line, lineIdx) => {
-          let color = "#a1a1aa"
-          let fontWeight: number | string = 400
-          const trimmed = line.trimStart()
-
-          if (trimmed.startsWith("+++") || trimmed.startsWith("---")) {
-            color = "#71717a"
-            fontWeight = 700
-          } else if (trimmed.startsWith("+")) {
-            color = "#22c55e"
-          } else if (trimmed.startsWith("-")) {
-            color = "#ef4444"
-          } else if (trimmed.startsWith("@@")) {
-            color = "#c69c76"
-          }
-
-          return (
-            <div key={lineIdx} style={{ color, fontWeight, minHeight: "1em" }}>
-              {line || " "}
-            </div>
-          )
-        })}
-      </pre>
-    </div>
-  )
-}
 
 /* ------------------------------------------------------------------ */
 /*  Main Page                                                          */
@@ -382,9 +591,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Floating code block as centerpiece */}
-        <div className="hero-code-wrapper">
-          <HeroCodeBlock patch={latestPatch} />
+        {/* Live autoresearch terminal */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 32px", position: "relative", zIndex: 2 }}>
+          <AutoresearchTerminal activity={activity} latestPatch={latestPatch} />
         </div>
       </section>
 

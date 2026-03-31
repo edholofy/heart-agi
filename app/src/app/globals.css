@@ -455,110 +455,13 @@ body {
   transform: translateY(-1px);
 }
 
-.hero-code-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 32px;
-  position: relative;
-  z-index: 2;
-}
-
-.hero-code-block {
-  background: #111;
-  border: 1px solid rgba(198, 156, 118, 0.15);
-  color: #a1a1aa;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.7;
-  padding: 24px 28px;
-  margin: 0;
-  overflow-x: auto;
-  transform: rotateX(5deg) rotateY(-5deg);
-  box-shadow:
-    0 0 40px rgba(198, 156, 118, 0.06),
-    0 20px 60px rgba(0, 0, 0, 0.5);
-  animation: heroFloat 8s ease-in-out infinite;
-  width: 100%;
-  max-width: 680px;
-}
-
-@keyframes heroFloat {
-  0%, 100% { transform: rotateX(5deg) rotateY(-5deg) translateY(0px); }
-  50% { transform: rotateX(5deg) rotateY(-5deg) translateY(-10px); }
-}
-
 /* ------------------------------------------------------------------ */
-/*  Callout annotations                                                */
+/*  Terminal blink cursor                                               */
 /* ------------------------------------------------------------------ */
 
-.hero-callout {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 5;
-}
-
-.hero-callout-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #c69c76;
-}
-
-.hero-callout-value {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 400;
-  color: #f0f0f0;
-  letter-spacing: 0.02em;
-}
-
-.hero-callout-tl {
-  top: -8px;
-  left: -80px;
-}
-
-.hero-callout-l {
-  top: 50%;
-  left: -80px;
-  transform: translateY(-50%);
-}
-
-.hero-callout-br {
-  bottom: -8px;
-  right: -80px;
-  text-align: right;
-}
-
-.hero-callout-line {
-  position: absolute;
-  background: rgba(198, 156, 118, 0.25);
-}
-
-.hero-callout-line-tl {
-  width: 40px;
-  height: 1px;
-  top: 50%;
-  right: -44px;
-}
-
-.hero-callout-line-l {
-  width: 40px;
-  height: 1px;
-  top: 50%;
-  right: -44px;
-}
-
-.hero-callout-line-br {
-  width: 40px;
-  height: 1px;
-  top: 50%;
-  left: -44px;
+@keyframes termBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* ------------------------------------------------------------------ */
@@ -627,15 +530,6 @@ body {
   .hero-giant-text {
     font-size: 12vw;
   }
-  .hero-callout-tl,
-  .hero-callout-l,
-  .hero-callout-br {
-    display: none;
-  }
-  .hero-code-block {
-    font-size: 10px;
-    padding: 16px 20px;
-  }
 }
 
 @media (max-width: 640px) {
@@ -653,19 +547,6 @@ body {
     padding: 16px;
     flex-wrap: wrap;
     gap: 12px;
-  }
-  .hero-code-wrapper {
-    padding: 20px 16px;
-  }
-  .hero-code-block {
-    font-size: 9px;
-    padding: 12px 14px;
-    transform: none;
-    animation: heroFloatMobile 8s ease-in-out infinite;
-  }
-  @keyframes heroFloatMobile {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-6px); }
   }
   .hero-giant-text {
     font-size: 18vw;
