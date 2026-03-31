@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { SwarmVisualization } from "@/components/swarm/SwarmVisualization"
 import { runSwarm, listEntities, type SwarmResult, type SwarmContribution, type ServerEntity } from "@/lib/daemon-client"
 
@@ -97,7 +96,6 @@ export default function SwarmPage() {
 
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "var(--fg)" }}>
-      <NetworkBar />
 
       {/* ── Dark zone header ── */}
       <div className="zone-dark" style={{ paddingTop: 32, paddingBottom: 24 }}>

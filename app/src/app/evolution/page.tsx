@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 
 /* ------------------------------------------------------------------ */
@@ -277,7 +276,6 @@ export default function EvolutionPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg, #f0f0f0)" }}>
-      <NetworkBar />
 
       {/* ============================================================ */}
       {/*  PAGE HEADER — clean, compact                                 */}

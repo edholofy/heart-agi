@@ -13,6 +13,39 @@ import {
 
 type View = "idle" | "mnemonic" | "import"
 
+const MONO = "'IBM Plex Mono', 'SF Mono', 'Roboto Mono', monospace"
+
+const DROPDOWN: React.CSSProperties = {
+  position: "absolute",
+  right: 0,
+  top: "calc(100% + 8px)",
+  width: 240,
+  background: "rgba(18,18,18,0.95)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 12,
+  backdropFilter: "blur(24px)",
+  WebkitBackdropFilter: "blur(24px)",
+  padding: 6,
+  zIndex: 9999,
+  boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+}
+
+const PILL: React.CSSProperties = {
+  fontFamily: MONO,
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  padding: "6px 14px",
+  borderRadius: 8,
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.06)",
+  color: "rgba(255,255,255,0.6)",
+  cursor: "pointer",
+  transition: "all 150ms",
+  whiteSpace: "nowrap",
+}
+
 export function WalletButton() {
   const wallet = useAppStore((s) => s.wallet)
   const setWallet = useAppStore((s) => s.setWallet)
@@ -24,26 +57,15 @@ export function WalletButton() {
   const [copied, setCopied] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  /* ---------------------------------------------------------------- */
-  /*  Auto-load wallet on mount                                       */
-  /* ---------------------------------------------------------------- */
+  /* Auto-load wallet on mount */
   const autoLoad = useCallback(async () => {
     if (wallet.connected) return
-
     setWallet({ ...wallet, connecting: true, error: null })
-
     try {
       const existing = await loadWallet()
       if (existing) {
         const balance = await getBalance(existing.address)
-        setWallet({
-          address: existing.address,
-          mnemonic: existing.mnemonic,
-          balance,
-          connected: true,
-          connecting: false,
-          error: null,
-        })
+        setWallet({ address: existing.address, mnemonic: existing.mnemonic, balance, connected: true, connecting: false, error: null })
       } else {
         setWallet({ ...wallet, connecting: false })
       }
@@ -53,13 +75,9 @@ export function WalletButton() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    autoLoad()
-  }, [autoLoad])
+  useEffect(() => { autoLoad() }, [autoLoad])
 
-  /* ---------------------------------------------------------------- */
-  /*  Close dropdown on outside click                                  */
-  /* ---------------------------------------------------------------- */
+  /* Close dropdown on outside click */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -72,58 +90,32 @@ export function WalletButton() {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [showMenu])
 
-  /* ---------------------------------------------------------------- */
-  /*  Handlers                                                         */
-  /* ---------------------------------------------------------------- */
-
+  /* Handlers */
   async function handleCreate() {
     setWallet({ ...wallet, connecting: true, error: null })
     try {
       const { address, mnemonic } = await createWallet()
       const balance = await getBalance(address)
-      setWallet({
-        address,
-        mnemonic,
-        balance,
-        connected: true,
-        connecting: false,
-        error: null,
-      })
+      setWallet({ address, mnemonic, balance, connected: true, connecting: false, error: null })
       setView("mnemonic")
       setShowMenu(true)
     } catch (err: unknown) {
-      setWallet({
-        ...wallet,
-        connecting: false,
-        error: (err as Error).message || "Failed to create wallet",
-      })
+      setWallet({ ...wallet, connecting: false, error: (err as Error).message || "Failed to create wallet" })
     }
   }
 
   async function handleImportSubmit() {
     const trimmed = importInput.trim()
     if (!trimmed) return
-
     setWallet({ ...wallet, connecting: true, error: null })
     try {
       const { address } = await importWallet(trimmed)
       const balance = await getBalance(address)
-      setWallet({
-        address,
-        mnemonic: trimmed,
-        balance,
-        connected: true,
-        connecting: false,
-        error: null,
-      })
+      setWallet({ address, mnemonic: trimmed, balance, connected: true, connecting: false, error: null })
       setView("idle")
       setImportInput("")
     } catch (err: unknown) {
-      setWallet({
-        ...wallet,
-        connecting: false,
-        error: (err as Error).message || "Invalid mnemonic",
-      })
+      setWallet({ ...wallet, connecting: false, error: (err as Error).message || "Invalid mnemonic" })
     }
   }
 
@@ -137,36 +129,19 @@ export function WalletButton() {
 
   function handleDisconnect() {
     disconnectWallet()
-    setWallet({
-      address: null,
-      mnemonic: null,
-      balance: "0",
-      connected: false,
-      connecting: false,
-      error: null,
-    })
+    setWallet({ address: null, mnemonic: null, balance: "0", connected: false, connecting: false, error: null })
     setShowMenu(false)
     setView("idle")
-    // Also clear persisted wallet in zustand store
     try {
       const stored = localStorage.getItem("humans-ai-store")
       if (stored) {
         const data = JSON.parse(stored)
         if (data.state) {
-          data.state.wallet = {
-            address: null,
-            mnemonic: null,
-            balance: "0",
-            connected: false,
-            connecting: false,
-            error: null,
-          }
+          data.state.wallet = { address: null, mnemonic: null, balance: "0", connected: false, connecting: false, error: null }
           localStorage.setItem("humans-ai-store", JSON.stringify(data))
         }
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
 
   async function handleRefreshBalance() {
@@ -174,9 +149,7 @@ export function WalletButton() {
     try {
       const balance = await getBalance(wallet.address)
       setWallet({ ...wallet, balance })
-    } catch {
-      /* silently ignore */
-    }
+    } catch { /* silently ignore */ }
   }
 
   /* ---------------------------------------------------------------- */
@@ -184,143 +157,68 @@ export function WalletButton() {
   /* ---------------------------------------------------------------- */
   if (wallet.connected && wallet.address) {
     return (
-      <div className="relative" ref={menuRef}>
-        <div className="flex items-center gap-2">
-          {/* Balance pill */}
-          <div className="hidden sm:flex items-center gap-1.5 btn-secondary px-3 py-1.5 text-xs font-mono">
-            <span className="text-white font-medium">
-              {Number(wallet.balance).toFixed(2)}
-            </span>
-            <span className="text-[rgba(255,255,255,0.4)]">HEART</span>
-          </div>
+      <div style={{ position: "relative" }} ref={menuRef}>
+        <button
+          onClick={() => { setShowMenu(!showMenu); setView("idle") }}
+          style={PILL}
+        >
+          {shortenAddress(wallet.address)}
+        </button>
 
-          {/* Address pill */}
-          <button
-            onClick={() => {
-              setShowMenu(!showMenu)
-              setView("idle")
-            }}
-            className="btn-secondary px-3 py-1.5 text-xs font-mono text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
-          >
-            {shortenAddress(wallet.address)}
-          </button>
-        </div>
-
-        {/* Dropdown */}
         {showMenu && (
-          <div className="absolute right-0 top-full mt-2 w-64 glass-sm p-2 z-50">
+          <div style={DROPDOWN}>
             {/* Header */}
-            <div className="px-3 py-2 mb-1">
-              <div className="text-[10px] text-[rgba(255,255,255,0.3)] font-mono uppercase tracking-wider">
+            <div style={{ padding: "10px 12px 8px" }}>
+              <div style={{ fontFamily: MONO, fontSize: 9, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Cosmos Wallet
               </div>
-              <div className="text-xs font-mono text-white mt-1 break-all">
+              <div style={{ fontFamily: MONO, fontSize: 10, color: "#fff", marginTop: 4, wordBreak: "break-all", lineHeight: 1.5 }}>
                 {wallet.address}
               </div>
-              <div className="text-[10px] text-[rgba(255,255,255,0.3)] font-mono mt-1">
-                Chain: heart-testnet-1
+              <div style={{ fontFamily: MONO, fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>
+                {Number(wallet.balance).toFixed(2)} HEART
               </div>
             </div>
 
-            <div className="h-px bg-[rgba(255,255,255,0.05)] my-1" />
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
 
-            {/* Show mnemonic warning / reveal */}
             {view === "mnemonic" || showMnemonic ? (
-              <div className="px-3 py-2">
-                <div className="text-[10px] text-[#f59e0b] font-mono uppercase tracking-wider mb-2">
+              <div style={{ padding: "8px 12px" }}>
+                <div style={{ fontFamily: MONO, fontSize: 9, color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
                   SAVE YOUR SEED PHRASE
                 </div>
-                <div className="bg-[rgba(0,0,0,0.3)] rounded-lg p-2 text-xs font-mono text-white break-all leading-relaxed select-all">
+                <div style={{ fontFamily: MONO, fontSize: 10, color: "#fff", background: "rgba(0,0,0,0.4)", borderRadius: 8, padding: 10, lineHeight: 1.7, wordBreak: "break-all", userSelect: "all" }}>
                   {wallet.mnemonic}
                 </div>
-                <div className="text-[10px] text-[#f59e0b] mt-2 p-2 rounded-lg bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.15)]">
-                  This is a TESTNET wallet stored in your browser. Do NOT use
-                  for real funds. For mainnet, use a hardware wallet.
+                <div style={{ fontFamily: MONO, fontSize: 9, color: "#f59e0b", marginTop: 8, padding: 8, background: "rgba(245,158,11,0.08)", borderRadius: 6, border: "1px solid rgba(245,158,11,0.15)" }}>
+                  TESTNET wallet. Do NOT use for real funds.
                 </div>
-                <div className="text-[10px] text-[#ef4444] mt-2">
-                  Write this down. You will NOT see it again after closing this
-                  menu.
-                </div>
-                <button
-                  onClick={() => {
-                    if (wallet.mnemonic) {
-                      navigator.clipboard.writeText(wallet.mnemonic)
-                    }
-                  }}
-                  className="mt-2 w-full text-center text-[10px] text-[rgba(255,255,255,0.5)] hover:text-white py-1"
-                >
-                  Copy to clipboard
-                </button>
-                <button
-                  onClick={() => {
-                    setView("idle")
-                    setShowMnemonic(false)
-                  }}
-                  className="mt-1 w-full text-center text-[10px] text-[rgba(255,255,255,0.3)] hover:text-white py-1"
-                >
-                  I saved it
-                </button>
+                <MnItem onClick={() => { if (wallet.mnemonic) navigator.clipboard.writeText(wallet.mnemonic) }}>Copy seed phrase</MnItem>
+                <MnItem onClick={() => { setView("idle"); setShowMnemonic(false) }}>I saved it</MnItem>
               </div>
             ) : view === "import" ? (
-              <div className="px-3 py-2">
-                <div className="text-[10px] text-[rgba(255,255,255,0.3)] font-mono uppercase tracking-wider mb-2">
-                  Import Mnemonic
-                </div>
+              <div style={{ padding: "8px 12px" }}>
                 <textarea
                   rows={3}
                   value={importInput}
                   onChange={(e) => setImportInput(e.target.value)}
-                  placeholder="Enter your 12 or 24 word seed phrase..."
-                  className="w-full bg-[rgba(0,0,0,0.3)] text-xs font-mono text-white p-2 rounded-lg resize-none outline-none placeholder:text-[rgba(255,255,255,0.2)]"
+                  placeholder="Enter your seed phrase..."
+                  style={{ width: "100%", fontFamily: MONO, fontSize: 10, color: "#fff", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 10, resize: "none", outline: "none" }}
                 />
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={handleImportSubmit}
-                    className="flex-1 text-[10px] text-white bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.15)] rounded-lg py-1.5"
-                  >
-                    Import
-                  </button>
-                  <button
-                    onClick={() => {
-                      setView("idle")
-                      setImportInput("")
-                    }}
-                    className="flex-1 text-[10px] text-[rgba(255,255,255,0.4)] hover:text-white rounded-lg py-1.5"
-                  >
-                    Cancel
-                  </button>
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  <MnItem onClick={handleImportSubmit}>Import</MnItem>
+                  <MnItem onClick={() => { setView("idle"); setImportInput(""); }}>Cancel</MnItem>
                 </div>
               </div>
             ) : (
               <>
-                <MenuItem onClick={handleCopy}>
-                  {copied ? "Copied!" : "Copy Address"}
-                </MenuItem>
-                <MenuItem onClick={handleRefreshBalance}>
-                  Refresh Balance
-                </MenuItem>
-                <MenuItem onClick={() => setShowMnemonic(true)}>
-                  Show Seed Phrase
-                </MenuItem>
-                <MenuItem onClick={() => setView("import")}>
-                  Import Wallet
-                </MenuItem>
-                <MenuItem
-                  onClick={() =>
-                    window.open(
-                      "/faucet",
-                      "_blank"
-                    )
-                  }
-                >
-                  Get Test HEART
-                </MenuItem>
-
-                <div className="h-px bg-[rgba(255,255,255,0.05)] my-1" />
-
-                <MenuItem onClick={handleDisconnect} danger>
-                  Disconnect
-                </MenuItem>
+                <MnItem onClick={handleCopy}>{copied ? "Copied!" : "Copy Address"}</MnItem>
+                <MnItem onClick={handleRefreshBalance}>Refresh Balance</MnItem>
+                <MnItem onClick={() => setShowMnemonic(true)}>Show Seed Phrase</MnItem>
+                <MnItem onClick={() => setView("import")}>Import Wallet</MnItem>
+                <MnItem onClick={() => window.open("/faucet", "_blank")}>Get Test HEART</MnItem>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 0" }} />
+                <MnItem onClick={handleDisconnect} danger>Disconnect</MnItem>
               </>
             )}
           </div>
@@ -333,57 +231,36 @@ export function WalletButton() {
   /*  Disconnected state                                               */
   /* ---------------------------------------------------------------- */
   return (
-    <div className="relative" ref={menuRef}>
-      <div className="flex items-center gap-2">
-        {wallet.error && (
-          <span className="text-[10px] text-[#ef4444] hidden sm:block max-w-[140px] truncate">
-            {wallet.error}
-          </span>
-        )}
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          disabled={wallet.connecting}
-          className="btn-secondary px-4 py-2 text-xs font-medium tracking-wide disabled:opacity-50"
-        >
-          {wallet.connecting ? "CONNECTING..." : "CREATE WALLET"}
-        </button>
-      </div>
+    <div style={{ position: "relative" }} ref={menuRef}>
+      <button
+        onClick={() => setShowMenu(!showMenu)}
+        disabled={wallet.connecting}
+        style={{
+          ...PILL,
+          opacity: wallet.connecting ? 0.5 : 1,
+          cursor: wallet.connecting ? "wait" : "pointer",
+        }}
+      >
+        {wallet.connecting ? "..." : "CONNECT"}
+      </button>
 
       {showMenu && !wallet.connecting && (
-        <div className="absolute right-0 top-full mt-2 w-56 glass-sm p-2 z-50">
-          <MenuItem onClick={handleCreate}>
-            Generate New Wallet
-          </MenuItem>
-          <MenuItem onClick={() => { setView("import"); }}>
-            Import Existing Wallet
-          </MenuItem>
+        <div style={DROPDOWN}>
+          <MnItem onClick={handleCreate}>Generate New Wallet</MnItem>
+          <MnItem onClick={() => setView("import")}>Import Existing Wallet</MnItem>
 
           {view === "import" && (
-            <div className="px-3 py-2">
+            <div style={{ padding: "8px 12px" }}>
               <textarea
                 rows={3}
                 value={importInput}
                 onChange={(e) => setImportInput(e.target.value)}
-                placeholder="Enter your 12 or 24 word seed phrase..."
-                className="w-full bg-[rgba(0,0,0,0.3)] text-xs font-mono text-white p-2 rounded-lg resize-none outline-none placeholder:text-[rgba(255,255,255,0.2)]"
+                placeholder="Enter your seed phrase..."
+                style={{ width: "100%", fontFamily: MONO, fontSize: 10, color: "#fff", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 10, resize: "none", outline: "none" }}
               />
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={handleImportSubmit}
-                  className="flex-1 text-[10px] text-white bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.15)] rounded-lg py-1.5"
-                >
-                  Import
-                </button>
-                <button
-                  onClick={() => {
-                    setView("idle")
-                    setImportInput("")
-                    setShowMenu(false)
-                  }}
-                  className="flex-1 text-[10px] text-[rgba(255,255,255,0.4)] hover:text-white rounded-lg py-1.5"
-                >
-                  Cancel
-                </button>
+              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                <MnItem onClick={handleImportSubmit}>Import</MnItem>
+                <MnItem onClick={() => { setView("idle"); setImportInput(""); setShowMenu(false) }}>Cancel</MnItem>
               </div>
             </div>
           )}
@@ -394,26 +271,29 @@ export function WalletButton() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Shared menu-item component                                         */
+/*  Menu item                                                          */
 /* ------------------------------------------------------------------ */
 
-function MenuItem({
-  children,
-  onClick,
-  danger,
-}: {
-  children: React.ReactNode
-  onClick: () => void
-  danger?: boolean
-}) {
+function MnItem({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${
-        danger
-          ? "text-[#ef4444] hover:bg-[rgba(239,68,68,0.1)]"
-          : "text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.05)] hover:text-white"
-      }`}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        fontFamily: MONO,
+        fontSize: 11,
+        padding: "8px 12px",
+        borderRadius: 6,
+        border: "none",
+        background: "transparent",
+        color: danger ? "#ef4444" : "rgba(255,255,255,0.6)",
+        cursor: "pointer",
+        transition: "background 150ms",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = danger ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.06)" }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
     >
       {children}
     </button>

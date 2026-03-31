@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import { createProposal, voteProposal } from "@/lib/chain-tx"
 import { useAppStore } from "@/lib/store"
@@ -190,7 +189,6 @@ export default function GovernancePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* ── ZONE DARK ── */}
       <div className="zone-dark">

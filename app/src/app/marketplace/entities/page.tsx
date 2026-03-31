@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { listEntities, breedEntities, type ServerEntity } from "@/lib/daemon-client"
 import { listEntityForSale, buyEntity, delistEntity } from "@/lib/chain-tx"
 import { useAppStore } from "@/lib/store"
@@ -106,7 +105,6 @@ export default function EntityMarketplacePage() {
 
   return (
     <main className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* DARK ZONE */}
       <div className="zone-dark">

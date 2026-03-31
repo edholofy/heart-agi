@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import { licenseArtifact } from "@/lib/chain-tx"
 import { useAppStore } from "@/lib/store"
@@ -193,7 +192,6 @@ export default function ArtifactsPage() {
 
   return (
     <main className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* DARK ZONE */}
       <div className="zone-dark">

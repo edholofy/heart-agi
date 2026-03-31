@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
 
@@ -261,7 +260,6 @@ export default function ExplorerPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* ── ZONE DARK ── */}
       <div className="zone-dark">

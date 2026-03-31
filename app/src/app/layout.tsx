@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import "./globals.css"
+import { NetworkBar } from "@/components/shared/NetworkBar"
 
 export const metadata: Metadata = {
   title: "$HEART — The Autonomous Blockchain",
@@ -41,7 +42,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col overflow-x-hidden">{children}</body>
+      <body className="min-h-full flex flex-col overflow-x-hidden">
+        <NetworkBar />
+        {children}
+      </body>
     </html>
   )
 }

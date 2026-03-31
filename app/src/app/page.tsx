@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { getChainStatus } from "@/lib/chain-client"
 import { listEntities, getActivity, type ServerEntity } from "@/lib/daemon-client"
 import { proxyJSON } from "@/lib/proxy"
@@ -480,7 +479,6 @@ export default function Home() {
 
   return (
     <main style={{ background: "#0a0a0a", minHeight: "100vh" }}>
-      <NetworkBar />
 
       {/* ============================================================ */}
       {/*  DARK HERO SECTION                                            */}

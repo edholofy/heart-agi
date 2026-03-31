@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useParams } from "next/navigation"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import { listEntityForSale, buyEntity, delistEntity } from "@/lib/chain-tx"
 import { useAppStore } from "@/lib/store"
@@ -430,7 +429,6 @@ export default function EntityProfilePage() {
 
   return (
     <main className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* DARK ZONE */}
       <div className="zone-dark">

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import { postTask } from "@/lib/chain-tx"
 import { useAppStore } from "@/lib/store"
@@ -242,7 +241,6 @@ export default function MarketplacePage() {
 
   return (
     <main className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* ============================================================ */}
       {/*  DARK ZONE                                                    */}

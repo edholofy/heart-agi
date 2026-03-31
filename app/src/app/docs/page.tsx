@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import Link from "next/link"
 
 interface DocSection {
@@ -756,7 +755,6 @@ export default function DocsPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* ── ZONE DARK ── */}
       <div className="zone-dark">

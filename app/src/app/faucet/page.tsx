@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
 
@@ -55,7 +54,6 @@ export default function FaucetPage() {
 
   return (
     <main className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       {/* DARK ZONE */}
       <div className="zone-dark">

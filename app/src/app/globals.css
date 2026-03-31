@@ -1,21 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+/* ── Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=monument-grotesk@400,500&display=swap');
 @import "tailwindcss";
 
+/* ── Alliance No.2 (local) ── */
+@font-face { font-family: 'Alliance No.2'; src: url('/fonts/AllianceNo2-Light.otf') format('opentype'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Alliance No.2'; src: url('/fonts/AllianceNo2-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Alliance No.2'; src: url('/fonts/AllianceNo2-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* ── Glass button angle animation ── */
+@property --angle-1 { syntax: "<angle>"; inherits: false; initial-value: -75deg; }
+@property --angle-2 { syntax: "<angle>"; inherits: false; initial-value: -45deg; }
+
 :root {
-  /* System Monitor — Brutalist Light */
   --bg: #f0f0f0;
   --fg: #121212;
-  --dot-size: 1.5px;
-  --grid-size: 6px;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', 'Courier New', monospace;
-  --font-mono-sys: 'SF Mono', 'Roboto Mono', 'JetBrains Mono', 'Courier New', monospace;
-  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: 'Alliance No.2', 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Monument Grotesk', 'DM Sans', system-ui, sans-serif;
 
-  /* Legacy compat tokens */
   --heart: #ef4444;
   --success: #22c55e;
   --warning: #f59e0b;
-
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -25,8 +31,8 @@
   --color-heart: var(--heart);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --font-sans: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Alliance No.2', 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 }
 
 body {
@@ -35,8 +41,9 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.5;
+  padding-top: 72px; /* space for fixed navbar */
 }
 
 /* Scrollbar — minimal */
@@ -45,9 +52,123 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.35); }
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/*  Glass Button                                                       */
+/* ================================================================== */
+
+.glass-btn-wrap {
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  font-size: 14px;
+}
+.glass-btn-wrap.sm { font-size: 11px; }
+.glass-btn-wrap.sm .glass-btn { padding: 0.45em 1.1em; }
+.glass-btn-wrap.sm .glass-btn span { font-size: 11px; letter-spacing: 0.03em; }
+
+.glass-btn {
+  all: unset;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+  z-index: 3;
+  backdrop-filter: blur(clamp(1px, 0.125em, 4px));
+  background: linear-gradient(-75deg, rgba(255,255,255,0.05), rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+  border-radius: 999vw;
+  padding: 0.75em 1.5em;
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  position: relative;
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(0,0,0,0.05),
+    inset 0 -0.125em 0.125em rgba(255,255,255,0.5),
+    0 0.25em 0.125em -0.125em rgba(0,0,0,0.2),
+    inset 0 0 0.1em 0.25em rgba(255,255,255,0.2),
+    0 0 transparent;
+}
+.glass-btn:hover {
+  transform: scale(0.94);
+  box-shadow:
+    inset 0 0.125em 0.125em rgba(0,0,0,0.05),
+    inset 0 -0.125em 0.125em rgba(255,255,255,0.5),
+    0 0.15em 0.05em -0.1em rgba(0,0,0,0.25),
+    inset 0 0 0.05em 0.1em rgba(255,255,255,0.5),
+    0 0 transparent;
+}
+.glass-btn:active { transform: scale(0.9) rotateX(25deg); }
+
+/* Animated conic-gradient border ring */
+.glass-btn::after {
+  content: ""; z-index: 1; box-sizing: border-box;
+  background:
+    conic-gradient(from var(--angle-1) at 50% 50%,
+      rgba(0,0,0,0.5), rgba(0,0,0,0) 5% 40%,
+      rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 60% 95%, rgba(0,0,0,0.5)),
+    linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.5));
+  border-radius: 999vw;
+  width: calc(100% + clamp(1px, 0.0625em, 4px));
+  height: calc(100% + clamp(1px, 0.0625em, 4px));
+  padding: clamp(1px, 0.0625em, 4px);
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1), --angle-1 0.5s;
+  position: absolute;
+  inset: calc(0% - clamp(1px, 0.0625em, 4px) / 2) 0 0 calc(0% - clamp(1px, 0.0625em, 4px) / 2);
+  box-shadow: inset 0 0 0 calc(clamp(1px, 0.0625em, 4px) / 2) rgba(255,255,255,0.5);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.glass-btn:hover::after { --angle-1: -125deg; }
+
+/* Gloss sweep */
+.glass-btn::before {
+  content: ""; z-index: 3;
+  background: linear-gradient(var(--angle-2), rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 40% 50%, rgba(255,255,255,0) 55%);
+  mix-blend-mode: screen; pointer-events: none;
+  background-position: 0%; background-repeat: no-repeat; background-size: 200% 200%;
+  border-radius: 999vw; width: 100%; height: 100%;
+  transition: background-position 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  position: absolute; top: 0; left: 0; overflow: clip;
+}
+.glass-btn:hover::before { background-position: 25%; }
+
+/* Drop shadow */
+.glass-btn-shadow {
+  filter: blur(clamp(2px, 0.125em, 12px));
+  pointer-events: none;
+  width: calc(100% + 2em); height: calc(100% + 2em);
+  position: absolute; top: -1em; left: -1em; overflow: visible;
+}
+.glass-btn-shadow::after {
+  content: ""; box-sizing: border-box;
+  background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.1));
+  border-radius: 999vw;
+  width: calc(100% - 2.25em); height: calc(100% - 2.25em);
+  padding: 0.125em;
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  position: absolute; inset: 1.5em 0 0 1.125em;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.glass-btn-wrap:has(button:hover) .glass-btn-shadow,
+.glass-btn-wrap:has(a:hover) .glass-btn-shadow { filter: blur(clamp(2px, 0.0625em, 6px)); }
+
+/* Label */
+.glass-btn span {
+  position: relative; z-index: 2;
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 400; letter-spacing: 0.02em;
+  color: rgba(10,10,10,0.78);
+  transform: translateY(-4px);
+}
+
+/* Light variant — dark backgrounds */
+.glass-btn.light span { color: #1a1a1a; }
+.glass-btn.light {
+  background: linear-gradient(-75deg, rgba(255,255,255,0.4), rgba(255,255,255,0.7), rgba(255,255,255,0.4));
+}
+
+/* ================================================================== */
 /*  Zone System                                                        */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 
 .zone-dark {
   background-color: var(--fg);
@@ -64,26 +185,6 @@ body {
   border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 
-.zone-transition::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: var(--fg);
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%);
-}
-
-.zone-transition::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle at center, var(--fg) var(--dot-size), transparent var(--dot-size));
-  background-size: var(--grid-size) var(--grid-size);
-  background-position: center top;
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%);
-}
-
 .zone-light {
   flex: 1;
   background-color: var(--bg);
@@ -91,98 +192,39 @@ body {
   overflow-y: auto;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Labels & Values                                                    */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/*  Labels & Typography                                                */
+/* ================================================================== */
 
-.label {
+.label, .sys-label {
   font-family: var(--font-mono);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   opacity: 0.7;
   margin-bottom: 4px;
   display: block;
 }
 
-.sys-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.7;
-  margin-bottom: 4px;
-  display: block;
-}
-
-.value {
+.value, .sys-value {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 400;
   letter-spacing: -0.02em;
 }
 
-.sys-value {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-}
-
-/* Tech label (legacy compat for NetworkBar etc.) */
 .tech-label {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.2em;
-  color: rgba(0,0,0,0.3);
+  letter-spacing: 0.06em;
+  color: rgba(0,0,0,0.35);
   text-transform: uppercase;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Dot-matrix hero text                                               */
-/* ------------------------------------------------------------------ */
-
-.dot-hero {
-  font-size: 14vw;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-weight: 900;
-  line-height: 0.8;
-  letter-spacing: -0.02em;
-  margin-left: -0.05em;
-  background-image: radial-gradient(circle at center, var(--bg) 2px, transparent 2px);
-  background-size: 8px 8px;
-  color: transparent;
-  -webkit-background-clip: text;
-  background-clip: text;
-  position: relative;
-  z-index: 10;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Sensor grid                                                        */
-/* ------------------------------------------------------------------ */
-
-.sensor-grid {
-  display: grid;
-  grid-template-columns: repeat(32, 1fr);
-  gap: 2px;
-  width: 100%;
-  margin-top: 16px;
-}
-
-.sensor-node {
-  aspect-ratio: 1;
-  background-color: var(--bg);
-  border-radius: 50%;
-  opacity: 0.1;
-  transition: opacity 0.4s ease;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Data matrix                                                        */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/*  Data Matrix                                                        */
+/* ================================================================== */
 
 .data-matrix {
   display: grid;
@@ -190,17 +232,14 @@ body {
   gap: 32px;
 }
 
-.data-col {
-  display: flex;
-  flex-direction: column;
-}
+.data-col { display: flex; flex-direction: column; }
 
 .col-header {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   border-top: 1px solid var(--fg);
   padding-top: 8px;
   margin-bottom: 16px;
@@ -217,61 +256,35 @@ body {
   border-bottom: 1px dotted rgba(0,0,0,0.15);
   font-size: 12px;
 }
+.data-row:hover { background-color: rgba(0,0,0,0.03); }
 
-.data-row:hover {
-  background-color: rgba(0,0,0,0.03);
-}
+.row-key { font-weight: 500; }
+.row-val { font-family: var(--font-mono); text-align: right; font-size: 12px; }
 
-.row-key {
-  font-weight: 500;
-}
-
-.row-val {
-  font-family: var(--font-mono);
-  text-align: right;
-  font-size: 12px;
-}
-
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /*  Spark bars                                                         */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 
-.spark-row {
-  margin-bottom: 12px;
-}
-
-.spark-bar-container {
-  height: 4px;
-  background: rgba(0,0,0,0.1);
-  width: 100%;
-  margin-top: 4px;
-  overflow: hidden;
-}
-
+.spark-row { margin-bottom: 12px; }
+.spark-bar-container { height: 4px; background: rgba(0,0,0,0.1); width: 100%; margin-top: 4px; overflow: hidden; }
 .spark-bar {
   height: 100%;
   background: var(--fg);
-  background-image: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 2px,
-    var(--bg) 2px,
-    var(--bg) 4px
-  );
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, var(--bg) 2px, var(--bg) 4px);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Buttons — brutalist                                                */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/*  Legacy buttons (still used in some pages)                          */
+/* ================================================================== */
 
 .btn-primary {
   background: var(--fg);
   color: var(--bg);
   border: none;
   font-family: var(--font-mono);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.15s ease;
@@ -280,32 +293,11 @@ body {
   text-align: center;
   text-decoration: none;
 }
+.btn-primary:hover { background: #333; transform: translateY(-1px); }
 
-.btn-primary:hover {
-  background: #333;
-  transform: translateY(-1px);
-}
-
-/* ------------------------------------------------------------------ */
-/*  NetworkBar — dark strip                                            */
-/* ------------------------------------------------------------------ */
-
-.network-bar-brutalist {
-  background: var(--fg);
-  color: var(--bg);
-}
-
-.network-bar-brutalist .tech-label {
-  color: rgba(240,240,240,0.4);
-}
-
-.network-bar-brutalist .tech-label:hover {
-  color: var(--bg);
-}
-
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /*  Divider                                                            */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 
 .aura-divider {
   display: flex;
@@ -314,35 +306,25 @@ body {
   color: rgba(0,0,0,0.35);
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.aura-divider::before, .aura-divider::after { content: ""; flex: 1; height: 1px; background: rgba(0,0,0,0.15); }
 
-.aura-divider::before,
-.aura-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: rgba(0,0,0,0.15);
-}
-
-/* ------------------------------------------------------------------ */
-/*  How-it-works cards                                                 */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/*  Step Cards                                                         */
+/* ================================================================== */
 
 .step-card {
   border: 1px solid rgba(0,0,0,0.1);
   padding: 20px;
   transition: background-color 0.2s ease;
 }
+.step-card:hover { background: rgba(0,0,0,0.03); }
 
-.step-card:hover {
-  background: rgba(0,0,0,0.03);
-}
-
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /*  Animations                                                         */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
@@ -355,68 +337,14 @@ body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Footer                                                             */
-/* ------------------------------------------------------------------ */
-
-.brutalist-footer {
-  border-top: 1px solid rgba(0,0,0,0.1);
-  padding: 24px 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: rgba(0,0,0,0.4);
+@keyframes termBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
-.brutalist-footer a {
-  color: rgba(0,0,0,0.4);
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  transition: color 0.2s ease;
-}
-
-.brutalist-footer a:hover {
-  color: var(--fg);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Dark Hero — Cinematic Landing                                      */
-/* ------------------------------------------------------------------ */
-
-.scanlines-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 2px,
-    rgba(0, 0, 0, 0.08) 2px,
-    rgba(0, 0, 0, 0.08) 4px
-  );
-  opacity: 0.15;
-}
-
-.hero-giant-text {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  font-weight: 900;
-  font-size: 15vw;
-  line-height: 0.85;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
-  color: rgba(240, 240, 240, 0.04);
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 0;
-  text-align: center;
-  width: 200vw;
-  user-select: none;
-}
+/* ================================================================== */
+/*  Dark Hero — Landing                                                */
+/* ================================================================== */
 
 .hero-section {
   position: relative;
@@ -425,48 +353,9 @@ body {
   display: flex;
   flex-direction: column;
   background: #0a0a0a;
+  margin-top: -72px; /* pull up behind navbar */
+  padding-top: 72px; /* restore content spacing */
 }
-
-.hero-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 32px;
-  position: relative;
-  z-index: 10;
-}
-
-.hero-cta-btn {
-  display: inline-block;
-  background: #c69c76;
-  color: #0a0a0a;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 10px 24px;
-  text-decoration: none;
-  transition: background 0.2s ease, transform 0.15s ease;
-}
-
-.hero-cta-btn:hover {
-  background: #d4ad85;
-  transform: translateY(-1px);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Terminal blink cursor                                               */
-/* ------------------------------------------------------------------ */
-
-@keyframes termBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Bottom stats strip                                                 */
-/* ------------------------------------------------------------------ */
 
 .hero-stats-strip {
   display: flex;
@@ -481,17 +370,13 @@ body {
   flex-wrap: wrap;
 }
 
-.hero-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+.hero-stat { display: flex; flex-direction: column; gap: 2px; }
 
 .hero-stat-label {
   font-family: var(--font-mono);
   font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #555;
 }
@@ -504,10 +389,7 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Transition: dark-to-light                                          */
-/* ------------------------------------------------------------------ */
-
+/* Transition dark-to-light */
 .zone-transition-dark {
   height: 80px;
   background: linear-gradient(to bottom, #0a0a0a, var(--bg));
@@ -515,47 +397,38 @@ body {
   flex-shrink: 0;
 }
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/*  Footer                                                             */
+/* ================================================================== */
+
+.brutalist-footer {
+  border-top: 1px solid rgba(0,0,0,0.1);
+  padding: 24px 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(0,0,0,0.4);
+}
+.brutalist-footer a {
+  color: rgba(0,0,0,0.4);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: color 0.2s ease;
+}
+.brutalist-footer a:hover { color: var(--fg); }
+
+/* ================================================================== */
 /*  Responsive                                                         */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 
 @media (max-width: 1024px) {
-  .data-matrix {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 48px 32px;
-  }
-  .dot-hero {
-    font-size: 24vw;
-  }
-  .hero-giant-text {
-    font-size: 12vw;
-  }
+  .data-matrix { grid-template-columns: repeat(2, 1fr); gap: 48px 32px; }
 }
 
 @media (max-width: 640px) {
-  .zone-dark {
-    padding: 16px 16px 0 16px;
-  }
-  .zone-light {
-    padding: 0 16px 16px 16px;
-  }
-  .data-matrix {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-  .hero-nav {
-    padding: 16px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .hero-giant-text {
-    font-size: 18vw;
-  }
-  .hero-stats-strip {
-    padding: 12px 16px;
-    gap: 12px;
-  }
-  .hero-stat {
-    min-width: 80px;
-  }
+  .zone-dark { padding: 16px 16px 0 16px; }
+  .zone-light { padding: 0 16px 16px 16px; }
+  .data-matrix { grid-template-columns: 1fr; gap: 32px; }
+  .hero-stats-strip { padding: 12px 16px; gap: 12px; }
+  .hero-stat { min-width: 80px; }
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -268,7 +267,6 @@ function SuccessContent() {
 export default function SuccessPage() {
   return (
     <main className="flex flex-col min-h-screen">
-      <NetworkBar />
 
       <Suspense
         fallback={

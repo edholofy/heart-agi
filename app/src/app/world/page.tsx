@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
 
@@ -203,7 +202,6 @@ export default function WorldPage() {
 
   return (
     <main className="flex flex-col min-h-screen" style={{ background: "var(--fg)" }}>
-      <NetworkBar />
 
       {/* ── Dark zone header ── */}
       <div className="zone-dark" style={{ paddingTop: 32, paddingBottom: 24 }}>
