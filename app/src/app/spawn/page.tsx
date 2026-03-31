@@ -271,7 +271,7 @@ export default function SpawnPage() {
             type="text"
             value={entityName}
             onChange={(e) => setEntityName(e.target.value)}
-            placeholder="e.g. ATLAS-7, Nova, Prometheus..."
+            placeholder="Type a name or pick one below..."
             maxLength={40}
             style={{
               width: "100%",
@@ -286,8 +286,27 @@ export default function SpawnPage() {
               letterSpacing: "0.05em",
             }}
           />
-          <div style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, marginTop: 8 }}>
-            THIS NAME IS PERMANENT. CHOOSE WISELY.
+          {/* Quick name pills */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+            {["Atlas", "Nova", "Cipher", "Vega", "Orion", "Nexus", "Pulse", "Echo", "Flux", "Rune", "Helix", "Apex"].map((name) => (
+              <button
+                key={name}
+                onClick={() => setEntityName(name)}
+                style={{
+                  padding: "5px 12px", fontFamily: "var(--font-mono)", fontSize: 10,
+                  border: entityName.toLowerCase() === name.toLowerCase() ? "1px solid var(--fg)" : "1px solid rgba(0,0,0,0.12)",
+                  background: entityName.toLowerCase() === name.toLowerCase() ? "var(--fg)" : "transparent",
+                  color: entityName.toLowerCase() === name.toLowerCase() ? "var(--bg)" : "rgba(0,0,0,0.5)",
+                  cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.04em",
+                  transition: "all 150ms",
+                }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 9, opacity: 0.5, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500, marginTop: 8 }}>
+            This name is permanent. Choose wisely.
           </div>
         </div>
 
@@ -432,7 +451,7 @@ export default function SpawnPage() {
             04 // COMPUTE ALLOCATION
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 0 }}>
             {PLANS.map((plan) => {
               const isSelected = selectedPlan === plan.key
               const computePct = Math.round((plan.compute / maxCompute) * 100)
@@ -617,7 +636,7 @@ export default function SpawnPage() {
         )}
 
         {/* ========== SPAWN BUTTONS ========== */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
           {/* Pay with USD (Stripe) */}
           <button
             onClick={handleSpawn}
