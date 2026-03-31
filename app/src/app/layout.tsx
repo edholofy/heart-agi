@@ -42,6 +42,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
+      <head>
+        {/* @property must be in a raw style tag — PostCSS/Tailwind strips it from CSS files */}
+        <style>{`@property --angle-1{syntax:"<angle>";inherits:false;initial-value:-75deg}@property --angle-2{syntax:"<angle>";inherits:false;initial-value:-45deg}`}</style>
+      </head>
       <body className="min-h-full flex flex-col overflow-x-hidden">
         <NetworkBar />
         {children}
