@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
+import { createWallet, loadWallet, getBalance } from "@/lib/cosmos-wallet"
 
 /* ------------------------------------------------------------------ */
 /*  Soul & Skill Templates                                             */
@@ -122,7 +123,35 @@ export default function SpawnPage() {
   const [error, setError] = useState<string | null>(null)
   const [clock, setClock] = useState("00:00:00.0")
   const wallet = useAppStore((s) => s.wallet)
+  const setWallet = useAppStore((s) => s.setWallet)
+  const [walletCreating, setWalletCreating] = useState(false)
+  const [showMnemonic, setShowMnemonic] = useState<string | null>(null)
   const isConnected = !!wallet.address
+
+  /** Auto-load wallet on mount */
+  useEffect(() => {
+    if (wallet.connected) return
+    loadWallet().then(async (existing) => {
+      if (existing) {
+        const balance = await getBalance(existing.address)
+        setWallet({ address: existing.address, mnemonic: existing.mnemonic, balance, connected: true, connecting: false, error: null })
+      }
+    }).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleCreateWallet() {
+    setWalletCreating(true)
+    try {
+      const { address, mnemonic } = await createWallet()
+      const balance = await getBalance(address)
+      setWallet({ address, mnemonic, balance, connected: true, connecting: false, error: null })
+      setShowMnemonic(mnemonic)
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to create wallet")
+    } finally {
+      setWalletCreating(false)
+    }
+  }
 
   /** Clock */
   useEffect(() => {
@@ -535,18 +564,98 @@ export default function SpawnPage() {
         {!isConnected && (
           <div style={{
             width: "100%",
-            padding: "14px 20px",
-            background: "rgba(245,158,11,0.08)",
+            padding: "20px",
+            background: "rgba(245,158,11,0.06)",
             border: "1px solid rgba(245,158,11,0.2)",
             fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            color: "#f59e0b",
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
+            marginBottom: 12,
             textAlign: "center",
+          }}>
+            <div style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+              WALLET REQUIRED TO SPAWN
+            </div>
+            <button
+              onClick={handleCreateWallet}
+              disabled={walletCreating}
+              style={{
+                padding: "12px 32px",
+                backgroundColor: "#f59e0b",
+                color: "#0a0a0a",
+                border: "none",
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                cursor: walletCreating ? "wait" : "pointer",
+                opacity: walletCreating ? 0.6 : 1,
+              }}
+            >
+              {walletCreating ? "CREATING..." : "CREATE WALLET"}
+            </button>
+          </div>
+        )}
+
+        {/* ========== MNEMONIC DISPLAY (after wallet creation) ========== */}
+        {showMnemonic && (
+          <div style={{
+            width: "100%",
+            padding: "16px 20px",
+            background: "rgba(34,197,94,0.06)",
+            border: "1px solid rgba(34,197,94,0.2)",
+            fontFamily: "var(--font-mono)",
             marginBottom: 12,
           }}>
-            CONNECT WALLET TO SPAWN — USE THE WALLET BUTTON IN THE TOP RIGHT
+            <div style={{ fontSize: 10, color: "#22c55e", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+              WALLET CREATED — SAVE YOUR SEED PHRASE
+            </div>
+            <div style={{
+              fontSize: 11,
+              color: "#121212",
+              background: "rgba(0,0,0,0.04)",
+              padding: "12px",
+              lineHeight: 1.8,
+              wordBreak: "break-word",
+              userSelect: "all",
+              marginBottom: 8,
+            }}>
+              {showMnemonic}
+            </div>
+            <div style={{ fontSize: 9, color: "#f59e0b", marginBottom: 8 }}>
+              TESTNET WALLET — DO NOT USE FOR REAL FUNDS. WRITE THIS DOWN.
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button
+                onClick={() => { navigator.clipboard.writeText(showMnemonic); }}
+                style={{
+                  padding: "6px 16px",
+                  background: "rgba(0,0,0,0.06)",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                COPY
+              </button>
+              <button
+                onClick={() => setShowMnemonic(null)}
+                style={{
+                  padding: "6px 16px",
+                  background: "rgba(0,0,0,0.06)",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                I SAVED IT
+              </button>
+            </div>
           </div>
         )}
 

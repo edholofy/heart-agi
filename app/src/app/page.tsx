@@ -497,9 +497,30 @@ export default function Home() {
       {/* ============================================================ */}
       {/*  DARK HERO SECTION                                            */}
       {/* ============================================================ */}
-      <section className="hero-section">
+      <section className="hero-section" style={{ position: "relative", overflow: "hidden" }}>
+        {/* Brand video background */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            opacity: 0.3,
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+        >
+          <source src="/hero-bubbles.mp4" type="video/mp4" />
+        </video>
         {/* Top nav */}
-        <div className="hero-nav">
+        <div className="hero-nav" style={{ position: "relative", zIndex: 5 }}>
           <Link
             href="/"
             style={{
@@ -592,7 +613,7 @@ export default function Home() {
         </div>
 
         {/* Live autoresearch terminal */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 32px", position: "relative", zIndex: 2 }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 32px", position: "relative", zIndex: 5 }}>
           <AutoresearchTerminal activity={activity} latestPatch={latestPatch} />
         </div>
       </section>
