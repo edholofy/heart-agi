@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     clearTimeout(timeout)
     const data = await res.json()
     return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=30' },
+      headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60' },
     })
   } catch {
     return NextResponse.json({ error: 'Daemon unreachable', entities: [], activity: [], total: 0 }, { status: 502 })

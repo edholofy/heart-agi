@@ -2,11 +2,10 @@
  * Proxy helper — routes all external HTTP calls through /api/proxy
  * when running on HTTPS (Vercel). Direct on localhost (HTTP).
  *
- * Usage:
- *   const data = await proxyFetch("/status", "rpc")
- *   const data = await proxyFetch("/heart/existence/list_tasks", "rest")
- *   const data = await proxyFetch("/api/entities", "daemon")
- *   const data = await proxyFetch("/api/faucet", "faucet", { method: "POST", body: JSON.stringify({...}) })
+ * Includes:
+ * - 8s timeout on all requests
+ * - Client-side response cache (5s TTL) to reduce redundant fetches
+ * - Synthetic 503 response on failure (never throws)
  */
 
 const DIRECT_URLS: Record<string, string> = {
@@ -20,12 +19,45 @@ function isHTTPS(): boolean {
   return typeof window !== "undefined" && window.location.protocol === "https:"
 }
 
+/** Client-side cache — serves stale data while refetching */
+const cache = new Map<string, { data: string; timestamp: number; status: number }>()
+const CACHE_TTL = 5000 // 5 seconds
+
+function getCached(key: string): Response | null {
+  const entry = cache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.timestamp > CACHE_TTL) return null
+  return new Response(entry.data, {
+    status: entry.status,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
+async function setCache(key: string, res: Response): Promise<Response> {
+  const text = await res.text()
+  cache.set(key, { data: text, timestamp: Date.now(), status: res.status })
+  // Return a new Response since we consumed the body
+  return new Response(text, {
+    status: res.status,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
 export async function proxyFetch(
   path: string,
   target: "rpc" | "rest" | "daemon" | "faucet",
   options?: RequestInit
 ): Promise<Response> {
-  // Add 8s timeout to all daemon calls to prevent page hangs
+  const method = options?.method || "GET"
+  const isRead = method === "GET"
+
+  // Check cache for read requests
+  if (isRead) {
+    const cacheKey = `${target}:${path}`
+    const cached = getCached(cacheKey)
+    if (cached) return cached
+  }
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 8000)
   const fetchOpts: RequestInit = { ...options, signal: controller.signal }
@@ -34,21 +66,38 @@ export async function proxyFetch(
     let res: Response
     if (isHTTPS()) {
       if (target === "daemon") {
-        const daemonUrl = `/api/daemon?path=${encodeURIComponent(path)}`
-        res = await fetch(daemonUrl, fetchOpts)
+        res = await fetch(`/api/daemon?path=${encodeURIComponent(path)}`, fetchOpts)
       } else {
-        const proxyUrl = `/api/proxy?url=${encodeURIComponent(path)}&target=${target}`
-        res = await fetch(proxyUrl, fetchOpts)
+        res = await fetch(`/api/proxy?url=${encodeURIComponent(path)}&target=${target}`, fetchOpts)
       }
     } else {
       res = await fetch(`${DIRECT_URLS[target]}${path}`, fetchOpts)
     }
     clearTimeout(timeout)
+
+    // Cache successful read responses
+    if (isRead && res.ok) {
+      const cacheKey = `${target}:${path}`
+      return await setCache(cacheKey, res)
+    }
+
     return res
-  } catch (err) {
+  } catch {
     clearTimeout(timeout)
-    // Return a synthetic failed response instead of throwing
-    return new Response(JSON.stringify({ error: "Daemon unavailable" }), {
+
+    // On failure, try to serve stale cache (any age)
+    if (isRead) {
+      const cacheKey = `${target}:${path}`
+      const stale = cache.get(cacheKey)
+      if (stale) {
+        return new Response(stale.data, {
+          status: stale.status,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    }
+
+    return new Response(JSON.stringify({ error: "Unavailable" }), {
       status: 503,
       headers: { "Content-Type": "application/json" },
     })

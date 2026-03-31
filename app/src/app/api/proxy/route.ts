@@ -76,7 +76,10 @@ export async function GET(req: NextRequest) {
     const data = await res.text()
     return new NextResponse(data, {
       status: res.status,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=30',
+      },
     })
   } catch (err) {
     clearTimeout(timeout)
