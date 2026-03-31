@@ -515,14 +515,14 @@ export default function Home() {
         }}>
           <h1 style={{
             fontFamily: "var(--font-sans)",
-            fontSize: "clamp(32px, 6vw, 72px)",
+            fontSize: 48,
             fontWeight: 700,
-            letterSpacing: "-0.04em",
-            lineHeight: 1.0,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
             color: "#f0f0f0",
             marginBottom: "20px",
           }}>
-            THE BLOCKCHAIN<br />THAT WRITES ITSELF.
+            The blockchain<br />that writes itself.
           </h1>
           <p style={{
             fontSize: "14px",
