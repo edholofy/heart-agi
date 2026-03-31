@@ -252,62 +252,9 @@ export default function EntityProfilePage() {
     }
   }, [loading, entity, chainEntity])
 
-  // Fetch version history once we have the owner address
+  // Version history — chain endpoint not implemented, skip
   const resolvedOwner = entity?.owner_address ?? chainEntity?.owner ?? ""
-  useEffect(() => {
-    if (!resolvedOwner) {
-      setVersionLoading(false)
-      return
-    }
-
-    async function fetchVersionHistory() {
-      try {
-        const res = await proxyFetch(
-          `/heart/identity/get_version_history/${encodeURIComponent(resolvedOwner)}`, "rest"
-        )
-        if (!res.ok) {
-          setVersionLoading(false)
-          return
-        }
-        const data = await res.json()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const raw = data as any
-        let versions = raw?.versions ?? raw?.history ?? raw?.version_history ?? null
-
-        if (typeof versions === "string") {
-          try { versions = JSON.parse(versions) } catch { versions = null }
-        }
-
-        if (!Array.isArray(versions)) {
-          const keys = Object.keys(raw || {})
-          for (const key of keys) {
-            const candidate = raw[key]
-            if (Array.isArray(candidate)) {
-              versions = candidate
-              break
-            }
-          }
-        }
-
-        if (Array.isArray(versions)) {
-          setVersionHistory(
-            versions.map((v: Record<string, unknown>, idx: number) => ({
-              hash: String(v.hash ?? v.Hash ?? ""),
-              type: String(v.type ?? v.Type ?? "unknown"),
-              version: Number(v.version ?? v.Version ?? idx + 1),
-              timestamp: String(v.timestamp ?? v.Timestamp ?? v.created_at ?? ""),
-            }))
-          )
-        }
-      } catch {
-        // version history endpoint may not exist yet
-      } finally {
-        setVersionLoading(false)
-      }
-    }
-
-    fetchVersionHistory()
-  }, [resolvedOwner])
+  useEffect(() => { setVersionLoading(false) }, [resolvedOwner])
 
   // Poll daemon every 10 seconds
   useEffect(() => {
