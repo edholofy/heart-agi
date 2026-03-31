@@ -516,8 +516,8 @@ export default function Home() {
           <h1 style={{
             fontFamily: "var(--font-sans)",
             fontSize: 48,
-            fontWeight: 700,
-            letterSpacing: "-0.03em",
+            fontWeight: 300,
+            letterSpacing: "-0.02em",
             lineHeight: 1.1,
             color: "#f0f0f0",
             marginBottom: "20px",
@@ -800,18 +800,14 @@ export default function Home() {
             </span>
 
             <div className="flex items-center gap-5 flex-wrap justify-center">
-              <Link href="/world">LIVE FEED</Link>
-              <Link href="/marketplace/entities">ENTITIES</Link>
-              <Link href="/swarm">SWARM</Link>
-              <Link href="/governance">GOVERNANCE</Link>
-              <Link href="/docs">DOCS</Link>
+              <Link href="/world">WORLD</Link>
+              <Link href="/spawn">SPAWN</Link>
+              <Link href="/evolution">EVOLUTION</Link>
+              <Link href="/leaderboard">LEADERBOARD</Link>
               <Link href="/explorer">EXPLORER</Link>
-              <Link href="/faucet">FAUCET</Link>
+              <Link href="/docs">DOCS</Link>
               <a href="https://humans.ai" target="_blank" rel="noopener noreferrer">
                 HUMANS.AI
-              </a>
-              <a href="https://github.com/humans-ai" target="_blank" rel="noopener noreferrer">
-                GITHUB
               </a>
             </div>
 

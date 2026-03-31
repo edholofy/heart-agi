@@ -444,7 +444,7 @@ export default function EntityProfilePage() {
 
         {/* Header */}
         <div style={{ borderBottom: "2px solid #121212", paddingBottom: 20, marginBottom: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: "#121212", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: "#fff", fontFamily: "var(--font-sans)" }}>
                 {name.charAt(0).toUpperCase()}
@@ -533,7 +533,7 @@ export default function EntityProfilePage() {
             )}
 
             {/* STATS DATA MATRIX */}
-            <div className="data-matrix mb-8" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
+            <div className="data-matrix mb-8" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
               {/* Column 1 - Core Stats */}
               <div className="data-col">
                 <div className="col-header">CORE METRICS</div>
