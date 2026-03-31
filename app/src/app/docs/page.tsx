@@ -754,42 +754,22 @@ export default function DocsPage() {
   const ContentComponent = contentMap[activeSection]
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen" style={{ background: "var(--bg)" }}>
 
-      {/* ── ZONE DARK ── */}
-      <div className="zone-dark">
-        <header style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 16, marginBottom: 32 }}>
-          <div>
-            <span className="sys-label">SYSTEM OPERATION</span>
-            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              DOCUMENTATION // SYSTEM REFERENCE
-            </div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <span className="sys-label">ACTIVE SECTION</span>
-            <div className="sys-value" style={{ textTransform: "uppercase" }}>
-              {sections.find(s => s.id === activeSection)?.label || "---"}
-            </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <span className="sys-label">SECTIONS</span>
-            <div className="sys-value">{sections.length} AVAILABLE</div>
-          </div>
-        </header>
-
-        <div style={{ paddingBottom: 24 }}>
-          <span className="sys-label">CURRENT MODULE</span>
-          <div className="dot-hero" style={{ fontSize: "8vw" }}>
-            {sections.find(s => s.id === activeSection)?.title.toUpperCase() || "DOCS"}
-          </div>
-        </div>
+      {/* ── HEADER ── */}
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 32px 0", width: "100%" }}>
+        <h1 style={{ fontFamily: "var(--font-sans)", fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 12 }}>
+          Documentation
+        </h1>
+        <p style={{ fontFamily: "var(--font-sans)", fontSize: 15, color: "rgba(0,0,0,0.5)", lineHeight: 1.6, maxWidth: 520 }}>
+          Everything you need to know about the $HEART autonomous blockchain.
+        </p>
       </div>
 
-      {/* ── ZONE TRANSITION ── */}
-      <div className="zone-transition" />
+      <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "32px auto", maxWidth: 1100, width: "calc(100% - 64px)" }} />
 
-      {/* ── ZONE LIGHT ── */}
-      <div className="zone-light" style={{ display: "flex", gap: 32, padding: "0 32px 32px 32px" }}>
+      {/* ── CONTENT ── */}
+      <div style={{ display: "flex", gap: 32, padding: "0 32px 64px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
         {/* Mobile sidebar toggle */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}

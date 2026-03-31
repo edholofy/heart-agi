@@ -100,13 +100,7 @@ const PLANS = [
 /*  Inline styles matching the reference design                         */
 /* ------------------------------------------------------------------ */
 
-const ROOT_STYLES = {
-  "--bg": "#f0f0f0",
-  "--fg": "#121212",
-  "--dot-size": "1.5px",
-  "--grid-size": "6px",
-  "--font-mono": "'SF Mono', 'Roboto Mono', 'Courier New', monospace",
-} as React.CSSProperties
+/* (styles come from globals.css) */
 
 /* ------------------------------------------------------------------ */
 /*  Page Component                                                      */
@@ -223,87 +217,50 @@ export default function SpawnPage() {
   const maxCompute = PLANS[PLANS.length - 1].compute
 
   return (
-    <main style={{ ...ROOT_STYLES, background: "var(--bg)", color: "var(--fg)", minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif", fontSize: 12, lineHeight: 1.4, WebkitFontSmoothing: "antialiased" }}>
+    <main style={{ background: "var(--bg)", color: "var(--fg)", minHeight: "100vh" }}>
 
-      {/* ========== DARK ZONE HEADER ========== */}
-      <div style={{ backgroundColor: "var(--fg)", color: "var(--bg)", padding: "24px 32px 0 32px" }}>
-        {/* Header bar */}
-        <header style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 16, marginBottom: 32 }}>
-          <div>
-            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>SYSTEM OPERATION</span>
-            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>ENTITY SPAWN // GENESIS PROTOCOL</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>ACTIVE PROTOCOL</span>
-            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>SPAWN_GENESIS_V1</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>LOCAL TIME</span>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 400, letterSpacing: "-0.02em" }}>{clock}</div>
-          </div>
-        </header>
-
-        {/* Giant dot-matrix hero */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "end", paddingBottom: 24 }}>
-          <div>
-            <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700, display: "block", marginBottom: 4 }}>ENTITY GENESIS</span>
-            <div style={{
-              fontSize: "14vw",
-              fontFamily: "Impact, 'Arial Black', sans-serif",
-              fontWeight: 900,
-              lineHeight: 0.8,
-              letterSpacing: "-0.02em",
-              marginLeft: "-0.05em",
-              backgroundImage: "radial-gradient(circle at center, #f0f0f0 2px, transparent 2px)",
-              backgroundSize: "8px 8px",
-              color: "transparent",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-            }}>
-              SPAWN
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 9, opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>CONFIGURATION MATRIX</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
-                {[step1Done, step2Done, step3Done, step4Done].filter(Boolean).length} / 4 READY
-              </span>
-            </div>
-            <SensorGrid />
-          </div>
+      {/* ========== CLEAN HEADER ========== */}
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 32px 0" }}>
+        <h1 style={{
+          fontFamily: "var(--font-sans)",
+          fontSize: "clamp(28px, 5vw, 48px)",
+          fontWeight: 700,
+          letterSpacing: "-0.03em",
+          lineHeight: 1.1,
+          marginBottom: 12,
+        }}>
+          Spawn an Entity
+        </h1>
+        <p style={{
+          fontFamily: "var(--font-sans)",
+          fontSize: 15,
+          color: "rgba(0,0,0,0.5)",
+          lineHeight: 1.6,
+          maxWidth: 480,
+          marginBottom: 8,
+        }}>
+          Create an AI that lives on-chain. It will think, research, write code, and evolve autonomously.
+        </p>
+        <div style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 10,
+          color: "rgba(0,0,0,0.35)",
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          display: "flex",
+          gap: 16,
+          alignItems: "center",
+        }}>
+          <span>{[step1Done, step2Done, step3Done, step4Done].filter(Boolean).length} / 4 complete</span>
+          <span style={{ width: 1, height: 12, background: "rgba(0,0,0,0.1)" }} />
+          <span>{clock}</span>
         </div>
       </div>
 
-      {/* ========== DOT TRANSITION ========== */}
-      <div style={{
-        height: 120,
-        backgroundColor: "var(--bg)",
-        position: "relative",
-        borderBottom: "1px solid rgba(0,0,0,0.1)",
-      }}>
-        {/* Dark fade */}
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          backgroundColor: "var(--fg)",
-          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%)",
-          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 10%)",
-        }} />
-        {/* Dot pattern */}
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: "radial-gradient(circle at center, var(--fg) var(--dot-size), transparent var(--dot-size))",
-          backgroundSize: "var(--grid-size) var(--grid-size)",
-          backgroundPosition: "center top",
-          maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%)",
-          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 90%)",
-        }} />
-      </div>
+      <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "32px auto", maxWidth: 720 }} />
 
-      {/* ========== LIGHT ZONE CONTENT ========== */}
-      <div style={{ padding: "0 32px 64px 32px", maxWidth: 960, margin: "0 auto" }}>
+      {/* ========== FORM CONTENT ========== */}
+      <div style={{ padding: "0 32px 64px 32px", maxWidth: 720, margin: "0 auto" }}>
 
         {/* STEP 1 — NAME */}
         <div style={{ marginBottom: 48 }}>
@@ -726,41 +683,3 @@ function StepIndicator({ done, label }: { done: boolean; label: string }) {
   )
 }
 
-function SensorGrid() {
-  const [opacities, setOpacities] = useState<number[]>(() => Array(192).fill(0.1))
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setOpacities((prev) => {
-        const next = [...prev]
-        for (let i = 0; i < 15; i++) {
-          const r = Math.floor(Math.random() * next.length)
-          next[r] = Math.random() * 0.8 + 0.2
-        }
-        for (let i = 0; i < 10; i++) {
-          const r = Math.floor(Math.random() * next.length)
-          next[r] = 0.1
-        }
-        return next
-      })
-    }, 150)
-    return () => clearInterval(id)
-  }, [])
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(32, 1fr)", gap: 2, width: "100%", marginTop: 16 }}>
-      {opacities.map((op, i) => (
-        <div
-          key={i}
-          style={{
-            aspectRatio: "1",
-            backgroundColor: "#f0f0f0",
-            borderRadius: "50%",
-            opacity: op,
-            transition: "opacity 0.4s ease",
-          }}
-        />
-      ))}
-    </div>
-  )
-}

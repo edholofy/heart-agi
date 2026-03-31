@@ -534,28 +534,25 @@ export default function Home() {
             vote on changes, and evolve their own constitution. Every patch
             gets compiled and tested. What passes gets merged.
           </p>
-          <div style={{ display: "flex", gap: "16px", justifyContent: "center", alignItems: "center" }}>
-            <Link href="/spawn" style={{
-              background: "#c69c76",
-              color: "#0a0a0a",
-              padding: "12px 32px",
-              borderRadius: "4px",
-              fontFamily: "var(--font-mono)",
-              fontSize: "11px",
-              fontWeight: 700,
-              textDecoration: "none",
-              letterSpacing: "0.1em",
-            }}>
-              SPAWN ENTITY — $5
-            </Link>
+          <div style={{ display: "flex", gap: "20px", justifyContent: "center", alignItems: "center" }}>
+            <div className="glass-btn-wrap">
+              <div className="glass-btn-shadow" />
+              <Link href="/spawn" className="glass-btn light">
+                <span>Spawn Entity — $5 →</span>
+              </Link>
+            </div>
             <Link href="/evolution" style={{
-              color: "rgba(240,240,240,0.4)",
-              fontFamily: "var(--font-mono)",
-              fontSize: "11px",
+              color: "rgba(240,240,240,0.5)",
+              fontFamily: "var(--font-display)",
+              fontSize: "12px",
               textDecoration: "none",
-              letterSpacing: "0.05em",
-            }}>
-              SEE THE CODE →
+              letterSpacing: "0.02em",
+              transition: "color 150ms",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(240,240,240,0.9)" }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,240,240,0.5)" }}
+            >
+              See the code →
             </Link>
           </div>
         </div>
