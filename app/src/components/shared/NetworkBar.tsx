@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/spawn", label: "SPAWN" },
   { href: "/evolution", label: "EVOLUTION" },
   { href: "/leaderboard", label: "LEADERBOARD" },
+  { href: "/explorer", label: "EXPLORER" },
   { href: "/docs", label: "DOCS" },
 ]
 

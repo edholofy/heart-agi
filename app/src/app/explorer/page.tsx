@@ -2,69 +2,29 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { proxyFetch } from "@/lib/proxy"
-import Link from "next/link"
 
 const REFRESH_INTERVAL = 5000
 
-interface ChainStatus {
-  chainId: string
-  latestHeight: number
-  latestTime: string
-}
+interface ChainStatus { chainId: string; latestHeight: number; latestTime: string; catchingUp: boolean }
+interface BlockInfo { height: number; hash: string; time: string; numTxs: number; proposer: string }
+interface ValidatorInfo { moniker: string; votingPower: number; commission: string; operatorAddress: string }
+interface StakingPool { bondedTokens: string; notBondedTokens: string }
 
-interface BlockInfo {
-  height: number
-  hash: string
-  time: string
-  numTxs: number
-  proposer: string
-}
-
-interface ValidatorInfo {
-  moniker: string
-  votingPower: number
-  commission: string
-  operatorAddress: string
-}
-
-interface StakingPool {
-  bondedTokens: string
-  notBondedTokens: string
-}
-
-interface ComputePrice {
-  claudePrice: string
-  gptPrice: string
-  geminiPrice: string
-  basketPrice: string
-  lastUpdated: string
-}
-
-/** Truncate a hash: first 8 + last 4 chars */
-function truncateHash(hash: string): string {
-  if (hash.length <= 14) return hash
-  return `${hash.slice(0, 8)}...${hash.slice(-4)}`
-}
-
-/** Format large token amounts (uheart -> HEART with abbreviation) */
+function truncHash(h: string): string { return h.length <= 14 ? h : `${h.slice(0, 10)}...${h.slice(-6)}` }
 function formatTokens(raw: string): string {
-  const amount = parseInt(raw, 10) / 1_000_000
-  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`
-  return amount.toFixed(0)
+  const a = parseInt(raw, 10) / 1_000_000
+  if (a >= 1e9) return `${(a / 1e9).toFixed(1)}B`
+  if (a >= 1e6) return `${(a / 1e6).toFixed(1)}M`
+  if (a >= 1e3) return `${(a / 1e3).toFixed(1)}K`
+  return a.toFixed(0)
 }
-
-/** Relative time string */
-function timeAgo(isoTime: string): string {
-  const diff = Date.now() - new Date(isoTime).getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 5) return "just now"
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h ago`
+function timeAgo(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 5) return "now"
+  if (s < 60) return `${s}s ago`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  return `${Math.floor(m / 60)}h ago`
 }
 
 export default function ExplorerPage() {
@@ -73,7 +33,6 @@ export default function ExplorerPage() {
   const [validators, setValidators] = useState<ValidatorInfo[]>([])
   const [pool, setPool] = useState<StakingPool | null>(null)
   const [error, setError] = useState(false)
-  const [computePrice, setComputePrice] = useState<ComputePrice | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResult, setSearchResult] = useState<string | null>(null)
 
@@ -81,458 +40,225 @@ export default function ExplorerPage() {
     try {
       const res = await proxyFetch("/status", "rpc")
       const data = await res.json()
-      const info = data.result.node_info
-      const syncInfo = data.result.sync_info
+      const si = data.result.sync_info
       setStatus({
-        chainId: info.network,
-        latestHeight: parseInt(syncInfo.latest_block_height, 10),
-        latestTime: syncInfo.latest_block_time,
+        chainId: data.result.node_info.network,
+        latestHeight: parseInt(si.latest_block_height, 10),
+        latestTime: si.latest_block_time,
+        catchingUp: si.catching_up,
       })
       setError(false)
-      return parseInt(syncInfo.latest_block_height, 10)
-    } catch {
-      setError(true)
-      return null
-    }
+      return parseInt(si.latest_block_height, 10)
+    } catch { setError(true); return null }
   }, [])
 
-  const fetchBlocks = useCallback(async (latestHeight: number) => {
+  const fetchBlocks = useCallback(async (h: number) => {
     try {
-      const minHeight = Math.max(1, latestHeight - 9)
-      const res = await proxyFetch(
-        `/blockchain?minHeight=${minHeight}&maxHeight=${latestHeight}`, "rpc"
-      )
+      const res = await proxyFetch(`/blockchain?minHeight=${Math.max(1, h - 19)}&maxHeight=${h}`, "rpc")
       const data = await res.json()
-      const blockMetas = data.result.block_metas || []
-
-      const parsed: BlockInfo[] = blockMetas.map(
-        (meta: {
-          header: {
-            height: string
-            time: string
-            proposer_address: string
-          }
-          block_id: { hash: string }
-          num_txs: string
-        }) => ({
-          height: parseInt(meta.header.height, 10),
-          hash: meta.block_id.hash,
-          time: meta.header.time,
-          numTxs: parseInt(meta.num_txs, 10),
-          proposer: meta.header.proposer_address,
-        })
-      )
-
+      const metas = data.result.block_metas || []
+      const parsed: BlockInfo[] = metas.map((m: { header: { height: string; time: string; proposer_address: string }; block_id: { hash: string }; num_txs: string }) => ({
+        height: parseInt(m.header.height, 10), hash: m.block_id.hash, time: m.header.time,
+        numTxs: parseInt(m.num_txs, 10), proposer: m.header.proposer_address,
+      }))
       parsed.sort((a: BlockInfo, b: BlockInfo) => b.height - a.height)
       setBlocks(parsed)
-    } catch {
-      // keep existing blocks on error
-    }
+    } catch { /* keep */ }
   }, [])
 
   const fetchValidators = useCallback(async () => {
     try {
-      const res = await proxyFetch(
-        "/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED", "rest"
-      )
+      const res = await proxyFetch("/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED", "rest")
       const data = await res.json()
-      const vals = data.validators || []
-
-      const parsed: ValidatorInfo[] = vals.map(
-        (v: {
-          description: { moniker: string }
-          tokens: string
-          commission: {
-            commission_rates: { rate: string }
-          }
-          operator_address: string
-        }) => ({
-          moniker: v.description.moniker,
-          votingPower: parseInt(v.tokens, 10) / 1_000_000,
-          commission: (parseFloat(v.commission.commission_rates.rate) * 100).toFixed(0) + "%",
-          operatorAddress: v.operator_address,
-        })
-      )
-
+      const parsed: ValidatorInfo[] = (data.validators || []).map((v: { description: { moniker: string }; tokens: string; commission: { commission_rates: { rate: string } }; operator_address: string }) => ({
+        moniker: v.description.moniker, votingPower: parseInt(v.tokens, 10) / 1e6,
+        commission: (parseFloat(v.commission.commission_rates.rate) * 100).toFixed(0) + "%",
+        operatorAddress: v.operator_address,
+      }))
       parsed.sort((a: ValidatorInfo, b: ValidatorInfo) => b.votingPower - a.votingPower)
       setValidators(parsed)
-    } catch {
-      // keep existing validators on error
-    }
+    } catch { /* keep */ }
   }, [])
 
   const fetchPool = useCallback(async () => {
     try {
       const res = await proxyFetch("/cosmos/staking/v1beta1/pool", "rest")
       const data = await res.json()
-      setPool({
-        bondedTokens: data.pool.bonded_tokens,
-        notBondedTokens: data.pool.not_bonded_tokens,
-      })
-    } catch {
-      // keep existing pool data on error
-    }
+      setPool({ bondedTokens: data.pool.bonded_tokens, notBondedTokens: data.pool.not_bonded_tokens })
+    } catch { /* keep */ }
   }, [])
 
-  const fetchComputePrice = useCallback(async () => {
-    try {
-      const res = await proxyFetch("/heart/compute/get_compute_price", "rest")
-      if (!res.ok) return
-      const data = await res.json()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = data as any
-      const price = raw?.price ?? raw?.compute_price ?? raw
-      if (price && typeof price === "object") {
-        setComputePrice({
-          claudePrice: String(price.claude_price ?? price.claudePrice ?? "---"),
-          gptPrice: String(price.gpt_price ?? price.gptPrice ?? "---"),
-          geminiPrice: String(price.gemini_price ?? price.geminiPrice ?? "---"),
-          basketPrice: String(price.basket_price ?? price.basketPrice ?? price.weighted_price ?? "---"),
-          lastUpdated: String(price.last_updated ?? price.lastUpdated ?? price.timestamp ?? ""),
-        })
-      }
-    } catch {
-      // oracle may not be initialized
-    }
-  }, [])
+  useEffect(() => {
+    async function init() { const h = await fetchStatus(); if (h) fetchBlocks(h) }
+    init(); fetchValidators(); fetchPool()
+  }, [fetchStatus, fetchBlocks, fetchValidators, fetchPool])
 
-  const fetchAll = useCallback(async () => {
-    const height = await fetchStatus()
-    if (height) {
-      await fetchBlocks(height)
-    }
+  useEffect(() => {
+    const i = setInterval(async () => { const h = await fetchStatus(); if (h) fetchBlocks(h) }, REFRESH_INTERVAL)
+    return () => clearInterval(i)
   }, [fetchStatus, fetchBlocks])
 
-  // Initial load
   useEffect(() => {
-    fetchAll()
-    fetchValidators()
-    fetchPool()
-    fetchComputePrice()
-  }, [fetchAll, fetchValidators, fetchPool, fetchComputePrice])
-
-  // Polling
-  useEffect(() => {
-    const interval = setInterval(fetchAll, REFRESH_INTERVAL)
-    return () => clearInterval(interval)
-  }, [fetchAll])
-
-  // Refresh validators/pool/oracle less often
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchValidators()
-      fetchPool()
-      fetchComputePrice()
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [fetchValidators, fetchPool, fetchComputePrice])
+    const i = setInterval(() => { fetchValidators(); fetchPool() }, 30000)
+    return () => clearInterval(i)
+  }, [fetchValidators, fetchPool])
 
   function handleSearch() {
     const q = searchQuery.trim()
     if (!q) return
-
-    // Check if it's a block height (pure number)
     if (/^\d+$/.test(q)) {
-      const height = parseInt(q, 10)
-      const block = blocks.find((b) => b.height === height)
-      if (block) {
-        setSearchResult(`Block #${height} found — hash: ${block.hash}`)
-      } else if (status && height <= status.latestHeight && height > 0) {
-        setSearchResult(`Block #${height} exists. Detailed view coming soon.`)
-      } else {
-        setSearchResult(`Block #${height} not found.`)
-      }
-      return
-    }
-
-    // Tx hash or address
-    if (q.startsWith("heart1")) {
-      setSearchResult("Address lookup coming soon.")
-    } else if (q.length === 64 || q.startsWith("0x")) {
-      setSearchResult("Transaction lookup coming soon.")
+      const h = parseInt(q, 10)
+      const b = blocks.find((b) => b.height === h)
+      setSearchResult(b ? `Block #${h} — hash: ${truncHash(b.hash)} — ${b.numTxs} txs — ${timeAgo(b.time)}` : status && h <= status.latestHeight ? `Block #${h} exists on chain` : `Block #${h} not found`)
+    } else if (q.startsWith("heart1")) {
+      setSearchResult(`Address: ${q}`)
     } else {
-      setSearchResult("Enter a block height, tx hash, or heart1... address.")
+      setSearchResult("Enter a block height or heart1... address")
     }
   }
 
-  const topValidator = validators.length > 0 ? validators[0] : null
-  const totalVotingPower = validators.reduce((sum, v) => sum + v.votingPower, 0)
+  const totalPower = validators.reduce((s, v) => s + v.votingPower, 0)
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <main style={{ background: "#fff", minHeight: "100vh", color: "#121212" }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 24px 80px" }}>
 
-      {/* ── ZONE DARK ── */}
-      <div className="zone-dark">
-        <header style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 16, marginBottom: 32 }}>
-          <div>
-            <span className="sys-label">SYSTEM OPERATION</span>
-            <div style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              CHAIN EXPLORER // TELEMETRY
+        {/* Header */}
+        <div style={{ borderBottom: "2px solid #121212", paddingBottom: 20, marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <div>
+              <h1 style={{ fontFamily: "var(--font-sans)", fontSize: 40, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 8 }}>
+                Explorer
+              </h1>
+              <p style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.55)" }}>
+                {status ? `${status.chainId} · block #${status.latestHeight.toLocaleString()} · ${timeAgo(status.latestTime)}` : "Connecting..."}
+              </p>
             </div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <span className="sys-label">CHAIN ID</span>
-            <div className="sys-value">{status ? status.chainId : "---"}</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <span className="sys-label">VALIDATORS</span>
-            <div className="sys-value">{validators.length > 0 ? validators.length : "---"}</div>
-          </div>
-        </header>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "end", paddingBottom: 24 }}>
-          <div>
-            <span className="sys-label">BLOCK HEIGHT</span>
-            <div className="dot-hero">
-              {status ? status.latestHeight.toLocaleString() : "---"}
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span className="sys-label">CHAIN OVERVIEW</span>
-              <span className="sys-value">{status ? timeAgo(status.latestTime) : "---"}</span>
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <div className="data-row">
-                <span className="row-key">BONDED TOKENS</span>
-                <span className="row-val">{pool ? `${formatTokens(pool.bondedTokens)} HEART` : "---"}</span>
-              </div>
-              <div className="data-row">
-                <span className="row-key">NOT BONDED</span>
-                <span className="row-val">{pool ? `${formatTokens(pool.notBondedTokens)} HEART` : "---"}</span>
-              </div>
-              <div className="data-row" style={{ color: "var(--bg)" }}>
-                <span className="row-key">TOP VALIDATOR</span>
-                <span className="row-val">{topValidator ? topValidator.moniker : "---"}</span>
-              </div>
-              <div className="data-row" style={{ color: "var(--bg)" }}>
-                <span className="row-key">TOTAL POWER</span>
-                <span className="row-val">{totalVotingPower >= 1_000_000 ? `${(totalVotingPower / 1_000_000).toFixed(1)}M` : totalVotingPower >= 1_000 ? `${(totalVotingPower / 1_000).toFixed(1)}K` : totalVotingPower.toFixed(0)} HEART</span>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: error ? "rgba(0,0,0,0.15)" : "#121212" }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.55)" }}>
+                {error ? "OFFLINE" : status?.catchingUp ? "SYNCING" : "LIVE"}
+              </span>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ── ZONE TRANSITION ── */}
-      <div className="zone-transition" />
+        {/* Stats row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0, borderBottom: "1px solid #121212" }}>
+          {[
+            { label: "Block Height", value: status ? `#${status.latestHeight.toLocaleString()}` : "—" },
+            { label: "Validators", value: validators.length > 0 ? String(validators.length) : "—" },
+            { label: "Bonded", value: pool ? `${formatTokens(pool.bondedTokens)} HEART` : "—" },
+            { label: "Unbonded", value: pool ? `${formatTokens(pool.notBondedTokens)} HEART` : "—" },
+          ].map((s, i) => (
+            <div key={s.label} style={{ padding: "20px 0", borderRight: i < 3 ? "1px solid rgba(0,0,0,0.1)" : "none", paddingLeft: i > 0 ? 20 : 0 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.5)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{s.label}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em" }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
 
-      {/* ── ZONE LIGHT ── */}
-      <div className="zone-light">
         {/* Search */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #121212" }}>
           <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setSearchResult(null)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSearch()
-            }}
-            placeholder="Block height, tx hash, address..."
-            spellCheck={false}
-            autoComplete="off"
-            style={{
-              flex: 1,
-              padding: "10px 12px",
-              fontFamily: "var(--font-mono)",
-              fontSize: 12,
-              border: "1px solid rgba(0,0,0,0.2)",
-              background: "transparent",
-              color: "var(--fg)",
-              outline: "none",
-            }}
+            type="text" value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setSearchResult(null) }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSearch() }}
+            placeholder="Search block height, tx hash, address..."
+            style={{ flex: 1, padding: "14px 0", fontFamily: "var(--font-mono)", fontSize: 12, border: "none", background: "transparent", outline: "none" }}
           />
-          <button onClick={handleSearch} className="btn-primary">
-            SEARCH
+          <button onClick={handleSearch} style={{ fontFamily: "var(--font-mono)", fontSize: 10, background: "none", border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.06em", padding: "0 16px", color: "rgba(0,0,0,0.55)" }}>
+            Search
           </button>
         </div>
-
         {searchResult && (
-          <div className="data-row" style={{ marginBottom: 16 }}>
-            <span className="row-key" style={{ fontFamily: "var(--font-mono)", opacity: 0.6 }}>{searchResult}</span>
-            <button
-              onClick={() => setSearchResult(null)}
-              className="row-val"
-              style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.4 }}
-            >
-              DISMISS
-            </button>
+          <div style={{ padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.1)", fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "space-between" }}>
+            <span>{searchResult}</span>
+            <button onClick={() => setSearchResult(null)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.3)" }}>×</button>
           </div>
         )}
 
-        {/* Chain offline error */}
-        {error && (
-          <div className="data-row" style={{ color: "#ef4444", marginBottom: 16, borderBottom: "1px solid rgba(239,68,68,0.3)" }}>
-            <span className="row-key" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
-              CHAIN OFFLINE
-            </span>
-            <span className="row-val">RETRYING...</span>
-          </div>
-        )}
+        {/* Two columns: Blocks + Validators */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 0 }}>
 
-        {/* Data Matrix */}
-        <div className="data-matrix">
-          {/* LATEST BLOCKS */}
-          <div className="data-col" style={{ gridColumn: "span 2" }}>
-            <div className="col-header">LATEST BLOCKS</div>
-
-            {/* Table header row */}
-            <div className="data-row" style={{ borderBottom: "1px solid rgba(0,0,0,0.1)" }}>
-              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>HEIGHT</span>
-              <span className="sys-label" style={{ flex: 2, marginBottom: 0 }}>HASH</span>
-              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>TIME</span>
-              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>TXS</span>
-              <span className="sys-label" style={{ flex: 1, marginBottom: 0 }}>PROPOSER</span>
+          {/* Blocks */}
+          <div style={{ borderRight: "1px solid #121212", paddingRight: 32 }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.55)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "16px 0", borderBottom: "1px solid #121212" }}>
+              Latest Blocks ({blocks.length})
             </div>
 
             {blocks.length === 0 && !error && (
-              <div style={{ padding: "24px 0", textAlign: "center" }}>
-                <span className="sys-label" style={{ fontSize: 11 }}>LOADING BLOCKS...</span>
-              </div>
+              <div style={{ padding: "32px 0", textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.3)" }}>Loading blocks...</div>
             )}
 
             {blocks.map((block) => (
-              <div key={block.height} className="data-row">
-                <span className="row-key" style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+              <div key={block.height} style={{ padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.08)", display: "grid", gridTemplateColumns: "80px 1fr 60px 60px", gap: 12, alignItems: "center" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600 }}>
                   #{block.height.toLocaleString()}
                 </span>
-                <span className="row-val" style={{ flex: 2, textAlign: "left", opacity: 0.5 }}>
-                  {truncateHash(block.hash)}
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {truncHash(block.hash)}
                 </span>
-                <span className="row-val" style={{ flex: 1, textAlign: "left", opacity: 0.5 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.4)", textAlign: "right" }}>
+                  {block.numTxs} tx{block.numTxs !== 1 ? "s" : ""}
+                </span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.35)", textAlign: "right" }}>
                   {timeAgo(block.time)}
                 </span>
-                <span className="row-val" style={{ flex: 1, textAlign: "left" }}>
-                  {block.numTxs} {block.numTxs === 1 ? "tx" : "txs"}
-                </span>
-                <span className="row-val" style={{ flex: 1, opacity: 0.4 }}>
-                  {truncateHash(block.proposer)}
-                </span>
               </div>
             ))}
           </div>
 
-          {/* VALIDATORS */}
-          <div className="data-col">
-            <div className="col-header">VALIDATORS</div>
+          {/* Right: Validators + Chain Info */}
+          <div style={{ paddingLeft: 32 }}>
+            {/* Validators */}
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.55)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "16px 0", borderBottom: "1px solid #121212" }}>
+              Validators ({validators.length})
+            </div>
 
-            {validators.length === 0 && !error && (
-              <div style={{ padding: "24px 0", textAlign: "center" }}>
-                <span className="sys-label" style={{ fontSize: 11 }}>LOADING VALIDATORS...</span>
-              </div>
-            )}
+            {validators.map((val) => {
+              const pct = totalPower > 0 ? (val.votingPower / totalPower) * 100 : 0
+              return (
+                <div key={val.operatorAddress} style={{ padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{val.moniker}</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.4)" }}>{val.commission}</span>
+                  </div>
+                  {/* Power bar */}
+                  <div style={{ height: 4, background: "rgba(0,0,0,0.06)", borderRadius: 2, overflow: "hidden", marginBottom: 4 }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: "#121212", borderRadius: 2 }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.4)" }}>
+                    <span>{val.votingPower >= 1e6 ? `${(val.votingPower / 1e6).toFixed(1)}M` : val.votingPower >= 1e3 ? `${(val.votingPower / 1e3).toFixed(1)}K` : val.votingPower.toFixed(0)} HEART</span>
+                    <span>{pct.toFixed(1)}%</span>
+                  </div>
+                </div>
+              )
+            })}
 
-            {validators.map((val) => (
-              <div key={val.operatorAddress}>
-                <div className="data-row">
-                  <span className="row-key">{val.moniker}</span>
-                  <span className="row-val">{val.commission}</span>
-                </div>
-                <div className="spark-bar-container">
-                  <div
-                    className="spark-bar"
-                    style={{
-                      width: totalVotingPower > 0 ? `${(val.votingPower / totalVotingPower) * 100}%` : "0%",
-                    }}
-                  />
-                </div>
-                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", opacity: 0.4, marginBottom: 8, marginTop: 2 }}>
-                  {val.votingPower >= 1_000_000
-                    ? `${(val.votingPower / 1_000_000).toFixed(1)}M`
-                    : val.votingPower >= 1_000
-                      ? `${(val.votingPower / 1_000).toFixed(1)}K`
-                      : val.votingPower.toFixed(0)}{" "}
-                  HEART
-                </div>
+            {/* Chain details */}
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.55)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "16px 0", borderBottom: "1px solid #121212", marginTop: 8 }}>
+              Chain
+            </div>
+            {[
+              { label: "Chain ID", value: status?.chainId || "—" },
+              { label: "Consensus", value: "CometBFT" },
+              { label: "SDK", value: "Cosmos SDK v0.50" },
+              { label: "Block Time", value: "~6s" },
+              { label: "Modules", value: "identity, compute, existence" },
+              { label: "Denom", value: "uheart" },
+              { label: "RPC", value: "5.161.47.118:26657" },
+              { label: "REST", value: "5.161.47.118:1317" },
+              { label: "P2P", value: "5.161.47.118:26656" },
+            ].map((r) => (
+              <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.05)", fontSize: 12 }}>
+                <span style={{ color: "rgba(0,0,0,0.55)" }}>{r.label}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(0,0,0,0.7)" }}>{r.value}</span>
               </div>
             ))}
           </div>
-
-          {/* COMPUTE ORACLE */}
-          <div className="data-col">
-            <div className="col-header">COMPUTE ORACLE</div>
-
-            {!computePrice ? (
-              <div style={{ padding: "24px 0", textAlign: "center" }}>
-                <span className="sys-label" style={{ fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} className="animate-pulse-dot" />
-                  ORACLE INITIALIZING
-                </span>
-              </div>
-            ) : (
-              <>
-                <div className="data-row">
-                  <span className="row-key">CLAUDE</span>
-                  <span className="row-val">{computePrice.claudePrice}</span>
-                </div>
-                <div className="data-row">
-                  <span className="row-key">GPT</span>
-                  <span className="row-val">{computePrice.gptPrice}</span>
-                </div>
-                <div className="data-row">
-                  <span className="row-key">GEMINI</span>
-                  <span className="row-val">{computePrice.geminiPrice}</span>
-                </div>
-                <div className="data-row" style={{ fontWeight: 700 }}>
-                  <span className="row-key">BASKET</span>
-                  <span className="row-val">{computePrice.basketPrice}</span>
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <div className="spark-row">
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span className="row-key sys-label">CLAUDE_WEIGHT</span>
-                      <span className="row-val">40%</span>
-                    </div>
-                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "40%" }} /></div>
-                  </div>
-                  <div className="spark-row">
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span className="row-key sys-label">GPT_WEIGHT</span>
-                      <span className="row-val">25%</span>
-                    </div>
-                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "25%" }} /></div>
-                  </div>
-                  <div className="spark-row">
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span className="row-key sys-label">GEMINI_WEIGHT</span>
-                      <span className="row-val">20%</span>
-                    </div>
-                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "20%" }} /></div>
-                  </div>
-                  <div className="spark-row">
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span className="row-key sys-label">OPEN_SOURCE</span>
-                      <span className="row-val">15%</span>
-                    </div>
-                    <div className="spark-bar-container"><div className="spark-bar" style={{ width: "15%" }} /></div>
-                  </div>
-                </div>
-
-                {computePrice.lastUpdated && (
-                  <div style={{ marginTop: 8, textAlign: "right" }}>
-                    <span className="sys-label">
-                      LAST.UPDATED:{" "}
-                      <span className="sys-value">{timeAgo(computePrice.lastUpdated)}</span>
-                    </span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Back link */}
-        <div style={{ textAlign: "center", marginTop: 48 }}>
-          <Link href="/" className="btn-primary" style={{ textDecoration: "none" }}>
-            BACK TO DASHBOARD
-          </Link>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
