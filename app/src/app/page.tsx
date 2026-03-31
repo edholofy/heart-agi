@@ -514,12 +514,13 @@ export default function Home() {
           zIndex: 5,
         }}>
           <h1 style={{
-            fontSize: "clamp(28px, 5vw, 64px)",
-            fontWeight: 900,
-            letterSpacing: "-0.03em",
+            fontFamily: "var(--font-sans)",
+            fontSize: "clamp(32px, 6vw, 72px)",
+            fontWeight: 700,
+            letterSpacing: "-0.04em",
             lineHeight: 1.0,
             color: "#f0f0f0",
-            marginBottom: "16px",
+            marginBottom: "20px",
           }}>
             THE BLOCKCHAIN<br />THAT WRITES ITSELF.
           </h1>

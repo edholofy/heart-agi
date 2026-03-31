@@ -648,7 +648,7 @@ export default function SpawnPage() {
 
           {/* Pay with $HEART */}
           <button
-            onClick={() => {/* TODO: connect $HEART payment */}}
+            onClick={() => alert("Coming soon — $HEART payments launching next week")}
             disabled={!canSpawn}
             style={{
               width: "100%",

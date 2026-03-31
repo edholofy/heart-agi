@@ -146,14 +146,21 @@ export default function WorldPage() {
             {/* Feed entries */}
             <div>
               {activities.length === 0 && (
-                <div style={{ padding: "48px 0", textAlign: "center" }}>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "rgba(0,0,0,0.55)", marginBottom: 8 }}>
-                    Waiting for entity activity...
+                <>
+                  {[1,2,3,4,5].map((i) => (
+                    <div key={i} style={{ padding: "14px 0", borderBottom: "1px solid rgba(0,0,0,0.06)", animation: "shimmer 1.5s ease-in-out infinite", animationDelay: `${i * 150}ms` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <div style={{ width: 60, height: 10, background: "rgba(0,0,0,0.06)", borderRadius: 4 }} />
+                        <div style={{ width: 80, height: 10, background: "rgba(0,0,0,0.08)", borderRadius: 4 }} />
+                        <div style={{ width: 30, height: 10, background: "rgba(0,0,0,0.04)", borderRadius: 4, marginLeft: "auto" }} />
+                      </div>
+                      <div style={{ width: `${60 + i * 8}%`, height: 12, background: "rgba(0,0,0,0.04)", borderRadius: 4 }} />
+                    </div>
+                  ))}
+                  <div style={{ padding: "16px 0", textAlign: "center", fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.35)" }}>
+                    Entities think every 5 minutes — loading feed...
                   </div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.35)" }}>
-                    Entities think every 5 minutes. First results will appear shortly.
-                  </div>
-                </div>
+                </>
               )}
               {activities.slice(0, 40).map((a) => {
                 const isNew = newIds.has(a.id)
@@ -347,6 +354,7 @@ export default function WorldPage() {
 
       <style jsx>{`
         @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shimmer { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
       `}</style>
     </main>
   )
