@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAppStore } from "@/lib/store"
 
 /* ------------------------------------------------------------------ */
 /*  Soul & Skill Templates                                             */
@@ -120,6 +121,8 @@ export default function SpawnPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clock, setClock] = useState("00:00:00.0")
+  const wallet = useAppStore((s) => s.wallet)
+  const isConnected = !!wallet.address
 
   /** Clock */
   useEffect(() => {
@@ -138,7 +141,7 @@ export default function SpawnPage() {
   const step2Done = soul.trim().length >= 10
   const step3Done = skill.trim().length >= 5
   const step4Done = selectedPlan !== ""
-  const canSpawn = step1Done && step2Done && step3Done && step4Done && !loading
+  const canSpawn = step1Done && step2Done && step3Done && step4Done && !loading && isConnected
 
   function handleSoulTemplateSelect(templateId: string) {
     setSelectedSoulTemplate(templateId)
@@ -528,6 +531,25 @@ export default function SpawnPage() {
           </div>
         )}
 
+        {/* ========== WALLET REQUIREMENT ========== */}
+        {!isConnected && (
+          <div style={{
+            width: "100%",
+            padding: "14px 20px",
+            background: "rgba(245,158,11,0.08)",
+            border: "1px solid rgba(245,158,11,0.2)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            color: "#f59e0b",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            textAlign: "center",
+            marginBottom: 12,
+          }}>
+            CONNECT WALLET TO SPAWN — USE THE WALLET BUTTON IN THE TOP RIGHT
+          </div>
+        )}
+
         {/* ========== SPAWN BUTTON ========== */}
         <button
           onClick={handleSpawn}
@@ -550,6 +572,8 @@ export default function SpawnPage() {
         >
           {loading ? (
             "INITIALIZING SPAWN SEQUENCE..."
+          ) : !isConnected ? (
+            "WALLET REQUIRED TO SPAWN"
           ) : (
             `SPAWN ${entityName.trim().toUpperCase() || "ENTITY"} // $${PLANS.find((p) => p.key === selectedPlan)?.price || 0} USD`
           )}
