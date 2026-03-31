@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { NetworkBar } from "@/components/shared/NetworkBar"
-import { EntityBrainMonitor } from "@/components/shared/EntityBrainMonitor"
 import { proxyFetch } from "@/lib/proxy"
 import Link from "next/link"
 
@@ -300,8 +299,6 @@ export default function WorldPage() {
           />
         </div>
 
-        {/* ── Brain Monitor: top alive entity ── */}
-        <TopEntityBrainMonitor entities={entities} activities={activities} />
       </div>
 
       {/* ── Transition ── */}
@@ -546,73 +543,3 @@ function SparkStat({
 
 /* ─── Top Entity Brain Monitor (dark zone) ─── */
 
-function TopEntityBrainMonitor({
-  entities,
-  activities,
-}: {
-  entities: Entity[]
-  activities: ActivityEntry[]
-}) {
-  // Find the top alive entity by discovery count
-  const topEntity = useMemo(() => {
-    const alive = entities.filter(
-      (e) => e.status === "alive" || e.status === "active"
-    )
-    if (alive.length === 0) return null
-    return alive.reduce((best, e) =>
-      (e.discoveries || 0) > (best.discoveries || 0) ? e : best
-    )
-  }, [entities])
-
-  // Find last activity timestamp for this entity
-  const lastActivity = useMemo(() => {
-    if (!topEntity) return undefined
-    const match = activities.find(
-      (a) => a.entity_id === topEntity.id || a.entity_name === topEntity.name
-    )
-    return match?.timestamp
-  }, [topEntity, activities])
-
-  if (!topEntity) return null
-
-  const entityStatus: "alive" | "dormant" | "stopped" =
-    topEntity.status === "alive" || topEntity.status === "active"
-      ? "alive"
-      : topEntity.status === "dormant"
-        ? "dormant"
-        : "stopped"
-
-  return (
-    <div style={{ marginTop: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          marginBottom: 8,
-        }}
-      >
-        <span className="label" style={{ opacity: 0.5 }}>
-          NEURAL_ACTIVITY // TOP ENTITY
-        </span>
-        <span
-          className="label"
-          style={{
-            opacity: 0.5,
-            fontSize: 9,
-          }}
-        >
-          LIVE BRAIN MONITOR
-        </span>
-      </div>
-      <EntityBrainMonitor
-        entityName={topEntity.name}
-        status={entityStatus}
-        discoveries={topEntity.discoveries || 0}
-        experiments={topEntity.experiments_run || 0}
-        computeBalance={topEntity.compute_balance || 0}
-        lastActivity={lastActivity}
-      />
-    </div>
-  )
-}
