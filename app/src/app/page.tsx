@@ -503,7 +503,7 @@ export default function Home() {
             zIndex: 1,
           }}
         >
-          <source src="/hero-bubbles.mp4" type="video/mp4" />
+          <source src="https://dodosbcznhnhnvwyiazq.supabase.co/storage/v1/object/public/assets/hero-bubbles.mp4" type="video/mp4" />
         </video>
         {/* Hero title + subtitle — offset for floating navbar */}
         <div style={{
