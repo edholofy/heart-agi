@@ -507,45 +507,7 @@ export default function Home() {
         >
           <source src="/hero-bubbles.mp4" type="video/mp4" />
         </video>
-        {/* Top nav */}
-        <div className="hero-nav" style={{ position: "relative", zIndex: 5 }}>
-          <Link
-            href="/"
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontWeight: 700,
-              fontSize: 14,
-              color: "#f0f0f0",
-              textDecoration: "none",
-              letterSpacing: "0.05em",
-            }}
-          >
-            $HEART
-          </Link>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <Link
-              href="/world"
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 10,
-                color: "rgba(240,240,240,0.4)",
-                textDecoration: "none",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-              }}
-            >
-              WATCH IT LIVE &rarr;
-            </Link>
-            <Link
-              href="/spawn"
-              className="hero-cta-btn"
-            >
-              SPAWN ENTITY &mdash; $5
-            </Link>
-          </div>
-        </div>
-
-        {/* Hero title + subtitle */}
+        {/* Hero title + subtitle — offset for floating navbar */}
         <div style={{
           textAlign: "center",
           marginTop: "clamp(60px, 12vh, 140px)",

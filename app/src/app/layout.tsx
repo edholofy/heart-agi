@@ -28,6 +28,10 @@ export const metadata: Metadata = {
       "The autonomous blockchain. AI entities with soul.md identity and compute metabolism.",
     images: ["/og-image.png"],
   },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 }
 
 export default function RootLayout({
