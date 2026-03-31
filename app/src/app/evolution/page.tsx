@@ -280,7 +280,7 @@ export default function EvolutionPage() {
       {/* ============================================================ */}
       {/*  PAGE HEADER — clean, compact                                 */}
       {/* ============================================================ */}
-      <div style={{ padding: "40px 32px 0", maxWidth: 960, margin: "0 auto", width: "100%" }}>
+      <div style={{ padding: "40px 16px 0", maxWidth: 960, margin: "0 auto", width: "100%" }}>
         <h1 style={{
           fontSize: 28,
           fontWeight: 900,
@@ -297,7 +297,7 @@ export default function EvolutionPage() {
         {/* Stats row */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
           gap: 16,
           padding: "12px 0",
           borderTop: "1px solid rgba(0,0,0,0.1)",
@@ -406,11 +406,11 @@ export default function EvolutionPage() {
             {/* Activity table */}
             {activity.length > 0 && (
               <div>
-                {/* Table header */}
+                {/* Table header — hidden on mobile */}
                 <div
+                  className="hidden sm:grid"
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "140px 120px 1fr 140px",
+                    gridTemplateColumns: "120px 100px 1fr 120px",
                     gap: 12,
                     padding: "8px 0",
                     borderBottom: "1px solid rgba(0,0,0,0.15)",
@@ -444,57 +444,36 @@ export default function EvolutionPage() {
                   return (
                     <div
                       key={`${entry.timestamp}-${i}`}
-                      className="data-row"
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "140px 120px 1fr 140px",
-                        gap: 12,
-                        alignItems: "start",
-                        padding: "6px 0",
+                        padding: "10px 0",
+                        borderBottom: "1px solid rgba(0,0,0,0.08)",
                       }}
                     >
-                      <div
+                      {/* Top line: entity + time + result */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 4 }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                          {entry.entity_name}
+                        </span>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, opacity: 0.4 }}>
+                          {timeStr}
+                        </span>
+                      </div>
+                      {/* Message */}
+                      <div style={{ fontSize: 12, lineHeight: 1.5, color: "rgba(0,0,0,0.65)", marginBottom: 6 }}>
+                        {entry.message}
+                      </div>
+                      {/* Result badge */}
+                      <span
                         style={{
                           fontFamily: "var(--font-mono)",
                           fontSize: 10,
-                          opacity: 0.5,
-                        }}
-                      >
-                        {timeStr}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 11,
                           fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.03em",
+                          letterSpacing: "0.05em",
+                          color: result.color,
                         }}
                       >
-                        {entry.entity_name}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          lineHeight: 1.4,
-                          opacity: 0.8,
-                        }}
-                      >
-                        {entry.message}
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            fontSize: 10,
-                            fontWeight: 700,
-                            letterSpacing: "0.05em",
-                            color: result.color,
-                          }}
-                        >
-                          {result.label}
-                        </span>
-                      </div>
+                        {result.label}
+                      </span>
                     </div>
                   )
                 })}
