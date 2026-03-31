@@ -491,59 +491,57 @@ export default function EntityProfilePage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen">
+    <main style={{ background: "#fff", minHeight: "100vh", color: "#121212" }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 24px 80px" }}>
 
-      {/* DARK ZONE */}
-      <div className="zone-dark">
-        <header className="grid grid-cols-3 border-b border-[rgba(255,255,255,0.2)] pb-4 mb-8">
-          <div>
-            <span className="sys-label">ENTITY PROFILE</span>
-            <div className="text-sm font-bold tracking-wide">ENTITY PROFILE // {name.toUpperCase()}</div>
-          </div>
-          <div className="text-center">
-            <span className="sys-label">STATUS</span>
-            <div className="sys-value flex items-center justify-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${statusDotColor[status] ?? statusDotColor.unknown}`} />
-              {status.toUpperCase()}
+        {/* Header */}
+        <div style={{ borderBottom: "2px solid #121212", paddingBottom: 20, marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: "#121212", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: "#fff", fontFamily: "var(--font-sans)" }}>
+                {name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h1 style={{ fontFamily: "var(--font-sans)", fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1 }}>
+                  {name}
+                </h1>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.5)", marginTop: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: status === "alive" ? "#121212" : "rgba(0,0,0,0.2)" }} />
+                  <span>{status.toUpperCase()}</span>
+                  <span>·</span>
+                  <span>{(entity as EntityStatus & { current_model?: string })?.current_model?.split("/").pop() || "auto"}</span>
+                  <span>·</span>
+                  <span>v{(entity as EntityStatus & { soul_version?: number })?.soul_version || 0}</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="text-right">
-            <span className="sys-label">UPTIME</span>
-            <div className="sys-value">{startedAt ? uptimeString(startedAt) : "--"}</div>
-          </div>
-        </header>
-
-        <div className="primary-vis-layout pb-6">
-          <div>
-            <span className="sys-label">DISCOVERIES</span>
-            <div className="dot-hero">{discoveries}</div>
-          </div>
-          <div className="flex flex-col justify-end">
-            <div className="flex justify-between mb-2">
-              <span className="sys-label">COMPUTE BALANCE</span>
-              <span className="sys-value">{Math.round(computeBalance)} / {computeMax}</span>
-            </div>
-            <div className="sensor-grid">
-              {Array.from({ length: 32 * 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="sensor-node"
-                  style={{ opacity: i < Math.floor((computePct / 100) * 128) ? 0.6 + Math.random() * 0.4 : 0.1 }}
-                />
-              ))}
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Uptime</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{startedAt ? uptimeString(startedAt) : "—"}</div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="zone-transition" />
+        {/* Stats row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, borderBottom: "1px solid #121212" }}>
+          {[
+            { label: "Compute", value: `${Math.round(computeBalance)}` },
+            { label: "Discoveries", value: String(discoveries) },
+            { label: "Experiments", value: String(experiments) },
+            { label: "Tasks", value: String(tasksCompleted) },
+            { label: "Revenue", value: `${creatorRevenue} ♥` },
+          ].map((s, i) => (
+            <div key={s.label} style={{ padding: "16px 0", borderRight: i < 4 ? "1px solid rgba(0,0,0,0.1)" : "none", paddingLeft: i > 0 ? 16 : 0 }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.45)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
 
-      {/* LIGHT ZONE */}
-      <div className="zone-light">
         {/* Back link */}
-        <div className="mb-6">
-          <Link href="/" className="sys-label hover:opacity-100 transition-opacity">
-            &larr; BACK.TO.DASHBOARD
+        <div style={{ padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <Link href="/world" style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "rgba(0,0,0,0.4)", textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            ← Back to World
           </Link>
         </div>
 
@@ -1037,6 +1035,7 @@ export default function EntityProfilePage() {
             </div>
           </>
         )}
+
       </div>
 
       {/* List For Sale Modal */}
