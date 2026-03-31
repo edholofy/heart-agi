@@ -471,7 +471,7 @@ export default function EntityProfilePage() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, borderBottom: "1px solid #121212" }}>
+        <div className="entity-stats">
           {[
             { label: "Compute", value: `${Math.round(computeBalance)}` },
             { label: "Discoveries", value: String(discoveries) },

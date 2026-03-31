@@ -197,7 +197,7 @@ export default function ExplorerPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 0, borderBottom: "1px solid #121212" }}>
+        <div className="explorer-stats">
           {[
             { label: "Block", value: status ? `#${status.latestHeight.toLocaleString()}` : "—" },
             { label: "Transactions", value: totalTxs > 0 ? totalTxs.toLocaleString() : "—" },
@@ -227,7 +227,7 @@ export default function ExplorerPage() {
         )}
 
         {/* 3-column layout: Blocks | Transactions | Validators + Chain */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 300px", gap: 0 }}>
+        <div className="explorer-grid">
 
           {/* Blocks */}
           <div style={{ borderRight: "1px solid #121212", paddingRight: 20 }}>

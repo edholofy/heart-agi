@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { WalletButton } from "@/components/wallet/WalletButton"
 import { getChainStatus } from "@/lib/chain-client"
 import Link from "next/link"
@@ -22,6 +22,8 @@ const H_MASK =
 
 export function NetworkBar() {
   const [blockHeight, setBlockHeight] = useState<string | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -169,35 +171,43 @@ export function NetworkBar() {
             {link.label}
           </Link>
         ))}
-        {/* Mobile: key links only */}
-        <Link
-          href="/world"
-          className="sm:hidden"
-          style={{
-            fontFamily: MONO,
-            fontSize: 10,
-            color: "rgba(255,255,255,0.4)",
-            textDecoration: "none",
-            letterSpacing: "0.06em",
-            padding: "6px 8px",
-          }}
-        >
-          WORLD
-        </Link>
-        <Link
-          href="/spawn"
-          className="sm:hidden"
-          style={{
-            fontFamily: MONO,
-            fontSize: 10,
-            color: "rgba(255,255,255,0.4)",
-            textDecoration: "none",
-            letterSpacing: "0.06em",
-            padding: "6px 8px",
-          }}
-        >
-          SPAWN
-        </Link>
+        {/* Mobile: hamburger menu */}
+        <div className="sm:hidden" style={{ position: "relative" }} ref={menuRef}>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "rgba(255,255,255,0.5)", fontSize: 18, padding: "4px 8px",
+              fontFamily: MONO,
+            }}
+          >
+            {mobileMenuOpen ? "✕" : "☰"}
+          </button>
+          {mobileMenuOpen && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 8px)", right: 0,
+              background: "rgba(18,18,18,0.95)", border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 12, padding: 8, zIndex: 9999, minWidth: 160,
+              backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+            }}>
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: "block", padding: "10px 14px", fontFamily: MONO,
+                    fontSize: 11, color: "rgba(255,255,255,0.6)", textDecoration: "none",
+                    textTransform: "uppercase", letterSpacing: "0.06em", borderRadius: 6,
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right: Status + Wallet */}

@@ -130,7 +130,7 @@ export default function WorldPage() {
         </div>
 
         {/* ── Two-column: Feed + Sidebar (hard border between) ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 0 }}>
+        <div className="world-grid">
 
           {/* ════════ LEFT: The Live Feed ════════ */}
           <div style={{ borderRight: "1px solid #121212", paddingRight: 32 }}>

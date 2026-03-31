@@ -13,8 +13,7 @@ import { SignJWT, jwtVerify } from 'jose'
  */
 
 const JWT_SECRET_RAW = process.env.JWT_SECRET
-// Warn but don't crash at build time — Vercel sets NODE_ENV=production during build
-if (!JWT_SECRET_RAW && process.env.NODE_ENV === 'production') {
+if (!JWT_SECRET_RAW) {
   console.warn('WARNING: JWT_SECRET not set. Using dev fallback. Set JWT_SECRET in production.')
 }
 const JWT_SECRET = new TextEncoder().encode(
