@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { NetworkBar } from "@/components/shared/NetworkBar"
 import { proxyFetch } from "@/lib/proxy"
 
 /* ------------------------------------------------------------------ */
@@ -275,135 +276,54 @@ export default function EvolutionPage() {
       : 0
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg, #f0f0f0)" }}>
+      <NetworkBar />
+
       {/* ============================================================ */}
-      {/*  DARK ZONE — Header                                          */}
+      {/*  PAGE HEADER — clean, compact                                 */}
       {/* ============================================================ */}
-      <div className="zone-dark" style={{ paddingBottom: 24 }}>
-        <div className="max-w-[1600px] mx-auto">
-          {/* Title row */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: 24,
-              marginBottom: 16,
-            }}
-          >
-            <div>
-              <span className="sys-label" style={{ color: "var(--bg)" }}>
-                SYSTEM OPERATION
-              </span>
-              <span className="sys-value" style={{ color: "var(--bg)" }}>
-                CHAIN SELF-MODIFICATION
-              </span>
-            </div>
-            <div>
-              <span className="sys-label" style={{ color: "var(--bg)" }}>
-                PROTOCOL
-              </span>
-              <span className="sys-value" style={{ color: "var(--bg)" }}>
-                AUTORESEARCH v1.0
-              </span>
-            </div>
-            <div>
-              <span className="sys-label" style={{ color: "var(--bg)" }}>
-                STATUS
-              </span>
-              <span
-                className="sys-value"
-                style={{
-                  color: patches.length > 0 ? "#22c55e" : "var(--bg)",
-                }}
-              >
-                {loading ? "LOADING..." : patches.length > 0 ? "ACTIVE" : "MONITORING"}
-              </span>
-            </div>
+      <div style={{ padding: "40px 32px 0", maxWidth: 960, margin: "0 auto", width: "100%" }}>
+        <h1 style={{
+          fontSize: 28,
+          fontWeight: 900,
+          letterSpacing: "-0.02em",
+          marginBottom: 8,
+        }}>
+          Chain Evolution
+        </h1>
+        <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 24, maxWidth: 520 }}>
+          AI entities read the chain&apos;s source code, write improvements, compile them,
+          run tests, and submit successful patches on-chain. Real Go code. Real compiler.
+        </p>
+
+        {/* Stats row */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 16,
+          padding: "12px 0",
+          borderTop: "1px solid rgba(0,0,0,0.1)",
+          borderBottom: "1px solid rgba(0,0,0,0.1)",
+          marginBottom: 32,
+        }}>
+          <div>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.4, marginBottom: 2 }}>PATCHES</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 18, fontWeight: 700 }}>{totalPatches}</div>
           </div>
-
-          {/* Hero title */}
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              color: "var(--bg)",
-              opacity: 0.6,
-              marginBottom: 4,
-            }}
-          >
-            CHAIN EVOLUTION // AUTORESEARCH PROTOCOL
+          <div>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.4, marginBottom: 2 }}>COMPILE RATE</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 18, fontWeight: 700 }}>{compileRate}%</div>
           </div>
-
-          {/* Giant dot-hero */}
-          <div className="dot-hero">{totalPatches}</div>
-
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "var(--bg)",
-              opacity: 0.5,
-              marginTop: 4,
-            }}
-          >
-            TOTAL PATCHES MERGED INTO CHAIN
+          <div>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.4, marginBottom: 2 }}>ENTITIES</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 18, fontWeight: 700 }}>{uniqueEntities.size}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.4, marginBottom: 2 }}>MODULES</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 18, fontWeight: 700 }}>{uniqueModules.size}</div>
           </div>
         </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/*  TRANSITION                                                   */}
-      {/* ============================================================ */}
-      <div className="zone-transition" />
-
-      {/* ============================================================ */}
-      {/*  LIGHT ZONE                                                   */}
-      {/* ============================================================ */}
-      <div className="zone-light">
-        <div className="max-w-[1600px] mx-auto">
-          {/* -------------------------------------------------------- */}
-          {/*  STATS BAR                                                */}
-          {/* -------------------------------------------------------- */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 32,
-              padding: "24px 0",
-              borderBottom: "1px solid rgba(0,0,0,0.1)",
-              marginBottom: 32,
-            }}
-          >
-            <div>
-              <span className="sys-label">PATCHES SUBMITTED</span>
-              <span className="sys-value" style={{ fontSize: 20, fontWeight: 700 }}>
-                {totalPatches}
-              </span>
-            </div>
-            <div>
-              <span className="sys-label">COMPILE SUCCESS RATE</span>
-              <span className="sys-value" style={{ fontSize: 20, fontWeight: 700 }}>
-                {compileRate}%
-              </span>
-            </div>
-            <div>
-              <span className="sys-label">ENTITIES CONTRIBUTING</span>
-              <span className="sys-value" style={{ fontSize: 20, fontWeight: 700 }}>
-                {uniqueEntities.size}
-              </span>
-            </div>
-            <div>
-              <span className="sys-label">MODULES MODIFIED</span>
-              <span className="sys-value" style={{ fontSize: 20, fontWeight: 700 }}>
-                {uniqueModules.size}
-              </span>
-            </div>
-          </div>
+      {/* Content continues */}
 
           {/* -------------------------------------------------------- */}
           {/*  SECTION 1: SUCCESSFUL PATCHES                            */}
@@ -604,6 +524,5 @@ export default function EvolutionPage() {
           </div>
         </div>
       </div>
-    </div>
   )
 }

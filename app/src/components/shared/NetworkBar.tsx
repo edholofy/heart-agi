@@ -8,11 +8,8 @@ import Link from "next/link"
 const NAV_LINKS = [
   { href: "/world", label: "WORLD" },
   { href: "/spawn", label: "SPAWN" },
-  { href: "/swarm", label: "SWARM" },
-  { href: "/leaderboard", label: "LEADERBOARD" },
-  { href: "/marketplace", label: "ENTITIES" },
   { href: "/evolution", label: "EVOLUTION" },
-  { href: "/governance", label: "GOV" },
+  { href: "/leaderboard", label: "LEADERBOARD" },
   { href: "/docs", label: "DOCS" },
 ]
 
