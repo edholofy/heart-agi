@@ -33,12 +33,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
     const res = await fetch(`${DAEMON_URL}${path}`, {
       headers: buildHeaders({ 'Accept': 'application/json' }),
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
     const data = await res.json()
     return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'no-cache' },
+      headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=30' },
     })
   } catch {
     return NextResponse.json({ error: 'Daemon unreachable', entities: [], activity: [], total: 0 }, { status: 502 })
@@ -54,11 +58,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
     const res = await fetch(`${DAEMON_URL}${path}`, {
       method: 'POST',
       headers: buildHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
     const data = await res.json()
     return NextResponse.json(data)
   } catch {

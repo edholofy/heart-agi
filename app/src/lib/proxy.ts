@@ -25,19 +25,34 @@ export async function proxyFetch(
   target: "rpc" | "rest" | "daemon" | "faucet",
   options?: RequestInit
 ): Promise<Response> {
-  if (isHTTPS()) {
-    // Daemon calls go through /api/daemon (which injects the API key)
-    if (target === "daemon") {
-      const daemonUrl = `/api/daemon?path=${encodeURIComponent(path)}`
-      return fetch(daemonUrl, options)
-    }
-    // Other calls go through /api/proxy
-    const proxyUrl = `/api/proxy?url=${encodeURIComponent(path)}&target=${target}`
-    return fetch(proxyUrl, options)
-  }
+  // Add 8s timeout to all daemon calls to prevent page hangs
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+  const fetchOpts: RequestInit = { ...options, signal: controller.signal }
 
-  // Direct call on localhost
-  return fetch(`${DIRECT_URLS[target]}${path}`, options)
+  try {
+    let res: Response
+    if (isHTTPS()) {
+      if (target === "daemon") {
+        const daemonUrl = `/api/daemon?path=${encodeURIComponent(path)}`
+        res = await fetch(daemonUrl, fetchOpts)
+      } else {
+        const proxyUrl = `/api/proxy?url=${encodeURIComponent(path)}&target=${target}`
+        res = await fetch(proxyUrl, fetchOpts)
+      }
+    } else {
+      res = await fetch(`${DIRECT_URLS[target]}${path}`, fetchOpts)
+    }
+    clearTimeout(timeout)
+    return res
+  } catch (err) {
+    clearTimeout(timeout)
+    // Return a synthetic failed response instead of throwing
+    return new Response(JSON.stringify({ error: "Daemon unavailable" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
 }
 
 /** Convenience: fetch JSON with automatic proxy */
