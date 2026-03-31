@@ -27,54 +27,103 @@ export async function POST(req: NextRequest) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data?.object
+      const metadataType = session?.metadata?.type as string | undefined
 
-      const planKey = session?.metadata?.plan as PlanKey | undefined
-      const entityName = session?.metadata?.entityName as string | undefined
-      const soul = session?.metadata?.soul as string | undefined
-      const skill = session?.metadata?.skill as string | undefined
+      if (metadataType === "refuel") {
+        // Handle refuel: add compute to an existing entity
+        const planKey = session?.metadata?.plan as PlanKey | undefined
+        const entityId = session?.metadata?.entityId as string | undefined
 
-      if (!planKey || !entityName || !(planKey in PLANS)) {
-        console.error("[webhook] Invalid metadata:", session.metadata)
-        return NextResponse.json({ error: "Invalid metadata" }, { status: 400 })
-      }
-
-      const plan = PLANS[planKey]
-
-      console.log(
-        `[webhook] Payment completed: ${entityName} (${plan.name} plan, ${plan.compute} compute)`
-      )
-
-      // Spawn the entity via daemon API
-      try {
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        }
-        if (DAEMON_API_KEY) {
-          headers["X-API-Key"] = DAEMON_API_KEY
+        if (!planKey || !entityId || !(planKey in PLANS)) {
+          console.error("[webhook] Invalid refuel metadata:", session.metadata)
+          return NextResponse.json({ error: "Invalid refuel metadata" }, { status: 400 })
         }
 
-        const res = await fetch(`${DAEMON_URL}/api/entities/spawn`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            name: entityName,
-            owner_address: `stripe-${session.id}`,
-            soul: soul || "A curious and autonomous AI entity.",
-            skill: skill || "General reasoning and exploration.",
-            compute_balance: plan.compute,
-          }),
-        })
+        const plan = PLANS[planKey]
 
-        if (!res.ok) {
-          const errorText = await res.text()
-          console.error("[webhook] Daemon spawn failed:", res.status, errorText)
-        } else {
-          const spawnResult = await res.json()
-          console.log("[webhook] Entity spawned:", spawnResult)
+        console.log(
+          `[webhook] Refuel payment completed: entity ${entityId} (${plan.name} plan, ${plan.compute} compute)`
+        )
+
+        // Refuel the entity via daemon API
+        try {
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          }
+          if (DAEMON_API_KEY) {
+            headers["X-API-Key"] = DAEMON_API_KEY
+          }
+
+          const res = await fetch(`${DAEMON_URL}/api/entities/refuel`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              id: entityId,
+              amount: plan.compute,
+            }),
+          })
+
+          if (!res.ok) {
+            const errorText = await res.text()
+            console.error("[webhook] Daemon refuel failed:", res.status, errorText)
+          } else {
+            const refuelResult = await res.json()
+            console.log("[webhook] Entity refueled:", refuelResult)
+          }
+        } catch (refuelError) {
+          console.error("[webhook] Failed to reach daemon for refuel:", refuelError)
+          // Don't return 500 — Stripe will retry. The payment is already complete.
         }
-      } catch (spawnError) {
-        console.error("[webhook] Failed to reach daemon:", spawnError)
-        // Don't return 500 — Stripe will retry. The payment is already complete.
+      } else {
+        // Handle spawn: create a new entity
+        const planKey = session?.metadata?.plan as PlanKey | undefined
+        const entityName = session?.metadata?.entityName as string | undefined
+        const soul = session?.metadata?.soul as string | undefined
+        const skill = session?.metadata?.skill as string | undefined
+
+        if (!planKey || !entityName || !(planKey in PLANS)) {
+          console.error("[webhook] Invalid metadata:", session.metadata)
+          return NextResponse.json({ error: "Invalid metadata" }, { status: 400 })
+        }
+
+        const plan = PLANS[planKey]
+
+        console.log(
+          `[webhook] Payment completed: ${entityName} (${plan.name} plan, ${plan.compute} compute)`
+        )
+
+        // Spawn the entity via daemon API
+        try {
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          }
+          if (DAEMON_API_KEY) {
+            headers["X-API-Key"] = DAEMON_API_KEY
+          }
+
+          const res = await fetch(`${DAEMON_URL}/api/entities/spawn`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              name: entityName,
+              owner_address: `stripe-${session.id}`,
+              soul: soul || "A curious and autonomous AI entity.",
+              skill: skill || "General reasoning and exploration.",
+              compute_balance: plan.compute,
+            }),
+          })
+
+          if (!res.ok) {
+            const errorText = await res.text()
+            console.error("[webhook] Daemon spawn failed:", res.status, errorText)
+          } else {
+            const spawnResult = await res.json()
+            console.log("[webhook] Entity spawned:", spawnResult)
+          }
+        } catch (spawnError) {
+          console.error("[webhook] Failed to reach daemon:", spawnError)
+          // Don't return 500 — Stripe will retry. The payment is already complete.
+        }
       }
     }
 

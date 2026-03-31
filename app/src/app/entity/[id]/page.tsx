@@ -420,6 +420,69 @@ export default function EntityProfilePage() {
     }
   }
 
+  const [showRefuel, setShowRefuel] = useState(false)
+  const [refuelPlan, setRefuelPlan] = useState("spark")
+  const [refuelLoading, setRefuelLoading] = useState(false)
+
+  const handleRefuel = async () => {
+    setRefuelLoading(true)
+    try {
+      const res = await fetch("/api/refuel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entityId: id, plan: refuelPlan }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setTxError(data.error || "Failed to create refuel session")
+      }
+    } catch {
+      setTxError("Failed to initiate refuel")
+    } finally {
+      setRefuelLoading(false)
+    }
+  }
+
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [transferTargetId, setTransferTargetId] = useState("")
+  const [transferAmount, setTransferAmount] = useState("")
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [allEntities, setAllEntities] = useState<{id: string; name: string}[]>([])
+
+  useEffect(() => {
+    proxyFetch("/api/entities", "daemon").then(r => r.json()).then(data => {
+      const list = Array.isArray(data) ? data : data.entities || []
+      setAllEntities(list.map((e: {id: string; name: string}) => ({ id: e.id, name: e.name })))
+    }).catch(() => {})
+  }, [])
+
+  const handleTransfer = async () => {
+    if (!transferTargetId || !transferAmount) return
+    setTransferLoading(true)
+    try {
+      const res = await proxyFetch("/api/entities/transfer", "daemon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from_id: id, to_id: transferTargetId, amount: parseFloat(transferAmount) }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setTxSuccess(`Transferred ${transferAmount} CT — new balance: ${Math.round(data.from_balance)}`)
+        setShowTransfer(false)
+        setTransferAmount("")
+        fetchDaemonStatus()
+      } else {
+        setTxError(data.error || "Transfer failed")
+      }
+    } catch {
+      setTxError("Transfer failed")
+    } finally {
+      setTransferLoading(false)
+    }
+  }
+
   const statusDotColor: Record<string, string> = {
     alive: "bg-[#22c55e] animate-pulse-dot",
     dormant: "bg-[#f59e0b]",
@@ -698,6 +761,110 @@ export default function EntityProfilePage() {
                   )}
                   {!wallet.address && isForSale && (
                     <span className="sys-label mt-1">CONNECT WALLET TO PURCHASE</span>
+                  )}
+
+                  {/* Refuel + Transfer buttons */}
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, borderTop: "1px solid rgba(0,0,0,0.1)", paddingTop: 12 }}>
+                    <button
+                      onClick={() => setShowRefuel(!showRefuel)}
+                      className="px-3 py-1.5 text-[10px] font-mono tracking-wider border border-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] transition-colors cursor-pointer"
+                    >
+                      REFUEL
+                    </button>
+                    <button
+                      onClick={() => setShowTransfer(!showTransfer)}
+                      className="px-3 py-1.5 text-[10px] font-mono tracking-wider border border-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] transition-colors cursor-pointer"
+                    >
+                      TRANSFER
+                    </button>
+                  </div>
+
+                  {/* Refuel panel */}
+                  {showRefuel && (
+                    <div style={{ marginTop: 12, padding: 16, border: "1px solid rgba(0,0,0,0.1)" }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Add Compute (Stripe)
+                      </div>
+                      <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+                        {[
+                          { key: "spark", label: "$5", compute: "500 CT" },
+                          { key: "flame", label: "$20", compute: "2.5K CT" },
+                          { key: "inferno", label: "$50", compute: "10K CT" },
+                          { key: "eternal", label: "$100", compute: "25K CT" },
+                        ].map((p) => (
+                          <button
+                            key={p.key}
+                            onClick={() => setRefuelPlan(p.key)}
+                            style={{
+                              flex: 1, padding: "8px 4px", fontSize: 10, fontFamily: "var(--font-mono)",
+                              border: refuelPlan === p.key ? "2px solid var(--fg)" : "1px solid rgba(0,0,0,0.15)",
+                              background: refuelPlan === p.key ? "var(--fg)" : "transparent",
+                              color: refuelPlan === p.key ? "var(--bg)" : "var(--fg)",
+                              cursor: "pointer", textAlign: "center",
+                            }}
+                          >
+                            <div style={{ fontWeight: 700 }}>{p.label}</div>
+                            <div style={{ fontSize: 8, opacity: 0.6 }}>{p.compute}</div>
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleRefuel}
+                        disabled={refuelLoading}
+                        style={{
+                          width: "100%", padding: "10px", background: "var(--fg)", color: "var(--bg)",
+                          border: "none", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700,
+                          textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer",
+                        }}
+                      >
+                        {refuelLoading ? "PROCESSING..." : "REFUEL NOW"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Transfer panel */}
+                  {showTransfer && (
+                    <div style={{ marginTop: 12, padding: 16, border: "1px solid rgba(0,0,0,0.1)" }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Transfer Compute
+                      </div>
+                      <select
+                        value={transferTargetId}
+                        onChange={(e) => setTransferTargetId(e.target.value)}
+                        style={{
+                          width: "100%", padding: "8px", marginBottom: 8, fontFamily: "var(--font-mono)",
+                          fontSize: 11, border: "1px solid rgba(0,0,0,0.15)", background: "transparent",
+                        }}
+                      >
+                        <option value="">Select recipient...</option>
+                        {allEntities.filter(e => e.id !== id).map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        value={transferAmount}
+                        onChange={(e) => setTransferAmount(e.target.value)}
+                        placeholder="Amount (CT)"
+                        style={{
+                          width: "100%", padding: "8px", marginBottom: 8, fontFamily: "var(--font-mono)",
+                          fontSize: 11, border: "1px solid rgba(0,0,0,0.15)", background: "transparent",
+                        }}
+                      />
+                      <button
+                        onClick={handleTransfer}
+                        disabled={transferLoading || !transferTargetId || !transferAmount}
+                        style={{
+                          width: "100%", padding: "10px", background: "var(--fg)", color: "var(--bg)",
+                          border: "none", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700,
+                          textTransform: "uppercase", letterSpacing: "0.06em",
+                          cursor: transferLoading ? "wait" : "pointer",
+                          opacity: (!transferTargetId || !transferAmount) ? 0.4 : 1,
+                        }}
+                      >
+                        {transferLoading ? "SENDING..." : "TRANSFER"}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
