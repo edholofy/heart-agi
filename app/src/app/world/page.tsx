@@ -52,7 +52,7 @@ function EntityCard({ entity, activities, rank }: { entity: Entity; activities: 
   return (
     <Link href={`/entity/${entity.id}`} style={{ textDecoration: "none", color: "inherit" }}>
       <div style={{
-        background: "#fff", borderRadius: 16, overflow: "hidden",
+        background: "#fafafa", borderRadius: 16, overflow: "hidden",
         border: "1px solid rgba(0,0,0,0.06)", padding: "20px 20px 16px",
         transition: "transform 200ms cubic-bezier(0.22,1,0.36,1), box-shadow 200ms",
         cursor: "pointer",
@@ -265,7 +265,7 @@ export default function WorldPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 48 }}>
 
           {/* Live feed */}
-          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
+          <div style={{ background: "#fafafa", borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
             <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(0,0,0,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#121212" }} />
@@ -300,7 +300,7 @@ export default function WorldPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {/* Code patches */}
             {patches.length > 0 && (
-              <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
+              <div style={{ background: "#fafafa", borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
                 <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(0,0,0,0.04)", display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em", color: "#121212" }}>Code Patches</span>
                   <Link href="/evolution" style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "rgba(0,0,0,0.25)", textDecoration: "none" }}>See all →</Link>
@@ -319,7 +319,7 @@ export default function WorldPage() {
             )}
 
             {/* Discoveries */}
-            <div style={{ background: "#fff", borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden", flex: 1 }}>
+            <div style={{ background: "#fafafa", borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden", flex: 1 }}>
               <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em", color: "#121212" }}>Discoveries</span>
               </div>
