@@ -1003,9 +1003,8 @@ export default function EntityProfilePage() {
                         </div>
                         <div style={{
                           padding: "12px 14px",
-                          background: "rgba(0,0,0,0.04)",
+                          background: "rgba(0,0,0,0.02)",
                           border: "1px solid rgba(0,0,0,0.08)",
-                          borderLeft: "3px solid #22c55e",
                           fontSize: 11,
                           lineHeight: 1.6,
                           maxHeight: 200,
