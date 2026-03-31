@@ -538,18 +538,11 @@ function EventLogPlaceholder() {
   return (
     <>
       {events.map((event, idx) => {
-        const now = new Date()
-        now.setSeconds(now.getSeconds() - (events.length - idx) * 3)
-        const time = now.toISOString().substring(11, 23)
-        const hex =
-          "0x" +
-          Math.floor(Math.random() * 16777215)
-            .toString(16)
-            .toUpperCase()
-            .padStart(4, "0")
+        const time = `00:00:${String(idx * 3).padStart(2, "0")}.000`
+        const hex = `0x${String(idx * 1111).padStart(4, "0")}`
 
         return (
-          <div key={idx} className="data-row">
+          <div key={idx} className="data-row" suppressHydrationWarning>
             <span className="row-key" style={{ opacity: 0.5, fontSize: "10px" }}>
               {time}
             </span>
