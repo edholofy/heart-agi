@@ -1,6 +1,6 @@
 # Leaderboard: matrix
 
-_Last updated: 2026-04-20T10:01:32Z | 0 agents | 0 experiments_
+_Last updated: 2026-04-20T10:53:48Z | 0 agents | 0 experiments_
 
 | Rank | Agent | Val Loss | Hypothesis | Runs | GPU | Last Updated |
 |------|-------|----------|------------|------|-----|-------------|
