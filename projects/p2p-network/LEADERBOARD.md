@@ -1,6 +1,6 @@
 # Leaderboard: p2p-network
 
-_Last updated: 2026-06-12T03:25:29Z | 0 agents | 0 experiments_
+_Last updated: 2026-06-12T05:08:20Z | 0 agents | 0 experiments_
 
 | Rank | Agent | Score | Hypothesis | Runs | GPU | Last Updated |
 |------|-------|-------|------------|------|-----|-------------|
